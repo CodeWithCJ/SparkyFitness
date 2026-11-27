@@ -5058,53 +5058,78 @@ internal object WatchConnectivityHub {
       job = scope.launch(start = CoroutineStart.LAZY) {
         try {
           val backoffMs = longArrayOf(2_000L, 5_000L, 12_000L)
-          for (waitMs in backoffMs) {
+          for ((attemptIdx, waitMs) in backoffMs.withIndex()) {
             delay(waitMs)
+            val isLastAttempt = attemptIdx == backoffMs.lastIndex
             val done = fastMutex.withLock {
               withContext(Dispatchers.IO) {
-                val creds = acquireHeadlessCredentials(appCtx, ownerId) ?: return@withContext true
-                if (creds.generation != expectedGeneration) return@withContext true
-                val stillSettled = if (clientId.isEmpty()) {
-                  true
-                } else if (queueType == "fastEnd") {
-                  getSettledFastEndOutcome(appCtx, ownerId, clientId) != null
-                } else {
-                  getSettledFastStartOutcome(appCtx, ownerId, clientId) == true
+                var attemptDone = false
+                var keepRegistered = false
+                try {
+                  val creds = acquireHeadlessCredentials(appCtx, ownerId)
+                  if (creds == null || creds.generation != expectedGeneration) {
+                    attemptDone = true
+                  } else {
+                    val stillSettled = if (clientId.isEmpty()) {
+                      true
+                    } else if (queueType == "fastEnd") {
+                      getSettledFastEndOutcome(appCtx, ownerId, clientId) != null
+                    } else {
+                      getSettledFastStartOutcome(appCtx, ownerId, clientId) == true
+                    }
+                    if (!stillSettled) {
+                      attemptDone = true
+                    } else {
+                      val readRev = synchronized(credentialsStateLock) {
+                        appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                          .getLong(LAST_CACHED_FAST_REV_KEY, 0L)
+                      }
+                      val (freshKnown, freshFast) = fetchFreshFastState(creds)
+                      if (!isHeadlessOwnerStillActive(appCtx, creds)) {
+                        attemptDone = true
+                      } else if (freshKnown) {
+                        val applied = patchCachedContextAfterHeadlessWrite(
+                          context = appCtx,
+                          expectedOwner = ownerId,
+                          expectedGeneration = creds.generation,
+                          clientId = clientId,
+                          updateFast = true,
+                          fastUpdate = freshFast,
+                          fastReadRev = readRev,
+                          sendFastAckOnSuccess = true
+                        )
+                        if (!isHeadlessOwnerStillActive(appCtx, creds)) {
+                          attemptDone = true
+                        } else if (applied) {
+                          removeQueuedInboundEvent(appCtx, clientId, type = queueType, ownerId = ownerId)
+                          if (queueType == "fastStart") {
+                            clearInFlightForegroundFastStart(clientId, ownerId)
+                            val syncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to ownerId)
+                            if (clientId.isNotEmpty()) syncEvent["clientId"] = clientId
+                            activeModule?.emitEvent("onWatchServerSynced", syncEvent)
+                            drainQueuedFastEndsForOwner(appCtx, ownerId)
+                          } else {
+                            activeModule?.emitEvent(
+                              "onWatchServerSynced",
+                              mapOf("domain" to "fasting", "ownerId" to ownerId)
+                            )
+                          }
+                          attemptDone = true
+                        }
+                      }
+                    }
+                  }
+                  keepRegistered = !attemptDone && !isLastAttempt
+                } finally {
+                  if (!keepRegistered) {
+                    synchronized(fastReconcileLock) {
+                      if (activeFastReconcileJobs[key]?.job === job) {
+                        activeFastReconcileJobs.remove(key)
+                      }
+                    }
+                  }
                 }
-                if (!stillSettled) return@withContext true
-                val readRev = synchronized(credentialsStateLock) {
-                  appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    .getLong(LAST_CACHED_FAST_REV_KEY, 0L)
-                }
-                val (freshKnown, freshFast) = fetchFreshFastState(creds)
-                if (!isHeadlessOwnerStillActive(appCtx, creds)) return@withContext true
-                if (!freshKnown) return@withContext false
-                val applied = patchCachedContextAfterHeadlessWrite(
-                  context = appCtx,
-                  expectedOwner = ownerId,
-                  expectedGeneration = creds.generation,
-                  clientId = clientId,
-                  updateFast = true,
-                  fastUpdate = freshFast,
-                  fastReadRev = readRev,
-                  sendFastAckOnSuccess = true
-                )
-                if (!isHeadlessOwnerStillActive(appCtx, creds)) return@withContext true
-                if (!applied) return@withContext false
-                removeQueuedInboundEvent(appCtx, clientId, type = queueType, ownerId = ownerId)
-                if (queueType == "fastStart") {
-                  clearInFlightForegroundFastStart(clientId, ownerId)
-                  val syncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to ownerId)
-                  if (clientId.isNotEmpty()) syncEvent["clientId"] = clientId
-                  activeModule?.emitEvent("onWatchServerSynced", syncEvent)
-                  drainQueuedFastEndsForOwner(appCtx, ownerId)
-                } else {
-                  activeModule?.emitEvent(
-                    "onWatchServerSynced",
-                    mapOf("domain" to "fasting", "ownerId" to ownerId)
-                  )
-                }
-                true
+                attemptDone
               }
             }
             if (done) return@launch

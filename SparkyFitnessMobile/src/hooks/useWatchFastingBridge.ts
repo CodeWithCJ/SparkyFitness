@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { clientRequestIdSchema } from '@workspace/shared';
 import WatchConnectivity, {
   type WatchContextPayload,
   type WatchFastEndRequestPayload,
   type WatchFastStartRequestPayload,
   type WatchServerSyncedPayload,
 } from '../../modules/watch-connectivity';
+import type { FastingLog } from '../types/fasting';
 import { FASTING_PRESETS } from '../constants/fasting';
 import {
   endFast,
@@ -451,9 +453,55 @@ export function useWatchFastingBridge(enabled: boolean): void {
       }
     };
 
+    const isMatchingFastForStart = (
+      fast: FastingLog,
+      payload: WatchFastStartRequestPayload
+    ): boolean => {
+      const reqClientId = payload.clientId?.trim() ?? '';
+      const hasServerClientIdField =
+        Object.prototype.hasOwnProperty.call(fast, 'client_id') &&
+        fast.client_id !== undefined;
+      if (hasServerClientIdField) {
+        const rowClientId =
+          typeof fast.client_id === 'string' ? fast.client_id.trim() : '';
+        if (
+          reqClientId !== '' &&
+          clientRequestIdSchema.safeParse(reqClientId).success
+        ) {
+          return (
+            rowClientId !== '' &&
+            rowClientId.toLowerCase() === reqClientId.toLowerCase()
+          );
+        }
+        if (rowClientId !== '') {
+          return (
+            reqClientId !== '' &&
+            rowClientId.toLowerCase() === reqClientId.toLowerCase()
+          );
+        }
+      }
+      const reqStartedAt = payload.startedAt;
+      if (
+        reqStartedAt == null ||
+        !Number.isFinite(reqStartedAt) ||
+        reqStartedAt <= 0
+      ) {
+        return false;
+      }
+      const serverStartedAt =
+        typeof fast.start_time === 'string' && fast.start_time.trim() !== ''
+          ? new Date(fast.start_time).getTime()
+          : Number.NaN;
+      return (
+        Number.isFinite(serverStartedAt) &&
+        Math.abs(serverStartedAt - reqStartedAt) <= 1_000
+      );
+    };
+
     const drainDeferredEnds = async (
       ownerKey: string,
-      startOutcome: 'confirmed' | 'rejected' | 'terminal' = 'confirmed',
+      startOutcome:
+        'confirmed' | 'rejected' | 'terminal' | 'superseded' = 'confirmed',
       settledStartClientIds?: string | readonly string[]
     ) => {
       const pending = deferredEndsByOwnerRef.current.get(ownerKey);
@@ -500,12 +548,13 @@ export function useWatchFastingBridge(enabled: boolean): void {
           deferred.blockedByStartIds = new Set(currentBlockers);
           stillBlocked.push(deferred);
         } else {
-          const retiredByTerminalStart =
-            startOutcome === 'terminal' &&
+          const retiredByNonActiveStart =
+            (startOutcome === 'terminal' || startOutcome === 'superseded') &&
             (settledIds.length === 0 ||
               settledIds.some((id) => deferred.blockedByStartIds.has(id)));
           if (
-            (startOutcome === 'rejected' || retiredByTerminalStart) &&
+            (startOutcome === 'rejected' || retiredByNonActiveStart) &&
+            !deferred.hasConfirmedOriginalStart &&
             !deferred.supersededByStartPrune &&
             isStartlessEnd(deferred.payload)
           ) {
@@ -583,9 +632,9 @@ export function useWatchFastingBridge(enabled: boolean): void {
         // A fast the server worked out from the user's meals is not a manual
         // one: it is always "current" while auto-calculation is on, so it must
         // not stop the wrist from starting a real fast.
-        let confirmedWatchFast: WatchContextPayload['fast'] = null;
+        let ackWatchFast: WatchContextPayload['fast'] = null;
         let deferAckUntilRefresh = false;
-        let replayedTerminalStart = false;
+        let startOutcome: 'confirmed' | 'terminal' | 'superseded' = 'confirmed';
         if (!current || current.is_auto_calculated) {
           const startMs =
             payload.startedAt != null &&
@@ -613,7 +662,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
             return;
           }
           if (isTerminalFast(created)) {
-            replayedTerminalStart = true;
+            startOutcome = 'terminal';
             // A replayed start can return an already-ended or cancelled fast;
             // re-fetch /current so the watch gets true server state instead of
             // reviving the terminal fast with an optimistic payload.
@@ -633,9 +682,9 @@ export function useWatchFastingBridge(enabled: boolean): void {
                   'WARNING'
                 );
                 deferAckUntilRefresh = true;
-                confirmedWatchFast = null;
+                ackWatchFast = null;
               } else {
-                confirmedWatchFast = parsedLatest.fast;
+                ackWatchFast = parsedLatest.fast;
               }
             } catch (refreshError) {
               if (
@@ -650,10 +699,10 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 'WARNING'
               );
               deferAckUntilRefresh = true;
-              confirmedWatchFast = null;
+              ackWatchFast = null;
             }
           } else {
-            confirmedWatchFast = toWatchFast(created) ?? {
+            ackWatchFast = toWatchFast(created) ?? {
               startedAt: startMs,
               targetEndAt: targetMs,
               label: preset.name,
@@ -662,22 +711,26 @@ export function useWatchFastingBridge(enabled: boolean): void {
         } else {
           const parsedCurrent = parseCurrentWatchFast(current);
           if (parsedCurrent.known) {
-            confirmedWatchFast = parsedCurrent.fast;
+            ackWatchFast = parsedCurrent.fast;
+            if (!isMatchingFastForStart(current, payload)) {
+              startOutcome = 'superseded';
+            }
           } else if (watch.sendFastAck) {
             throw new Error(
               'Unreadable current fast response before fast start'
             );
           } else {
-            confirmedWatchFast = null;
+            ackWatchFast = null;
+            startOutcome = 'superseded';
           }
         }
         clearRetryingStart(resolvedOwner, payload.clientId);
-        if (confirmedWatchFast?.startedAt != null) {
+        if (ackWatchFast?.startedAt != null) {
           pruneOlderRetryingStarts(
             resolvedOwner,
             expectedOwnerId,
-            confirmedWatchFast.startedAt,
-            payload.clientId
+            ackWatchFast.startedAt,
+            startOutcome === 'confirmed' ? payload.clientId : undefined
           );
         }
         refresh();
@@ -688,7 +741,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
               payload.clientId,
               true,
               !deferAckUntilRefresh,
-              confirmedWatchFast
+              ackWatchFast
             );
           } catch (ackError) {
             addLog(
@@ -697,11 +750,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
             );
           }
         }
-        await drainDeferredEnds(
-          resolvedOwner,
-          replayedTerminalStart ? 'terminal' : 'confirmed',
-          payload.clientId
-        );
+        await drainDeferredEnds(resolvedOwner, startOutcome, payload.clientId);
       } catch (error) {
         addLog(`[Watch] Fast start failed: ${String(error)}`, 'WARNING');
         if (isPermanentWatchClientRejection(error)) {
