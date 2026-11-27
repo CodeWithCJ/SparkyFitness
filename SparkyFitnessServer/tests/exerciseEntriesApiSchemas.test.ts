@@ -368,6 +368,38 @@ describe('Exercise entry API schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  it('keeps workout_format on progress rows', () => {
+    const row = {
+      exercise_entry_id: 'e1',
+      entry_date: '2026-11-21',
+      notes: null,
+      image_url: null,
+      distance: null,
+      avg_heart_rate: null,
+      provider_name: null,
+      sets: [],
+    };
+    const result = runSchema('exerciseProgressResponseSchema', {
+      ...row,
+      workout_format: 'amrap',
+    });
+    if (!result.success) throw new Error(JSON.stringify(result.issues));
+    expect(result.data.workout_format).toBe('amrap');
+    expect(
+      runSchema('exerciseProgressResponseSchema', {
+        ...row,
+        workout_format: null,
+      }).success
+    ).toBe(true);
+    expect(runSchema('exerciseProgressResponseSchema', row).success).toBe(true);
+    expect(
+      runSchema('exerciseProgressResponseSchema', {
+        ...row,
+        workout_format: 5,
+      }).success
+    ).toBe(false);
+  });
+
   describe('exercise snapshot modality', () => {
     const baseSnapshot = {
       id: exerciseId,

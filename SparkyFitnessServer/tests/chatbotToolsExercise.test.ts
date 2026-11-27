@@ -1,5 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
-import { todayInZone } from '@workspace/shared';
+import { entryOneRepMaxKg, todayInZone } from '@workspace/shared';
 import { buildExerciseTools } from '../ai/tools/exerciseTools.js';
 import exerciseService from '../services/exerciseService.js';
 import workoutPresetService from '../services/workoutPresetService.js';
@@ -873,6 +873,30 @@ describe('list_exercise_diary', () => {
       'user-1',
       '2026-06-10'
     );
+  });
+
+  it('rounds minutes and kcal, singularises one set and omits zero distance', async () => {
+    vi.mocked(exerciseService.getExerciseEntriesByDate).mockResolvedValue([
+      {
+        type: 'individual',
+        id: 'ee-9',
+        name: 'Traditional Strength Training',
+        sets: [{ reps: 5, weight: 100 }],
+        duration_minutes: 52.76422733267148,
+        calories_burned: 405.0732454710547,
+        distance: 0,
+        avg_heart_rate: 120,
+        created_at: '2026-06-10T07:00:00Z',
+      },
+    ]);
+    const result = await tools.sparky_manage_exercise.execute!(
+      { action: 'list_exercise_diary', entry_date: '2026-06-10' },
+      opts
+    );
+    expect(result).toContain(
+      '**Traditional Strength Training** — 1 set | 53 min | 405 kcal | 120 bpm'
+    );
+    expect(result).not.toContain('dist');
   });
 
   it('renders an empty diary', async () => {
@@ -1921,7 +1945,7 @@ describe('workout presets', () => {
       opts
     );
 
-    expect(result).toContain('**Pull-up** — 1 sets');
+    expect(result).toContain('**Pull-up** — 1 set');
     expect(result).toContain(
       'Score: AMRAP 20:00 cap — 18 rounds + 7 reps (Rx)'
     );
@@ -2479,8 +2503,8 @@ describe('get_exercise_progress (manage action)', () => {
 
     expect(result).toBe(
       '# Exercise Progress: bench press\n\n' +
-        '**2026-06-01**: Max Weight: 80kg | Max Reps: 10 | Volume: 1560kg\n\n' +
-        '**2026-06-05**: Max Weight: 50kg | Max Reps: 12 | Volume: 0kg\n\n' +
+        '**2026-06-01**: Max Weight: 80kg | Max Reps: 10 | Volume: 1560kg | Top set: 80kg×5 | e1RM: 93.3kg | Working: 3 sets, 1560kg\n\n' +
+        '**2026-06-05**: Max Weight: 50kg | Max Reps: 12 | Volume: 0kg | Top set: 12 reps | Working: 1 set, 0kg\n\n' +
         '---\nShowing 2 of 2 results.'
     );
     expect(exerciseService.getExerciseProgressData).toHaveBeenCalledWith(
@@ -2839,6 +2863,10 @@ describe('sparky_get_exercise_progress', () => {
             max_weight: 60,
             max_reps: 10,
             total_volume: 600,
+            working_sets: 1,
+            working_volume: 600,
+            top_set: { weight: 60, reps: 10 },
+            e1rm: 80,
           },
         ],
         has_more: false,
@@ -2873,6 +2901,10 @@ describe('sparky_get_exercise_progress', () => {
             max_weight: 70,
             max_reps: 10,
             total_volume: 10 * 60 + 8 * 70,
+            working_sets: 2,
+            working_volume: 10 * 60 + 8 * 70,
+            top_set: { weight: 70, reps: 8 },
+            e1rm: 88.7,
           },
         ],
         has_more: false,
@@ -2880,6 +2912,401 @@ describe('sparky_get_exercise_progress', () => {
         total_count: 1,
       })
     );
+  });
+});
+
+describe('get_exercise_progress e1rm parity with training_review', () => {
+  type Row = {
+    entry_date: string;
+    entry_modality: string | null;
+    modality: string | null;
+    exercise_name: string;
+    sets: { reps?: number; weight?: number | null; set_type?: string }[];
+  };
+  const row = (over: Partial<Row>): Row => ({
+    entry_date: '2026-06-01',
+    entry_modality: 'weight_reps',
+    modality: 'weight_reps',
+    exercise_name: 'Bench Press',
+    sets: [{ reps: 5, weight: 100 }],
+    ...over,
+  });
+  const check = async (rows: Row[], expected: number | undefined) => {
+    vi.mocked(exerciseService.getExerciseProgressData).mockResolvedValue(
+      rows as never
+    );
+    const result = await tools.sparky_get_exercise_progress.execute!(
+      { exercise_id: EXERCISE_ID },
+      opts
+    );
+    const [day] = JSON.parse(result as string).data;
+    // What training_review's per-entry estimate says for the same rows.
+    const review = Math.max(
+      0,
+      ...rows.map((r) =>
+        entryOneRepMaxKg({
+          exercise_name: r.exercise_name,
+          exercise_modality: r.entry_modality,
+          sets: r.sets,
+        })
+      )
+    );
+    expect(day.e1rm).toBe(
+      review > 0 ? Math.round(review * 10) / 10 : undefined
+    );
+    expect(day.e1rm).toBe(expected);
+  };
+
+  it('plain weighted day', () =>
+    check(
+      [
+        row({
+          sets: [
+            { reps: 5, weight: 100 },
+            { reps: 3, weight: 110 },
+          ],
+        }),
+      ],
+      121
+    ));
+
+  it('mixed day: the weighted entry supplies the estimate', () =>
+    check(
+      [
+        row({
+          entry_modality: 'bodyweight_reps',
+          modality: 'bodyweight_reps',
+          sets: [{ reps: 10, weight: 50 }],
+        }),
+        row({ sets: [{ reps: 3, weight: 100 }] }),
+      ],
+      110
+    ));
+
+  it('NULL entry modality still gets an estimate', () =>
+    check([row({ entry_modality: null, modality: 'weight_reps' })], 116.7));
+
+  it('12 reps count, 13 do not', async () => {
+    await check([row({ sets: [{ reps: 12, weight: 60 }] })], 84);
+    await check([row({ sets: [{ reps: 13, weight: 60 }] })], undefined);
+  });
+
+  it('an Active Calories row with weighted reps has no estimate', () =>
+    check([row({ exercise_name: 'Active Calories' })], undefined));
+
+  it('a duration_distance entry with reps has no estimate', () =>
+    check(
+      [
+        row({
+          entry_modality: 'duration_distance',
+          modality: 'duration_distance',
+          sets: [{ reps: 5, weight: 100 }],
+        }),
+      ],
+      undefined
+    ));
+});
+
+describe('sparky_get_exercise_progress top set', () => {
+  const run = async (rows: unknown[]) => {
+    vi.mocked(exerciseService.getExerciseProgressData).mockResolvedValue(
+      rows as never
+    );
+    const result = await tools.sparky_get_exercise_progress.execute!(
+      { exercise_id: EXERCISE_ID },
+      opts
+    );
+    return JSON.parse(result as string).data;
+  };
+
+  it('picks the heaviest working set, not a warm-up, with matching e1rm', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        notes: 'different machine',
+        sets: [
+          { reps: 5, weight: 60, set_type: 'warmup' },
+          { reps: 1, weight: 100, set_type: 'Working Set' },
+          { reps: 3, weight: 110, set_type: 'Working Set', rpe: 9 },
+        ],
+      },
+    ]);
+    expect(day.top_set).toEqual({ weight: 110, reps: 3, rpe: 9 });
+    // Epley, as personal_records: 110 * (1 + 3/30)
+    expect(day.e1rm).toBe(121);
+    expect(day.max_reps).toBe(5);
+    expect(day.total_volume).toBe(300 + 100 + 330);
+    expect(day.working_sets).toBe(2);
+    expect(day.working_volume).toBe(430);
+    expect(day.notes).toBe('different machine');
+  });
+
+  it('breaks weight ties by reps and treats Warm-up labels as warm-ups', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        sets: [
+          { reps: 8, weight: 120, set_type: 'Warm-up' },
+          { reps: 3, weight: 100 },
+          { reps: 5, weight: 100 },
+        ],
+      },
+    ]);
+    expect(day.top_set).toEqual({ weight: 100, reps: 5 });
+  });
+
+  it('falls back to all sets when a day only has warm-ups', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        sets: [
+          { reps: 5, weight: 40, set_type: 'warmup' },
+          { reps: 5, weight: 60, set_type: 'warmup' },
+        ],
+      },
+    ]);
+    expect(day.top_set).toEqual({ weight: 60, reps: 5 });
+    expect(day.e1rm).toBeUndefined();
+    expect(day.working_sets).toBe(0);
+    expect(day.working_volume).toBe(0);
+  });
+
+  it('takes e1rm from the best estimate, not from the top set', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        sets: [
+          { reps: 1, weight: 100 },
+          { reps: 8, weight: 90 },
+        ],
+      },
+    ]);
+    expect(day.top_set).toEqual({ weight: 100, reps: 1 });
+    expect(day.e1rm).toBe(114); // 90 * (1 + 8/30)
+  });
+
+  it('gives no e1rm when every working set is above 12 reps', async () => {
+    const [day] = await run([
+      { entry_date: '2026-06-01', sets: [{ reps: 15, weight: 40 }] },
+    ]);
+    expect(day.top_set).toEqual({ weight: 40, reps: 15 });
+    expect(day.e1rm).toBeUndefined();
+    expect(day.working_sets).toBe(1);
+  });
+
+  it('gives no e1rm for a bodyweight_reps day and uses the raw weight', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        modality: 'bodyweight_reps',
+        entry_modality: 'bodyweight_reps',
+        body_weight_kg: 80,
+        sets: [{ reps: 5, weight: 20 }],
+      },
+    ]);
+    expect(day.e1rm).toBeUndefined();
+    expect(day.top_set).toEqual({ weight: 20, reps: 5 });
+    expect(day.working_volume).toBe(100);
+    expect(day.total_volume).toBe(100);
+  });
+
+  it('counts a performed plan row (edited) and a started session', async () => {
+    const days = await run([
+      {
+        entry_date: '2026-06-01',
+        provider_name: 'Workout Plan',
+        edited: true,
+        session: null,
+        sets: [{ reps: 5, weight: 100 }],
+      },
+      {
+        entry_date: '2026-06-02',
+        provider_name: 'Workout Plan',
+        edited: false,
+        session: {
+          source: 'Workout Plan',
+          finished_at: null,
+          edited: false,
+          has_plan_assignment: true,
+          sets: [{ started_at: '2026-06-02T10:00:00Z', completed_at: null }],
+        },
+        sets: [{ reps: 5, weight: 100 }],
+      },
+    ]);
+    for (const day of days) {
+      expect(day.top_set).toEqual({ weight: 100, reps: 5 });
+      expect(day.working_sets).toBe(1);
+    }
+  });
+
+  it('ignores notes of planned rows and treats an empty workout_format as standard', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        provider_name: 'Workout Plan',
+        edited: false,
+        session: null,
+        notes: 'planned note',
+        sets: [{ reps: 5, weight: 100 }],
+      },
+      {
+        entry_date: '2026-06-01',
+        workout_format: '',
+        notes: 'real note',
+        sets: [{ reps: 5, weight: 60 }],
+      },
+    ]);
+    expect(day.notes).toBe('real note');
+    expect(day.working_sets).toBe(1);
+  });
+
+  it('merges two entries on one date and joins their notes', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        notes: 'machine  A',
+        sets: [{ reps: 5, weight: 60 }],
+      },
+      {
+        entry_date: '2026-06-01',
+        notes: 'machine A\n',
+        sets: [{ reps: 5, weight: 80 }],
+      },
+      {
+        entry_date: '2026-06-01',
+        notes: 'second',
+        sets: [{ reps: 1, weight: 90 }],
+      },
+    ]);
+    expect(day.working_sets).toBe(3);
+    expect(day.top_set).toEqual({ weight: 90, reps: 1 });
+    expect(day.notes).toBe('machine A | second');
+  });
+
+  it('normalises workout_format: " Standard " counts, "AMRAP" does not', async () => {
+    const [std, amrap] = await run([
+      {
+        entry_date: '2026-06-01',
+        workout_format: ' Standard ',
+        sets: [{ reps: 5, weight: 100 }],
+      },
+      {
+        entry_date: '2026-06-02',
+        workout_format: 'AMRAP',
+        sets: [{ reps: 5, weight: 100 }],
+      },
+    ]);
+    expect(std.working_sets).toBeGreaterThan(0);
+    expect(std.e1rm).toBeDefined();
+    expect(amrap.working_sets).toBe(0);
+    expect(amrap.e1rm).toBeUndefined();
+  });
+
+  it.each([[null], [''], ['STANDARD']])(
+    'counts workout_format %j as standard',
+    async (workout_format) => {
+      const [day] = await run([
+        {
+          entry_date: '2026-06-01',
+          workout_format,
+          sets: [{ reps: 5, weight: 100 }],
+        },
+      ]);
+      expect(day.working_sets).toBeGreaterThan(0);
+    }
+  );
+
+  it('treats a non-numeric weight as 0 everywhere', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        sets: [
+          { reps: 5, weight: 'abc' as never },
+          { reps: 3, weight: 80 },
+        ],
+      },
+    ]);
+    for (const value of [
+      day.max_weight,
+      day.total_volume,
+      day.working_volume,
+      day.top_set.weight,
+    ]) {
+      expect(Number.isFinite(value)).toBe(true);
+    }
+    expect(day.top_set).toEqual({ weight: 80, reps: 3 });
+  });
+
+  it('keys the bodyweight skip on the raw entry modality', async () => {
+    // Matches training_review, which reads the entry's own stored modality:
+    // an entry_modality of null is not bodyweight even if the exercise is.
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        modality: 'bodyweight_reps',
+        entry_modality: null,
+        sets: [{ reps: 5, weight: 20 }],
+      },
+    ]);
+    expect(day.e1rm).toBe(23.3);
+  });
+
+  it('has no top set for a duration-only day', async () => {
+    const [day] = await run([
+      { entry_date: '2026-06-01', sets: [{ duration: 60 }] },
+    ]);
+    expect(day.top_set).toBeUndefined();
+    expect(day.e1rm).toBeUndefined();
+    expect(day.working_sets).toBe(0);
+  });
+
+  it('keeps a heavier warm-up in max_weight but not in top_set', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        sets: [
+          { reps: 1, weight: 120, set_type: 'warmup' },
+          { reps: 5, weight: 100, set_type: 'Working Set' },
+        ],
+      },
+    ]);
+    expect(day.max_weight).toBe(120);
+    expect(day.top_set).toEqual({ weight: 100, reps: 5 });
+  });
+
+  it('ignores planned rows and interval sessions for top_set but not max_*', async () => {
+    const days = await run([
+      {
+        entry_date: '2026-06-01',
+        provider_name: 'Workout Plan',
+        edited: false,
+        session: null,
+        sets: [{ reps: 5, weight: 100 }],
+      },
+      {
+        entry_date: '2026-06-02',
+        workout_format: 'amrap',
+        sets: [{ reps: 5, weight: 100 }],
+      },
+    ]);
+    for (const day of days) {
+      expect(day.max_weight).toBe(100);
+      expect(day.top_set).toBeUndefined();
+      expect(day.e1rm).toBeUndefined();
+      expect(day.working_sets).toBe(0);
+    }
+  });
+
+  it('truncates long notes to 80 characters', async () => {
+    const [day] = await run([
+      {
+        entry_date: '2026-06-01',
+        notes: 'x'.repeat(200),
+        sets: [{ reps: 5, weight: 60 }],
+      },
+    ]);
+    expect(day.notes).toHaveLength(80);
+    expect(day.notes.endsWith('…')).toBe(true);
   });
 });
 
