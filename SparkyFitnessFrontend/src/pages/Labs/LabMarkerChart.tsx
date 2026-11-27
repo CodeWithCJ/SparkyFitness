@@ -52,6 +52,13 @@ const LabMarkerChart = ({ points, unit, low, high }: LabMarkerChartProps) => {
             />
           )}
           <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--background))',
+              borderColor: 'hsl(var(--border))',
+              color: 'hsl(var(--foreground))',
+            }}
+            labelStyle={{ color: 'hsl(var(--foreground))' }}
+            itemStyle={{ color: 'hsl(var(--foreground))' }}
             formatter={(value) => [
               unit
                 ? `${labNumber(Number(value))} ${unit}`
