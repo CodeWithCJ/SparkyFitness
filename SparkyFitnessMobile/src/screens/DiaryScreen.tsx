@@ -40,7 +40,9 @@ import CalendarSheet, {
 } from '../components/CalendarSheet';
 import CheckInPhotosSummary from '../components/CheckInPhotosSummary';
 import DateNavigator from '../components/DateNavigator';
-import CopyMealSheet from '../components/CopyMealSheet';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import DiaryEntrySelectionBar from '../components/DiaryEntrySelectionBar';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
@@ -349,10 +351,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     // what is waiting to upload.
     enabled: isConnected || isOffline,
   });
+  const moveSheetRef = useRef<CopyMealSheetRef>(null);
   const diarySelection = useDiaryEntrySelection({
     date: selectedDate,
     entries: summary?.foodEntries ?? [],
     enabled: Platform.OS === 'android' && isConnected,
+    moveSheetRef,
   });
   const { cancelSelection } = diarySelection;
   useEffect(
@@ -1002,7 +1006,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       {renderedContent}
       {Platform.OS === 'android' && (
         <CopyMealSheet
-          ref={diarySelection.moveSheetRef}
+          ref={moveSheetRef}
           move={diarySelection.move}
           isPending={diarySelection.isPending}
         />

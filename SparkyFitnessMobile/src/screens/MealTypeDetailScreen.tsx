@@ -102,10 +102,12 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       ),
     [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes]
   );
+  const moveSheetRef = useRef<CopyMealSheetRef>(null);
   const diarySelection = useDiaryEntrySelection({
     date,
     entries,
     enabled: Platform.OS === 'android' && isConnected,
+    moveSheetRef,
   });
   const { cancelSelection } = diarySelection;
   useEffect(
@@ -352,7 +354,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       />
       {Platform.OS === 'android' && (
         <CopyMealSheet
-          ref={diarySelection.moveSheetRef}
+          ref={moveSheetRef}
           isPending={diarySelection.isPending}
           move={diarySelection.move}
         />

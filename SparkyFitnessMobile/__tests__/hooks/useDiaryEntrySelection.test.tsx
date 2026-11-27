@@ -51,8 +51,10 @@ const all = [oats, banana, coffee, ingredient1, ingredient2];
 
 function renderSelection(entries = all) {
   const client = new QueryClient();
+  const moveSheetRef = { current: null };
   return renderHook(
-    () => useDiaryEntrySelection({ date, entries, enabled: true }),
+    () =>
+      useDiaryEntrySelection({ date, entries, enabled: true, moveSheetRef }),
     {
       wrapper: ({ children }: PropsWithChildren) => (
         <QueryClientProvider client={client}>{children}</QueryClientProvider>

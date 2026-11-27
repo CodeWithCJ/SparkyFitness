@@ -168,7 +168,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
       <ReanimatedSwipeable
         ref={swipeableRef}
         enabled={!selecting}
-        renderRightActions={renderRightActions}
+        renderRightActions={selecting ? undefined : renderRightActions}
         overshootRight={false}
         rightThreshold={40}
       >
@@ -209,8 +209,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
                   ? handlePress
                   : undefined
             }
+            // Keep the long-press handler when selection starts so releasing
+            // the same gesture does not also trigger a tap.
             onLongPress={
-              selecting ? undefined : (selection?.onToggle ?? handleLongPress)
+              selection?.onToggle ?? (selecting ? undefined : handleLongPress)
             }
           >
             {selecting && (

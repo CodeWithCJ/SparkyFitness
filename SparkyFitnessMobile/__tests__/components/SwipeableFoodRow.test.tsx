@@ -133,6 +133,35 @@ describe('SwipeableFoodRow', () => {
     alertSpy.mockRestore();
   });
 
+  it('keeps the long-press handler when the row switches to a checkbox', () => {
+    const onToggle = jest.fn();
+    const entry = createEntry();
+    const nutrition = { calories: 120, protein: 15, carbs: 8, fat: 2 };
+    const screen = renderRow(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={nutrition}
+        selection={{ active: false, selected: false, onToggle }}
+      />
+    );
+
+    fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    screen.rerender(
+      <SwipeableFoodRow
+        entry={entry}
+        nutrition={nutrition}
+        selection={{ active: true, selected: true, onToggle }}
+      />
+    );
+    const checkbox = screen.getByRole('checkbox', { checked: true });
+    fireEvent(checkbox, 'longPress');
+
+    expect(onToggle).toHaveBeenCalledTimes(2);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   describe('the Diary read from the phone while offline', () => {
     const nutrition = { calories: 120, protein: 15, carbs: 8, fat: 2 };
 

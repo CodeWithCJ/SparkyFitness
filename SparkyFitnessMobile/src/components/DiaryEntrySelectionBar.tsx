@@ -42,7 +42,7 @@ export default function DiaryEntrySelectionBar({
             defaultValue: '{{count}} selected',
           })}
         </Text>
-        <Button variant="ghost" onPress={openMove} disabled={!canEdit}>
+        <Button variant="ghost" onPress={() => openMove()} disabled={!canEdit}>
           {t('diarySelection.move', { defaultValue: 'Move' })}
         </Button>
         <Button variant="ghost" onPress={confirmDelete} disabled={!canEdit}>

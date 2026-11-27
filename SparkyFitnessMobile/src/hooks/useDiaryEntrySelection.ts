@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { Alert, BackHandler } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -46,10 +52,12 @@ export function useDiaryEntrySelection({
   date,
   entries,
   enabled,
+  moveSheetRef,
 }: {
   date: string;
   entries: readonly FoodEntry[];
   enabled: boolean;
+  moveSheetRef: RefObject<CopyMealSheetRef | null>;
 }) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -71,11 +79,10 @@ export function useDiaryEntrySelection({
     setMoveSelection(null);
   }
   const busy = useRef(false);
-  const moveSheetRef = useRef<CopyMealSheetRef>(null);
   useEffect(() => {
     const sheet = moveSheetRef.current;
     return () => sheet?.dismiss();
-  }, [scope]);
+  }, [scope, moveSheetRef]);
   const activeKeys =
     enabled && selection?.scope === scope ? selection.keys : null;
   const moveEntries =
@@ -91,7 +98,7 @@ export function useDiaryEntrySelection({
     setSelection(null);
     moveSheetRef.current?.dismiss();
     dismissMove();
-  }, [dismissMove]);
+  }, [dismissMove, moveSheetRef]);
 
   useEffect(() => {
     if (!activeKeys && !moveEntries) return;
@@ -103,7 +110,7 @@ export function useDiaryEntrySelection({
       return true;
     });
     return () => listener.remove();
-  }, [activeKeys, moveEntries, cancelSelection]);
+  }, [activeKeys, moveEntries, cancelSelection, moveSheetRef]);
 
   const rowSelection = (entry: FoodEntry): FoodRowSelection | undefined => {
     if (!enabled || (!selectable(entry) && !activeKeys)) return;
@@ -273,7 +280,6 @@ export function useDiaryEntrySelection({
     confirmDelete,
     canMoveMeal: enabled && entries.length > 0 && entries.every(selectable),
     openMove,
-    moveSheetRef,
     move: {
       onConfirm: (targetDate: string, mealTypeId: string) => {
         if (moveEntries?.length) {
