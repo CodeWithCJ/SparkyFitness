@@ -1,4 +1,4 @@
-import { toWatchFast } from '../../src/utils/watchFast';
+import { isTerminalFast, toWatchFast } from '../../src/utils/watchFast';
 
 describe('toWatchFast', () => {
   it('keeps "unknown" apart from "not fasting"', () => {
@@ -54,5 +54,44 @@ describe('toWatchFast', () => {
         fasting_type: '16:8',
       } as never)
     ).toMatchObject({ id: 'fast-manual-1', label: '16:8' });
+  });
+
+  it('classifies COMPLETED/CANCELLED as terminal while keeping ACTIVE rows with end_time active', () => {
+    expect(isTerminalFast({ status: 'COMPLETED', end_time: null })).toBe(true);
+    expect(isTerminalFast({ status: 'CANCELLED', end_time: null })).toBe(true);
+    expect(
+      isTerminalFast({
+        status: null,
+        end_time: '2026-10-03T16:00:00.000Z',
+      })
+    ).toBe(true);
+    expect(
+      isTerminalFast({
+        status: 'ACTIVE',
+        end_time: '2026-10-03T16:00:00.000Z',
+      })
+    ).toBe(false);
+
+    expect(
+      toWatchFast({
+        id: 'fast-cancelled',
+        start_time: '2026-10-03T08:00:00.000Z',
+        end_time: null,
+        target_end_time: '2026-10-04T00:00:00.000Z',
+        fasting_type: '16:8',
+        status: 'CANCELLED',
+      } as never)
+    ).toBeNull();
+
+    expect(
+      toWatchFast({
+        id: 'fast-active-with-end',
+        start_time: '2026-10-03T08:00:00.000Z',
+        end_time: '2026-10-03T16:00:00.000Z',
+        target_end_time: '2026-10-04T00:00:00.000Z',
+        fasting_type: '16:8',
+        status: 'ACTIVE',
+      } as never)
+    ).toMatchObject({ id: 'fast-active-with-end', label: '16:8' });
   });
 });

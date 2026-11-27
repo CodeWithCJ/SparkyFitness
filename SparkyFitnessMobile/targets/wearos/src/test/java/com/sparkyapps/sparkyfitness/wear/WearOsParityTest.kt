@@ -7217,6 +7217,28 @@ class WearOsParityTest {
         assertTrue(WearDirectApiClient.isCompletedFastJson(endedJson))
         assertEquals(null to true, WearDirectApiClient.parseFastJson(endedJson))
 
+        // CANCELLED without end_time is terminal; ACTIVE with end_time remains active (matches /current)
+        val cancelledJson = JSONObject()
+            .put("id", "f-cancel")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "CANCELLED")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(cancelledJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(cancelledJson))
+
+        val activeWithEndTimeJson = JSONObject()
+            .put("id", "f-active-end")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("end_time", "2026-11-26T10:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "ACTIVE")
+            .toString()
+        assertFalse(WearDirectApiClient.isCompletedFastJson(activeWithEndTimeJson))
+        val (parsedActiveWithEnd, activeWithEndKnown) = WearDirectApiClient.parseFastJson(activeWithEndTimeJson)
+        assertTrue(activeWithEndKnown)
+        assertEquals("f-active-end", parsedActiveWithEnd?.id)
+
         // Replaying an already-completed fast never revives it on the watch (re-fetches /api/fasting/current)
         val outcomeNull = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = completedJson,

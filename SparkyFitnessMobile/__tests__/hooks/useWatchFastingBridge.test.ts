@@ -2195,4 +2195,48 @@ describe('useWatchFastingBridge', () => {
       delete watchMock.sendFastAck;
     }
   });
+
+  it('refreshes current fast when a replayed start returns CANCELLED without end_time', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const uuidClientId = '55555555-5555-4555-8555-555555555555';
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      (startFast as jest.Mock).mockResolvedValueOnce({
+        id: 'fast-cancelled',
+        client_id: uuidClientId,
+        start_time: '2026-11-25T08:00:00.000Z',
+        end_time: null,
+        target_end_time: '2026-11-26T00:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'CANCELLED',
+      });
+
+      renderHook(() => useWatchFastingBridge(true));
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: uuidClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          uuidClientId,
+          true,
+          true,
+          null
+        )
+      );
+      expect(fetchCurrentFast).toHaveBeenCalledTimes(2);
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
 });

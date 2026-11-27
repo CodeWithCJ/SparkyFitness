@@ -82,6 +82,7 @@ private const val CREDENTIALS_KEY_ALIAS = "sparky_watch_credentials_key"
 private const val LAST_CONTEXT_JSON_KEY = "sparky.lastContextJson"
 private const val LAST_CACHED_CONTEXT_SEQ_KEY = "sparky.lastCachedContextSeq"
 private const val LAST_CACHED_FAST_REV_KEY = "sparky.lastCachedFastRev"
+private const val LAST_CACHED_FAST_SNAPSHOT_KEY = "sparky.lastCachedFastSnapshot"
 private const val LAST_PUBLISHED_CONTEXT_GEN_KEY = "sparky.lastPublishedContextGen"
 private const val LAST_PUBLISHED_CONTEXT_SEQ_KEY = "sparky.lastPublishedContextSeq"
 private const val LAST_ACKED_CREDENTIALS_GEN_KEY = "sparky.lastAckedCredentialsGen"
@@ -343,6 +344,7 @@ internal object WatchConnectivityHub {
         .remove(SERVER_HEADERS_KEY)
         .remove(ENCRYPTED_HEADERS_KEY)
         .remove(LAST_CONTEXT_JSON_KEY)
+        .remove(LAST_CACHED_FAST_SNAPSHOT_KEY)
         .putLong(LAST_CACHED_FAST_REV_KEY, prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) + 1L)
         .remove(SETTLED_FAST_END_IDS_KEY)
         .remove(SETTLED_FAST_START_IDS_KEY)
@@ -1417,6 +1419,7 @@ internal object WatchConnectivityHub {
       if (contextOwner.isEmpty()) {
         prefs.edit()
           .remove(LAST_CONTEXT_JSON_KEY)
+          .remove(LAST_CACHED_FAST_SNAPSHOT_KEY)
           .putLong(LAST_CACHED_FAST_REV_KEY, prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) + 1L)
           .apply()
         return@synchronized null
@@ -1430,10 +1433,13 @@ internal object WatchConnectivityHub {
       cleaned["contextSeq"] = nextSeq
       val nextObj = mapToJsonObject(cleaned)
       val json = nextObj.toString()
+      val prevRaw = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
+      val hadFastSnapshot = !prefs.getString(LAST_CACHED_FAST_SNAPSHOT_KEY, null).isNullOrEmpty()
       val editor = prefs.edit()
         .putString(LAST_CONTEXT_JSON_KEY, json)
+        .remove(LAST_CACHED_FAST_SNAPSHOT_KEY)
         .putLong(LAST_CACHED_CONTEXT_SEQ_KEY, nextSeq)
-      bumpCachedFastRevForContextLocked(prefs, editor, prefs.getString(LAST_CONTEXT_JSON_KEY, null), nextObj)
+      bumpCachedFastRevForContextLocked(prefs, editor, prevRaw, hadFastSnapshot, nextObj)
       editor.apply()
       Triple(expectedGeneration, nextSeq, json)
     } ?: return
@@ -1500,6 +1506,14 @@ internal object WatchConnectivityHub {
     }
   }
 
+  private data class DeferredFastSnapshot(
+    val owner: String,
+    val generation: Long,
+    val fastRev: Long,
+    val clientId: String,
+    val fast: JSONObject?
+  )
+
   private suspend fun replayCachedContextIfAuthorized(context: Context) {
     val appCtx = context.applicationContext
     credentialsMutex.withLock {
@@ -1507,6 +1521,7 @@ internal object WatchConnectivityHub {
         val (_, revocationIncomplete) = runPendingRevocationDeletesUnderMutex(appCtx)
         if (revocationIncomplete) return@withContext
 
+        var fastFallback: DeferredFastSnapshot? = null
         val snapshot = synchronized(credentialsStateLock) {
           val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
           val currentOwner = prefs.getString(TELEMETRY_OWNER_KEY, "") ?: ""
@@ -1514,12 +1529,40 @@ internal object WatchConnectivityHub {
           if (!isContextPublishAuthorizedLocked(appCtx, currentOwner, expectedGen)) {
             return@synchronized null
           }
+          val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
+          if (raw == null) {
+            val fastSnapRaw = prefs.getString(LAST_CACHED_FAST_SNAPSHOT_KEY, null)
+            if (!fastSnapRaw.isNullOrEmpty()) {
+              try {
+                val snapObj = JSONObject(fastSnapRaw)
+                val snapOwner = snapObj.optString("owner", "")
+                val snapGen = snapObj.optLong("generation", -1L)
+                val snapFastRev = snapObj.optLong("fastRev", -1L)
+                val snapClientId = snapObj.optString("clientId", "").trim()
+                val currentFastRev = prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L)
+                if (
+                  snapOwner == currentOwner &&
+                  snapGen == expectedGen &&
+                  snapFastRev == currentFastRev &&
+                  snapClientId.isNotEmpty()
+                ) {
+                  fastFallback = DeferredFastSnapshot(
+                    owner = currentOwner,
+                    generation = expectedGen,
+                    fastRev = snapFastRev,
+                    clientId = snapClientId,
+                    fast = snapObj.optJSONObject("fast")
+                  )
+                }
+              } catch (_: Throwable) {}
+            }
+            return@synchronized null
+          }
           val cachedSeq = prefs.getLong(LAST_CACHED_CONTEXT_SEQ_KEY, 0L)
           val (_, publishedSeq) = readPublishedContextWatermarksLocked(appCtx)
           if (cachedSeq < publishedSeq) {
             return@synchronized null
           }
-          val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null) ?: return@synchronized null
           val stamped = try {
             val obj = JSONObject(raw)
             val ctxOwner = obj.optString("workoutServerId", "")
@@ -1533,7 +1576,31 @@ internal object WatchConnectivityHub {
             null
           } ?: return@synchronized null
           DeferredContextSnapshot(currentOwner, expectedGen, cachedSeq, stamped)
-        } ?: return@withContext
+        }
+        if (snapshot == null) {
+          val fastSnap = fastFallback ?: return@withContext
+          val allowed = synchronized(credentialsStateLock) {
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            isContextPublishAuthorizedLocked(appCtx, fastSnap.owner, fastSnap.generation) &&
+              prefs.getString(LAST_CONTEXT_JSON_KEY, null) == null &&
+              prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) == fastSnap.fastRev
+          }
+          if (!allowed) return@withContext
+          val ackPayload = withoutNulls(
+            buildFastAckPayload(
+              clientId = fastSnap.clientId,
+              ok = true,
+              fastKnown = true,
+              fast = fastSnap.fast
+            )
+          )
+          sendLiveBytes(
+            appCtx,
+            "/sparky/message",
+            mapToJsonObject(ackPayload).toString().toByteArray(Charsets.UTF_8)
+          )
+          return@withContext
+        }
 
         val durableOk = try {
           val req = PutDataMapRequest.create("/sparky/context").apply {
@@ -2466,7 +2533,7 @@ internal object WatchConnectivityHub {
         return try {
           val curObj = JSONObject(curTrimmed)
           val parsed = toWatchFastJson(curObj)
-          if (parsed != null || curObj.optBoolean("is_eating_window", false)) {
+          if (parsed != null || curObj.optBoolean("is_eating_window", false) || isTerminalFastJson(curObj)) {
             true to parsed
           } else {
             false to null
@@ -2517,16 +2584,25 @@ internal object WatchConnectivityHub {
     }
   }
 
-  private fun toWatchFastJson(fastObj: JSONObject): JSONObject? {
-    if (fastObj.optBoolean("is_eating_window", false)) return null
+  private fun isTerminalFastJson(fastObj: JSONObject): Boolean {
     val status = if (fastObj.has("status") && !fastObj.isNull("status")) {
       fastObj.optString("status", "").trim()
     } else ""
-    if (status.equals("COMPLETED", ignoreCase = true)) return null
+    if (status.equals("COMPLETED", ignoreCase = true) || status.equals("CANCELLED", ignoreCase = true)) {
+      return true
+    }
+    if (status.equals("ACTIVE", ignoreCase = true)) {
+      return false
+    }
     val endStr = if (fastObj.has("end_time") && !fastObj.isNull("end_time")) {
       fastObj.optString("end_time", "").trim()
     } else ""
-    if (endStr.isNotEmpty()) return null
+    return endStr.isNotEmpty()
+  }
+
+  private fun toWatchFastJson(fastObj: JSONObject): JSONObject? {
+    if (fastObj.optBoolean("is_eating_window", false)) return null
+    if (isTerminalFastJson(fastObj)) return null
     val startStr = if (fastObj.has("start_time") && !fastObj.isNull("start_time")) {
       fastObj.optString("start_time", "")
     } else ""
@@ -3073,7 +3149,18 @@ internal object WatchConnectivityHub {
         val currentFastRev = prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L)
         if (updateFast && (fastReadRev == null || currentFastRev == fastReadRev)) {
           val nextFastRev = currentFastRev + 1L
-          prefs.edit().putLong(LAST_CACHED_FAST_REV_KEY, nextFastRev).apply()
+          val snapshotObj = JSONObject().apply {
+            put("owner", expectedOwner)
+            put("generation", expectedGeneration)
+            put("fastRev", nextFastRev)
+            if (clientId.isNotEmpty()) put("clientId", clientId)
+            put("fast", fastUpdate ?: JSONObject.NULL)
+            put("fastKnown", true)
+          }
+          prefs.edit()
+            .putLong(LAST_CACHED_FAST_REV_KEY, nextFastRev)
+            .putString(LAST_CACHED_FAST_SNAPSHOT_KEY, snapshotObj.toString())
+            .apply()
           return@synchronized HeadlessContextPatchResult(
             expectedGeneration,
             0L,
@@ -3215,6 +3302,7 @@ internal object WatchConnectivityHub {
         val nextFastRev = if (updateFast) currentFastRev + 1L else null
         if (nextFastRev != null) {
           editor.putLong(LAST_CACHED_FAST_REV_KEY, nextFastRev)
+          editor.remove(LAST_CACHED_FAST_SNAPSHOT_KEY)
         }
         editor.apply()
         HeadlessContextPatchResult(
@@ -3256,9 +3344,12 @@ internal object WatchConnectivityHub {
     prefs: android.content.SharedPreferences,
     editor: android.content.SharedPreferences.Editor,
     prevRaw: String?,
+    hadFastSnapshot: Boolean,
     nextObj: JSONObject
   ) {
     val shouldBump = if (hasAuthoritativeFastState(nextObj)) {
+      true
+    } else if (hadFastSnapshot) {
       true
     } else if (prevRaw.isNullOrEmpty()) {
       false
@@ -3289,7 +3380,29 @@ internal object WatchConnectivityHub {
       if (!isContextCacheAuthorizedLocked(appCtx, expectedOwner, expectedGeneration)) {
         return@synchronized null
       }
-      val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null) ?: return@synchronized null
+      val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
+      if (raw == null) {
+        val fastSnapRaw = prefs.getString(LAST_CACHED_FAST_SNAPSHOT_KEY, null) ?: return@synchronized null
+        try {
+          val snapObj = JSONObject(fastSnapRaw)
+          if (
+            snapObj.optString("owner", "") == expectedOwner &&
+            snapObj.optLong("generation", -1L) == expectedGeneration
+          ) {
+            val cachedFast = snapObj.optJSONObject("fast") ?: return@synchronized null
+            val cachedFastId = if (cachedFast.has("id") && !cachedFast.isNull("id")) {
+              cachedFast.optString("id", "").trim()
+            } else ""
+            if (cachedFastId == endedFastId) {
+              prefs.edit()
+                .remove(LAST_CACHED_FAST_SNAPSHOT_KEY)
+                .putLong(LAST_CACHED_FAST_REV_KEY, prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) + 1L)
+                .apply()
+            }
+          }
+        } catch (_: Throwable) {}
+        return@synchronized null
+      }
       try {
         val obj = JSONObject(raw)
         val ctxOwner = obj.optString("workoutServerId", "")
@@ -3867,13 +3980,7 @@ internal object WatchConnectivityHub {
       } catch (_: Throwable) {
         null
       }
-      val createdStatus = if (createdObj != null && createdObj.has("status") && !createdObj.isNull("status")) {
-        createdObj.optString("status", "").trim()
-      } else ""
-      val createdEndTime = if (createdObj != null && createdObj.has("end_time") && !createdObj.isNull("end_time")) {
-        createdObj.optString("end_time", "").trim()
-      } else ""
-      val isAlreadyEnded = createdStatus.equals("COMPLETED", ignoreCase = true) || createdEndTime.isNotEmpty()
+      val isAlreadyEnded = createdObj != null && isTerminalFastJson(createdObj)
       if (isAlreadyEnded && createdObj != null && createdObj.has("id") && !createdObj.isNull("id")) {
         endedReplayFastId = createdObj.optString("id", "").trim().takeIf { it.isNotEmpty() }
       }
@@ -3890,7 +3997,11 @@ internal object WatchConnectivityHub {
             try {
               val latestObj = JSONObject(latestTrimmed)
               val parsedLatest = toWatchFastJson(latestObj)
-              if (parsedLatest == null && !latestObj.optBoolean("is_eating_window", false)) {
+              if (
+                parsedLatest == null &&
+                !latestObj.optBoolean("is_eating_window", false) &&
+                !isTerminalFastJson(latestObj)
+              ) {
                 replayRefreshFailed = true
               }
               parsedLatest
@@ -3911,7 +4022,11 @@ internal object WatchConnectivityHub {
       }
     } else {
       val parsedExisting = toWatchFastJson(existingManualFast)
-      if (parsedExisting == null && !existingManualFast.optBoolean("is_eating_window", false)) {
+      if (
+        parsedExisting == null &&
+        !existingManualFast.optBoolean("is_eating_window", false) &&
+        !isTerminalFastJson(existingManualFast)
+      ) {
         if (rawJson != null) enqueueInboundJson(context, rawJson)
         return
       }
@@ -3931,14 +4046,6 @@ internal object WatchConnectivityHub {
         fastReadRev = fastReadRev
       )
     } else {
-      if (endedReplayFastId != null) {
-        invalidateCachedEndedFastIfMatches(
-          context = context,
-          expectedOwner = payloadOwner,
-          expectedGeneration = creds.generation,
-          endedFastId = endedReplayFastId
-        )
-      }
       false
     }
     var ackFast: JSONObject? = confirmedFastJson
@@ -3961,6 +4068,14 @@ internal object WatchConnectivityHub {
           canAck = true
         }
       }
+    }
+    if (!canAck && endedReplayFastId != null && isHeadlessOwnerStillActive(context, creds)) {
+      invalidateCachedEndedFastIfMatches(
+        context = context,
+        expectedOwner = payloadOwner,
+        expectedGeneration = creds.generation,
+        endedFastId = endedReplayFastId
+      )
     }
     if (!isHeadlessOwnerStillActive(context, creds)) return
     if (canAck) {
@@ -4118,7 +4233,11 @@ internal object WatchConnectivityHub {
           }
           if (staleReplay) {
             val activeWatchFast = toWatchFastJson(obj)
-            if (activeWatchFast == null && !obj.optBoolean("is_eating_window", false)) {
+            if (
+              activeWatchFast == null &&
+              !obj.optBoolean("is_eating_window", false) &&
+              !isTerminalFastJson(obj)
+            ) {
               if (rawJson != null) enqueueInboundJson(context, rawJson)
               return
             }

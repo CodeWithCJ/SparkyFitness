@@ -1633,12 +1633,24 @@ object WearDirectApiClient {
 
   internal fun isValidUuid(value: String): Boolean = UUID_REGEX.matches(value.trim())
 
+  internal fun isTerminalFastObject(obj: JSONObject): Boolean {
+    val status = obj.optStringOrNull("status") ?: ""
+    if (
+      status.equals("COMPLETED", ignoreCase = true) ||
+      status.equals("CANCELLED", ignoreCase = true)
+    ) {
+      return true
+    }
+    if (status.equals("ACTIVE", ignoreCase = true)) {
+      return false
+    }
+    return obj.optStringOrNull("end_time") != null
+  }
+
   internal fun isCompletedFastJson(raw: String?): Boolean {
     if (raw.isNullOrBlank()) return false
     return try {
-      val obj = JSONObject(raw.trim())
-      obj.optString("status", "").equals("COMPLETED", ignoreCase = true) ||
-        obj.optStringOrNull("end_time") != null
+      isTerminalFastObject(JSONObject(raw.trim()))
     } catch (_: Throwable) {
       false
     }
@@ -1653,10 +1665,7 @@ object WearDirectApiClient {
       if (obj.optBoolean("is_eating_window", false)) {
         return null to true
       }
-      if (
-        obj.optString("status", "").equals("COMPLETED", ignoreCase = true) ||
-        obj.optStringOrNull("end_time") != null
-      ) {
+      if (isTerminalFastObject(obj)) {
         return null to true
       }
       val startMs = ContextPayloadMapper.parseIsoMs(obj.optStringOrNull("start_time"))

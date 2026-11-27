@@ -22,7 +22,7 @@ import {
   resolveWatchServerConfig,
 } from '../services/watchServerCredentials';
 import { isPermanentWatchClientRejection } from './useWatchCheckInBridge';
-import { toWatchFast } from '../utils/watchFast';
+import { isTerminalFast, toWatchFast } from '../utils/watchFast';
 
 const MAX_SETTLED_FAST_IDS = 100;
 
@@ -563,10 +563,10 @@ export function useWatchFastingBridge(enabled: boolean): void {
             deferredEndsByOwnerRef.current.delete(resolvedOwner);
             return;
           }
-          if (created?.status === 'COMPLETED' || Boolean(created?.end_time)) {
-            // A replayed start can return an already-ended fast; re-fetch
-            // /current so the watch gets true server state instead of reviving
-            // the ended fast with an optimistic payload.
+          if (isTerminalFast(created)) {
+            // A replayed start can return an already-ended or cancelled fast;
+            // re-fetch /current so the watch gets true server state instead of
+            // reviving the terminal fast with an optimistic payload.
             try {
               const latest = await fetchCurrentFast(writeConfig);
               if (
