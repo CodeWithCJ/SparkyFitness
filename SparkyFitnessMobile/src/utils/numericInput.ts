@@ -25,6 +25,21 @@
  */
 export const DECIMAL_INPUT_REGEX = /^[\d.,\s\u00a0\u202f]*$/;
 
+/**
+ * Input filter regex for arithmetic-expression fields (e.g. the food
+ * quantity: `1 + 1/2`, `500/3`). Like {@link DECIMAL_INPUT_REGEX} it is
+ * permissive by design so typed operators are not rejected at keystroke time
+ * — `evaluateArithmetic` applies strict validation when the value is read.
+ */
+export const EXPRESSION_INPUT_REGEX = /^[\d.,+\-*()/\s\u00a0\u202f]*$/;
+
+const OPERATOR_CHAR_REGEX = /[+\-*/()]/;
+
+/** True when the text contains any arithmetic operator character. */
+export function hasOperator(text: string): boolean {
+  return OPERATOR_CHAR_REGEX.test(text);
+}
+
 const WHITESPACE_REGEX = /[\s\u00a0\u202f]/g;
 const OUTER_WHITESPACE_REGEX = /^[\s\u00a0\u202f]+|[\s\u00a0\u202f]+$/g;
 const HAS_INNER_WHITESPACE_REGEX = /[\s\u00a0\u202f]/;

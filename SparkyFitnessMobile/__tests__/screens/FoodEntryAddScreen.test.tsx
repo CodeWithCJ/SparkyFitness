@@ -3714,4 +3714,67 @@ describe('FoodEntryAddScreen', () => {
       expect(screen.queryByLabelText('Weighed it cooked')).toBeNull();
     });
   });
+
+  describe('Quantity expressions (#3796)', () => {
+    it('evaluates an arithmetic expression typed into the quantity field', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1 + 1/2');
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            quantity: 1.5,
+            unit: 'cup',
+          }),
+        })
+      );
+    });
+
+    it('evaluates a fractional expression', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '2/3');
+      fireEvent.press(screen.getByText('Add Food'));
+      const payload = mockAddEntry.mock.calls[0][0].createEntryPayload;
+      expect(payload.quantity).toBeCloseTo(2 / 3, 10);
+    });
+
+    it('blocks submit and keeps an invalid expression on blur', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1 +');
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent(screen.getByTestId('quantity-input'), 'blur');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1 +');
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+    });
+
+    it('raises the operator chips on focus and appends the pressed operator', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      expect(screen.queryByTestId('quantity-operator-chips')).toBeNull();
+      fireEvent(screen.getByTestId('quantity-input'), 'focus');
+      expect(screen.getByTestId('quantity-operator-chips')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Plus'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1+');
+      fireEvent.press(screen.getByLabelText('Divide'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1+/');
+    });
+
+    it('still parses a plain number (regression)', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1.5');
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            quantity: 1.5,
+            unit: 'cup',
+          }),
+        })
+      );
+    });
+  });
 });

@@ -212,6 +212,7 @@ export * from './utils/parseCsv.ts';
 export * from './utils/activitySport.ts';
 export * from './utils/foodEntryCopyFingerprint.ts';
 export * from './utils/foodEntryCopy.ts';
+export * from './utils/evaluateArithmetic.ts';
 export * from './utils/foodPhotoEstimateMath.ts';
 export * from './utils/foodPhotoIngredientDraft.ts';
 export * from './utils/progressPhotos.ts';

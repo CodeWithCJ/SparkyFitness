@@ -4427,6 +4427,17 @@
       "selectServing": "Select Serving",
       "selectMeal": "Select Meal"
     },
+    "quantity": {
+      "chips": {
+        "toolbar": "Quantity operators",
+        "plus": "Plus",
+        "minus": "Minus",
+        "multiply": "Multiply",
+        "divide": "Divide",
+        "parenOpen": "Open parenthesis",
+        "parenClose": "Close parenthesis"
+      }
+    },
     "cooked": {
       "switch": "Weighed it cooked",
       "sameBatchPrevious": "Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",

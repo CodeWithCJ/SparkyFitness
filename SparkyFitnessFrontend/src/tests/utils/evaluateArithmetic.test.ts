@@ -1,4 +1,4 @@
-import { evaluateArithmetic } from '@/utils/evaluateArithmetic';
+import { evaluateArithmetic } from '@workspace/shared';
 
 describe('evaluateArithmetic', () => {
   it.each([

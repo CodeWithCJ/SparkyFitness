@@ -119,6 +119,11 @@ interface StepperInputProps {
    * buttons but padding their hit area to 44pt tall. For dense set rows.
    */
   fill?: boolean;
+  /**
+   * Drop the −/+ buttons and let the input take the full width. Used when the
+   * value is an arithmetic expression, where stepping is meaningless.
+   */
+  hideSteppers?: boolean;
 }
 
 function StepperInput({
@@ -136,6 +141,7 @@ function StepperInput({
   accessibilityLabels,
   compact = false,
   fill = false,
+  hideSteppers = false,
 }: StepperInputProps) {
   const [accentColor, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -148,6 +154,10 @@ function StepperInput({
   const iconSize = compact || fill ? 18 : 20;
   const fontSize = compact || fill ? 16 : 20;
   const buttonHitSlop = fill ? { top: 6, bottom: 6 } : undefined;
+  // When the steppers are hidden, keep the box the same footprint as with them
+  // (two stepper slots + the input) and let the input fill the freed space.
+  const reserveStepperSpace = hideSteppers && !fill;
+  const inputFlex = fill || reserveStepperSpace;
 
   const borderColor = isFocused ? accentColor : borderSubtle;
   const {
@@ -159,24 +169,30 @@ function StepperInput({
   return (
     <View
       className={`flex-row items-center bg-raised rounded-lg overflow-hidden ${fill ? 'flex-1' : ''}`}
-      style={{ borderWidth: 1, borderColor }}
+      style={{
+        borderWidth: 1,
+        borderColor,
+        ...(reserveStepperSpace ? { width: size + inputWidth + size } : null),
+      }}
     >
-      <TouchableOpacity
-        onPress={onDecrement}
-        style={{
-          width: size,
-          height: size,
-          borderRightWidth: 1,
-          borderRightColor: borderColor,
-        }}
-        className="items-center justify-center"
-        activeOpacity={0.7}
-        hitSlop={buttonHitSlop}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabels?.decrement}
-      >
-        <Icon name="remove" size={iconSize} color={accentColor} />
-      </TouchableOpacity>
+      {!hideSteppers && (
+        <TouchableOpacity
+          onPress={onDecrement}
+          style={{
+            width: size,
+            height: size,
+            borderRightWidth: 1,
+            borderRightColor: borderColor,
+          }}
+          className="items-center justify-center"
+          activeOpacity={0.7}
+          hitSlop={buttonHitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabels?.decrement}
+        >
+          <Icon name="remove" size={iconSize} color={accentColor} />
+        </TouchableOpacity>
+      )}
       <InputComponent
         ref={inputRef}
         value={value}
@@ -195,7 +211,7 @@ function StepperInput({
         selectTextOnFocus={selectTextOnFocus}
         className="text-text-primary text-base text-center"
         style={{
-          ...(fill ? { flex: 1, minWidth: 0 } : { width: inputWidth }),
+          ...(inputFlex ? { flex: 1, minWidth: 0 } : { width: inputWidth }),
           height: size,
           fontSize,
           lineHeight: fontSize + 2,
@@ -205,22 +221,24 @@ function StepperInput({
         accessibilityLabel={accessibilityLabels?.input}
         {...restInputProps}
       />
-      <TouchableOpacity
-        onPress={onIncrement}
-        style={{
-          width: size,
-          height: size,
-          borderLeftWidth: 1,
-          borderLeftColor: borderColor,
-        }}
-        className="items-center justify-center"
-        activeOpacity={0.7}
-        hitSlop={buttonHitSlop}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabels?.increment}
-      >
-        <Icon name="add" size={iconSize} color={accentColor} />
-      </TouchableOpacity>
+      {!hideSteppers && (
+        <TouchableOpacity
+          onPress={onIncrement}
+          style={{
+            width: size,
+            height: size,
+            borderLeftWidth: 1,
+            borderLeftColor: borderColor,
+          }}
+          className="items-center justify-center"
+          activeOpacity={0.7}
+          hitSlop={buttonHitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabels?.increment}
+        >
+          <Icon name="add" size={iconSize} color={accentColor} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
