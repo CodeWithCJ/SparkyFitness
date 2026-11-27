@@ -3004,8 +3004,16 @@ CREATE TABLE public.fasting_logs (
     status character varying(20),
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    client_id uuid,
     CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying])::text[])))
 );
+
+
+--
+-- Name: COLUMN fasting_logs.client_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.fasting_logs.client_id IS 'Client-minted idempotency key from replayable clients. NULL for fasts not created with a client key.';
 
 
 --
@@ -8844,6 +8852,13 @@ CREATE UNIQUE INDEX idx_exercises_user_source_source_id_unique ON public.exercis
 --
 
 CREATE INDEX idx_external_data_providers_is_public ON public.external_data_providers USING btree (is_public);
+
+
+--
+-- Name: idx_fasting_logs_user_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_fasting_logs_user_client_id ON public.fasting_logs USING btree (user_id, client_id) WHERE (client_id IS NOT NULL);
 
 
 --
