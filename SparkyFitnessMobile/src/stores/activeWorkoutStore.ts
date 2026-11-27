@@ -2066,6 +2066,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             const setId = String(s.id);
             const state = get();
             if (state.completedSetIds[setId] != null) continue;
+            state.clearSetTimer(setId);
             if (completion.useSetDuration) {
               state.updateSetField(setId, {
                 duration: completion.segmentSeconds,

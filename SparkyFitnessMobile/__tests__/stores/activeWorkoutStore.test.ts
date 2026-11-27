@@ -4286,7 +4286,7 @@ describe('activeWorkoutStore', () => {
   });
 
   describe('video completion', () => {
-    it('keeps the actual completion time and uses the video duration until manually re-logged', () => {
+    it('clears the stopwatch and uses the video duration until manually re-logged', () => {
       const exercise = makeSession().exercises[0];
       exercise.exercise_snapshot = {
         ...exercise.exercise_snapshot!,
@@ -4299,9 +4299,10 @@ describe('activeWorkoutStore', () => {
           videoUrl: 'https://example.com/workout.mp4',
           exerciseConfigs: [{ video_start_seconds: 0, video_end_seconds: 30 }],
         });
+      const state = useActiveWorkoutStore.getState();
+      state.startSetTimer('101');
       const completion = new Date(FIXED_NOW + 630_000);
       jest.setSystemTime(completion);
-      const state = useActiveWorkoutStore.getState();
       state.completeVideoExercises([exercise.id]);
 
       function exercisePayload() {
@@ -4316,6 +4317,7 @@ describe('activeWorkoutStore', () => {
         duration_minutes: 0.5,
         sets: [{ duration: 30, completed_at: completion.toISOString() }],
       });
+      expect(state.stopSetTimer('101')).toBeNull();
 
       state.updateSetField('101', { duration: 45 });
       expect(exercisePayload()?.duration_minutes).toBe(0.75);

@@ -146,10 +146,15 @@ if (config.source.kind === 'file') {
       if (resumed && seconds <= expected + startupAllowance) {
         expected = seconds;
       }
+      // A jump past the playback clock during an explicit pause starts a new
+      // range at the resume position, leaving the skipped interval uncredited.
+      const skippedWhilePaused =
+        resumed && pausedBeforePlay && seconds > expected;
       // Small backwards corrections occur as the player clock settles.
       // Carry at most one second of playback between reports. A larger
       // discontinuity starts a new range at the reported position.
       if (
+        !skippedWhilePaused &&
         seconds >= previous.seconds - 0.5 * playbackRate &&
         seconds <= expected + 0.2
       ) {

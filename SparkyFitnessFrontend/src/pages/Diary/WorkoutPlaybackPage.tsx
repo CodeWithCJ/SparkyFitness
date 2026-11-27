@@ -158,6 +158,23 @@ function getReturnPath(
   return '/';
 }
 
+function getCompletedVolume(draft: WorkoutPlaybackDraft | null): number {
+  if (!draft) return 0;
+
+  return draft.exercises.reduce(
+    (exerciseSum, exercise) =>
+      exerciseSum +
+      exercise.sets.reduce(
+        (setSum, set) =>
+          set.completed
+            ? setSum + (Number(set.weight) || 0) * (Number(set.reps) || 0)
+            : setSum,
+        0
+      ),
+    0
+  );
+}
+
 function startRestTimer(
   draft: WorkoutPlaybackDraft,
   restSeconds: number,
@@ -631,22 +648,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
     return getWorkoutPlaybackStats(draft);
   }, [draft]);
 
-  const totalVolume = useMemo(() => {
-    if (!draft) return 0;
-
-    return draft.exercises.reduce(
-      (exerciseSum, exercise) =>
-        exerciseSum +
-        exercise.sets.reduce(
-          (setSum, set) =>
-            set.completed
-              ? setSum + (Number(set.weight) || 0) * (Number(set.reps) || 0)
-              : setSum,
-          0
-        ),
-      0
-    );
-  }, [draft]);
+  const totalVolume = useMemo(() => getCompletedVolume(draft), [draft]);
 
   const startedAtMs = useMemo(() => {
     if (!draft) {
@@ -1077,7 +1079,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
           ),
           completedSets: finalStats.completedSets,
           totalSets: finalStats.totalSets,
-          volume: totalVolume,
+          volume: getCompletedVolume(draft),
           sessionId: saved?.id,
           exercises: (saved?.exercises ?? []).map((exercise) => ({
             id: exercise.id,
@@ -1115,7 +1117,6 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
       ownerId,
       t,
       timezone,
-      totalVolume,
       updatePresetSession,
     ]
   );

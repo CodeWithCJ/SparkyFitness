@@ -7,7 +7,10 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { CreatePresetSessionRequest } from '@workspace/shared';
+import type {
+  CreatePresetSessionRequest,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import WorkoutPlaybackPage from '@/pages/Diary/WorkoutPlaybackPage';
 import type { WorkoutPreset } from '@/types/workout';
 import { createWorkoutPlaybackDraftFromPreset } from '@/utils/workoutPlayback';
@@ -55,6 +58,9 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     weightUnit: 'kg',
     timezone: 'UTC',
     timeFormat: 'HH:mm',
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: () => 'kcal',
   }),
 }));
 
@@ -76,6 +82,8 @@ jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
 jest.mock('@/hooks/Exercises/useWorkoutCoaching', () => ({
   fetchWorkoutCoachingSignals: async () => null,
 }));
+
+jest.mock('@/pages/Diary/WorkoutFeedbackPanel', () => () => null);
 
 jest.mock('@/pages/Diary/FollowAlongWorkoutPlayer', () => ({
   __esModule: true,
@@ -109,6 +117,18 @@ const presetFixture: WorkoutPreset = {
   ],
 } as unknown as WorkoutPreset;
 
+const videoPresetFixture: WorkoutPreset = {
+  ...presetFixture,
+  video_url: 'https://example.com/workout.mp4',
+  exercises: [
+    {
+      ...presetFixture.exercises[0]!,
+      video_start_seconds: 0,
+      video_end_seconds: 12,
+    },
+  ],
+};
+
 describe('WorkoutPlaybackPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
@@ -121,17 +141,7 @@ describe('WorkoutPlaybackPage', () => {
 
   it('retries saving a completed video after late progression history arrives', async () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
-      {
-        ...presetFixture,
-        video_url: 'https://example.com/workout.mp4',
-        exercises: [
-          {
-            ...presetFixture.exercises[0]!,
-            video_start_seconds: 0,
-            video_end_seconds: 12,
-          },
-        ],
-      },
+      videoPresetFixture,
       '2026-04-27'
     );
     mockLocationState = { draft };
@@ -168,6 +178,39 @@ describe('WorkoutPlaybackPage', () => {
     expect(mockCreatePresetSession.mock.calls[1][0].exercises).toEqual(
       firstPayload.exercises
     );
+  });
+
+  it('shows the volume of sets completed as the video ends', async () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      videoPresetFixture,
+      '2026-04-27'
+    );
+    mockLocationState = { draft };
+    const saved: PresetSessionResponse = {
+      id: 'session-1',
+      type: 'preset',
+      entry_date: draft.entry_date,
+      workout_preset_id: null,
+      name: draft.name,
+      notes: null,
+      description: null,
+      source: 'sparky',
+      status: 'completed',
+      revision: 1,
+      total_duration_minutes: 0.2,
+      activity_details: [],
+      exercises: [],
+    };
+    mockCreatePresetSession.mockResolvedValue(saved);
+
+    render(<WorkoutPlaybackPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Complete video' }));
+
+    const summary = await screen.findByRole('dialog', {
+      name: 'Workout complete',
+    });
+    expect(within(summary).getByText('1/1')).toBeInTheDocument();
+    expect(within(summary).getByText('640')).toBeInTheDocument();
   });
 
   it('shows elapsed timer and collapses completed exercises', () => {
