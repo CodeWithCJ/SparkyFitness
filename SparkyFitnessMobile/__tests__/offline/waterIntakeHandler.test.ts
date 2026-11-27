@@ -1,5 +1,8 @@
 import { ApiError } from '../../src/services/api/errors';
-import { changeWaterIntake } from '../../src/services/api/measurementsApi';
+import {
+  changeWaterIntake,
+  logCustomWaterAmount,
+} from '../../src/services/api/measurementsApi';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import { __clearOutboxHandlersForTests } from '../../src/offline/handlers/registry';
 import { registerWaterIntakeHandlers } from '../../src/offline/handlers/waterIntake';
@@ -20,7 +23,10 @@ import {
   drainOutbox,
 } from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
-import { queueWaterDrink } from '../../src/offline/waterHandOver';
+import {
+  queueWaterDrink,
+  queueWaterCustomAmount,
+} from '../../src/offline/waterHandOver';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -33,6 +39,7 @@ jest.mock('../../src/services/storage', () => ({
 }));
 jest.mock('../../src/services/api/measurementsApi', () => ({
   changeWaterIntake: jest.fn(),
+  logCustomWaterAmount: jest.fn(),
 }));
 const mockInvalidate = jest.fn();
 jest.mock('../../src/hooks/queryClient', () => ({ queryClient: {} }));
@@ -42,6 +49,9 @@ jest.mock('../../src/hooks/invalidateWaterIntake', () => ({
 
 const mockChange = changeWaterIntake as jest.MockedFunction<
   typeof changeWaterIntake
+>;
+const mockLogCustom = logCustomWaterAmount as jest.MockedFunction<
+  typeof logCustomWaterAmount
 >;
 
 const PRESS_A = '11111111-1111-4111-8111-111111111111';
@@ -211,5 +221,75 @@ describe('water drink upload handler', () => {
 
     const [row] = await listUnconfirmedOutbox(db, 's1');
     expect(row.status).toBe('needs_sign_in');
+  });
+});
+
+describe('custom water amount upload handler', () => {
+  let db: OfflineDb & { close(): void };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    db = await createTestDb();
+    __setOfflineDbForTests(db);
+    __clearOutboxHandlersForTests();
+    registerWaterIntakeHandlers();
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
+  });
+
+  afterEach(() => db.close());
+
+  it('sends a queued amount under its own key', async () => {
+    await queueWaterCustomAmount(PRESS_A, {
+      entryDate: '2026-11-21',
+      waterMl: 180,
+    });
+    expect(await listUnconfirmedOutbox(db, 's1')).toHaveLength(1);
+
+    mockLogCustom.mockResolvedValue({
+      id: 'x',
+      water_ml: 180,
+      entry_date: '2026-11-21',
+    });
+    const summary = await drainOutbox('manual');
+
+    expect(summary).toEqual({ synced: 1, remaining: 0 });
+    expect(mockLogCustom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entryDate: '2026-11-21',
+        waterMl: 180,
+        clientId: PRESS_A,
+      })
+    );
+    expect(mockInvalidate).toHaveBeenCalledWith({}, '2026-11-21');
+  });
+
+  it('keeps the amount and stops the run while the server is away', async () => {
+    await queueWaterCustomAmount(PRESS_A, {
+      entryDate: '2026-11-21',
+      waterMl: 180,
+    });
+    mockLogCustom.mockRejectedValue(new TypeError('Network request failed'));
+
+    const summary = await drainOutbox('manual');
+
+    expect(summary).toEqual({ synced: 0, remaining: 1 });
+    const [row] = await listUnconfirmedOutbox(db, 's1');
+    expect(row.status).toBe('pending');
+    expect(row.attempts).toBe(1);
+  });
+
+  it('parks an amount the server refuses for the person', async () => {
+    await queueWaterCustomAmount(PRESS_A, {
+      entryDate: '2026-11-21',
+      waterMl: 180,
+    });
+    mockLogCustom.mockRejectedValue(new ApiError('bad', 400));
+
+    await drainOutbox('manual');
+
+    const [row] = await listUnconfirmedOutbox(db, 's1');
+    expect(row.status).toBe('failed');
   });
 });

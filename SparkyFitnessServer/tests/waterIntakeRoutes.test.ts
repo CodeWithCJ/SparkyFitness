@@ -11,6 +11,7 @@ vi.mock('../services/measurementService.js', () => ({
     getWaterIntakeEntryById: vi.fn(),
     getWaterIntake: vi.fn(),
     upsertWaterIntake: vi.fn(),
+    logWaterIntakeAmount: vi.fn(),
     updateWaterIntake: vi.fn(),
     deleteWaterIntake: vi.fn(),
     getWaterIntakeLog: vi.fn(),
@@ -217,6 +218,84 @@ describe('Water Intake Routes (v2)', () => {
       expect(res.body.error).toMatch(/^Forbidden/);
     });
   });
+  // ---------------------------------------------------------------------------
+  // POST /custom
+  // ---------------------------------------------------------------------------
+  describe('POST /api/v2/measurements/water-intake/custom', () => {
+    it('logs a custom amount and returns 200', async () => {
+      const result = { water_ml: 430 };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementService.logWaterIntakeAmount.mockResolvedValue(result);
+      const res = await request(app)
+        .post('/api/v2/measurements/water-intake/custom')
+        .send({ entry_date: '2023-01-01', water_ml: 180 });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(result);
+      expect(measurementService.logWaterIntakeAmount).toHaveBeenCalledWith(
+        'test-user-id',
+        'test-user-id',
+        '2023-01-01',
+        180,
+        'manual',
+        null
+      );
+    });
+
+    it('passes a client_id through when present', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementService.logWaterIntakeAmount.mockResolvedValue({
+        water_ml: 180,
+      });
+      const res = await request(app)
+        .post('/api/v2/measurements/water-intake/custom')
+        .send({
+          entry_date: '2023-01-01',
+          water_ml: 180,
+          client_id: VALID_UUID,
+        });
+      expect(res.statusCode).toBe(200);
+      expect(measurementService.logWaterIntakeAmount).toHaveBeenCalledWith(
+        'test-user-id',
+        'test-user-id',
+        '2023-01-01',
+        180,
+        'manual',
+        VALID_UUID
+      );
+    });
+
+    it('returns 400 when entry_date is missing', async () => {
+      const res = await request(app)
+        .post('/api/v2/measurements/water-intake/custom')
+        .send({ water_ml: 180 });
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('error', 'Invalid request body');
+      expect(measurementService.logWaterIntakeAmount).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when water_ml is zero or negative', async () => {
+      for (const water_ml of [0, -50]) {
+        const res = await request(app)
+          .post('/api/v2/measurements/water-intake/custom')
+          .send({ entry_date: '2023-01-01', water_ml });
+        expect(res.statusCode).toBe(400);
+      }
+      expect(measurementService.logWaterIntakeAmount).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 when access is forbidden', async () => {
+      // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementService.logWaterIntakeAmount.mockRejectedValue(
+        new Error('Forbidden: access denied.')
+      );
+      const res = await request(app)
+        .post('/api/v2/measurements/water-intake/custom')
+        .send({ entry_date: '2023-01-01', water_ml: 180 });
+      expect(res.statusCode).toBe(403);
+      expect(res.body.error).toMatch(/^Forbidden/);
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // PUT /:id
   // ---------------------------------------------------------------------------

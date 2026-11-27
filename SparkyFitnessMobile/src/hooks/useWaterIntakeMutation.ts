@@ -13,6 +13,7 @@ import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutB
 import {
   logDrinkOrQueue,
   removeDrinkOrQueue,
+  logCustomAmountOrQueue,
   type DrinkRemoval,
   type DrinkResult,
 } from '../offline/logDrink';
@@ -280,6 +281,29 @@ export function useWaterIntakeMutation({
     },
   });
 
+  // A custom amount is a one-off, exact ml figure with no container and no
+  // hydration factor to guess at, so (unlike logPreset) it could carry an
+  // optimistic patch -- but it is logged rarely enough that invalidating on
+  // success, same as logPreset, is simpler and consistent.
+  const logCustomAmountMutation = useMutation({
+    mutationFn: (waterMl: number) => logCustomAmountOrQueue(date, waterMl),
+    onSuccess: (result) => {
+      if (result.queued) {
+        showQueuedToast();
+      }
+      invalidateWaterIntakeQueries(queryClient, date);
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: t('waterIntake.updateFailed', { defaultValue: 'Error' }),
+        text2: t('waterIntake.updateMessage', {
+          defaultValue: 'Failed to update water intake. Please try again.',
+        }),
+      });
+    },
+  });
+
   const decrement = () => {
     if (!activeContainer) {
       noContainerAlert();
@@ -291,6 +315,7 @@ export function useWaterIntakeMutation({
   return {
     increment,
     logPreset: logPreset.mutate,
+    logCustomAmount: logCustomAmountMutation.mutate,
     decrement,
     isReady: !!activeContainer,
     isContainersLoaded,

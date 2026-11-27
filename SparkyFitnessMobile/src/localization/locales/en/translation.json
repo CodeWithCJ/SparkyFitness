@@ -1086,6 +1086,7 @@
     "quickAddDrinks": "Quick add",
     "logDrink": "Log {{drink}}",
     "perPress": "{{value}} {{unit}}",
+    "customAmount": "Custom amount",
     "logDrinkFailed": "Could not log that drink",
     "exerciseStatistics": "Statistics",
     "reportsLink": "Reports"
@@ -6528,7 +6529,9 @@
     "configure": "Please configure a water container on the server to track hydration.",
     "multipleNoPrimaryMobile": "You have multiple water containers but none is marked as primary. Tap to choose one.",
     "configureMobile": "Add a water container to start tracking hydration.",
-    "defaultContainer": "Default"
+    "defaultContainer": "Default",
+    "customAmountTitle": "Log a custom amount",
+    "logAmount": "Log"
   },
   "actionTags": {
     "waiting": {

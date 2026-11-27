@@ -96,6 +96,28 @@ describe('HydrationGauge press caption', () => {
     expect(screen.queryByText(/Choose a water container/)).toBeNull();
   });
 
+  // #3734: the pill stating what one press logs doubles as the entry point
+  // for logging a one-off custom amount instead, rather than a new row.
+  it('opens the custom amount sheet when the per-press pill is tapped', () => {
+    const onCustomAmount = jest.fn();
+    render(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        unit="ml"
+        onIncrement={noop}
+        containerVolume={500}
+        onCustomAmount={onCustomAmount}
+      />
+    );
+
+    fireEvent.press(screen.getByLabelText('Custom amount'));
+
+    expect(onCustomAmount).toHaveBeenCalledTimes(1);
+    // The pill's visible text is unchanged by this.
+    expect(screen.getByText('500 ml')).toBeTruthy();
+  });
+
   // Tapping a preset used to select it and log nothing, because mobile put
   // vessels and drinks in one selectable row.
   it('logs a preset on tap rather than selecting it', () => {

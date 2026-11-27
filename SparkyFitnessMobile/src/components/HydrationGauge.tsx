@@ -49,6 +49,8 @@ interface HydrationGaugeProps {
   onPressHistory?: () => void;
   onIncrement?: () => void;
   onDecrement?: () => void;
+  /** Opens the custom-amount sheet; the per-press pill becomes its trigger. */
+  onCustomAmount?: () => void;
   disableDecrement?: boolean;
   containers?: ContainerOption[];
   // A preset is one drink logged once, not a vessel to select: these render as
@@ -85,6 +87,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   onSelectContainer,
   quickAddPresets,
   onQuickAdd,
+  onCustomAmount,
 }) => {
   const { t } = useTranslation();
   const hydrationColor = useCSSVariable('--color-hydration') as string;
@@ -257,13 +260,25 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             )}
           </View>
           {/* Directly under the buttons it describes, rather than centred on
-              the whole card where it read as belonging to the totals. */}
+              the whole card where it read as belonging to the totals. Also
+              the entry point for logging a one-off custom amount (#3734):
+              the one place on the card that already states "what one press
+              logs" is the way in to "log something other than one press,"
+              so this reuses it rather than adding a new row. */}
           {showButtons && pressLabel ? (
-            <View className="rounded-full border border-border-subtle px-3 py-1 mt-2">
+            <Pressable
+              onPress={onCustomAmount}
+              disabled={!onCustomAmount}
+              accessibilityRole="button"
+              accessibilityLabel={t('dashboard.customAmount', {
+                defaultValue: 'Custom amount',
+              })}
+              className="rounded-full border border-border-subtle px-3 py-1 mt-2"
+            >
               <Text className="text-sm font-semibold text-accent-primary">
                 {pressLabel}
               </Text>
-            </View>
+            </Pressable>
           ) : null}
         </View>
         <View className="flex-1 items-center mr-2">
