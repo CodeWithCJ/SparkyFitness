@@ -1983,9 +1983,6 @@
       "openFoodFactsPasswordOptional": "Contraseña de Open Food Facts (opcional)",
       "leaveBlankToKeepExisting2": "•••••••• (deja en blanco para mantener la actual)",
       "appURL": "URL de la app",
-      "eGHttpsNorishYour": "ej., https://norish.your-domain.com",
-      "eGHttpYourTandoor": "ej., http://your-tandoor-instance.com",
-      "eGHttpYourMealie": "ej., http://your-mealie-instance.com",
       "apiKey": "Clave de API",
       "enterNorishAPIKey": "Introduce la clave de API de Norish",
       "enterTandoorAPIKey": "Introduce la clave de API de Tandoor",
@@ -2169,7 +2166,6 @@
     },
     "providerSpecificFields": {
       "appURL": "URL de la app",
-      "eGHttpYourInstance": "p. ej., http://tu-instancia-{{provider_type}}.com",
       "clientID": "ID de cliente",
       "yazioEmailUsername": "Correo / Usuario de YAZIO",
       "appID": "ID de la app",

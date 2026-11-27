@@ -2716,9 +2716,6 @@
       "openFoodFactsPasswordOptional": "Open Food Facts 密码（选填）",
       "leaveBlankToKeepExisting2": "••••••••（留空以保留现有）",
       "appURL": "App URL",
-      "eGHttpsNorishYour": "例如：https://norish.your-domain.com",
-      "eGHttpYourTandoor": "例如：http://your-tandoor-instance.com",
-      "eGHttpYourMealie": "例如：http://your-mealie-instance.com",
       "apiKey": "API 密钥",
       "enterNorishAPIKey": "输入 Norish API 密钥",
       "enterTandoorAPIKey": "输入 Tandoor API 密钥",
@@ -2900,7 +2897,6 @@
     },
     "providerSpecificFields": {
       "appURL": "App URL",
-      "eGHttpYourInstance": "例如：http://your-{{provider_type}}-instance.com",
       "clientID": "Client ID",
       "yazioEmailUsername": "YAZIO 邮箱／用户名",
       "appID": "App ID",
@@ -3156,6 +3152,9 @@
       },
       "labResults": {
         "description": "记录血液检验结果，长期追踪每个指标。"
+      },
+      "medications": {
+        "description": "药物、补充剂和 GLP-1 追踪。补充剂的营养素仍会计入你的总量。"
       }
     },
     "foodProviders": {
@@ -3228,7 +3227,7 @@
       "mcpOAuthAccessWarning": "批准应用即赋予完整 MCP 访问权限，包括可写入或删除数据的工具。请只批准你信任的应用。",
       "mcpOAuthHttpsRequired": "远程 MCP OAuth 需要公网 HTTPS。纯 HTTP 仅支持本机回环开发。",
       "mcpOAuthRedirectAllowlist": "允许的 OAuth 重定向 URI",
-      "mcpOAuthRedirectAllowlistDescription": "每行输入一个完整 URI 或回环模式。使用 http://localhost:*、http://127.0.0.1:* 或 http://[::1]:* 允许桌面客户端使用任意本机回调端口。",
+      "mcpOAuthRedirectAllowlistDescription": "每行输入一个完整 URI 或匹配模式。使用 http://localhost:*、http://127.0.0.1:* 或 http://[::1]:* 可允许桌面客户端使用任意本地回调端口。以 /* 结尾的 HTTPS URI 会允许该主机下的任意路径，Gemini 需要如此（https://oauth-redirect.googleusercontent.com/r/*）。",
       "saveMcpOAuthRedirects": "保存 OAuth 重定向白名单",
       "mcpOAuthRedirectsUpdated": "OAuth 重定向白名单更新成功。",
       "mcpOAuthRedirectsFailed": "OAuth 重定向白名单保存失败。",
@@ -4172,7 +4171,9 @@
     "editFoodDatabase": "编辑食物数据库",
     "editFoodDatabaseDescription": "在数据库中编辑此食物的营养信息.",
     "editingTemporarilyUnavailable": "由于架构更改，编辑食物详情暂时不可用.",
-    "copyFood": "复制食物"
+    "copyFood": "复制食物",
+    "fromTime": "从 {{time}} 起",
+    "nothingLogged": "暂无记录，添加食物"
   },
   "checkIn": {
     "neutral": "状态平平",
@@ -4923,7 +4924,7 @@
       "caloriesBurned": "消耗热量",
       "sets": "训练组数",
       "reps": "动作次数",
-      "weight": "负重数值",
+      "weight": "负重数值 ({{unit}})",
       "notes": "备注信息",
       "category": "运动分类",
       "equipment": "使用器械",
