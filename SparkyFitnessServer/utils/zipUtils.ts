@@ -39,6 +39,7 @@ export function parseZipArchive(buffer: Buffer): ZipEntry[] {
   }
 
   const entries: ZipEntry[] = [];
+  const seenLocalHeaderOffsets = new Set<number>();
   let currentOffset = cdOffset;
 
   for (let i = 0; i < totalEntries && currentOffset < cdOffset + cdSize; i++) {
@@ -59,6 +60,13 @@ export function parseZipArchive(buffer: Buffer): ZipEntry[] {
     const extraFieldLength = buffer.readUInt16LE(currentOffset + 30);
     const fileCommentLength = buffer.readUInt16LE(currentOffset + 32);
     const localHeaderOffset = buffer.readUInt32LE(currentOffset + 42);
+
+    if (seenLocalHeaderOffsets.has(localHeaderOffset)) {
+      throw new Error(
+        'Invalid ZIP archive: Duplicate local header offset detected'
+      );
+    }
+    seenLocalHeaderOffsets.add(localHeaderOffset);
 
     const totalHeaderLength =
       46 + fileNameLength + extraFieldLength + fileCommentLength;

@@ -15,12 +15,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import {
-  previewClinicalRecords,
-  executeClinicalImport,
+  usePreviewClinicalRecords,
+  useExecuteClinicalImport,
   type ClinicalImportPreviewResponse,
   type ParsedVital,
   type ParsedLab,
-} from '@/api/ClinicalRecords/clinicalRecordsApi';
+} from '@/hooks/ClinicalRecords/useClinicalRecords';
 
 const PREVIEW_SAMPLE_LIMIT = 10;
 
@@ -37,9 +37,9 @@ export const ClinicalRecordImportDialog = ({
 }: ClinicalRecordImportDialogProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewGenRef = useRef(0);
+  const importGenRef = useRef(0);
 
-  const [loading, setLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<ClinicalImportPreviewResponse | null>(
     null
@@ -48,12 +48,18 @@ export const ClinicalRecordImportDialog = ({
   const [includeVitals, setIncludeVitals] = useState(true);
   const [includeLabs, setIncludeLabs] = useState(true);
 
+  const previewMutation = usePreviewClinicalRecords();
+  const importMutation = useExecuteClinicalImport();
+
+  const loading = previewMutation.isPending;
+  const importing = importMutation.isPending;
+
   const reset = () => {
+    previewGenRef.current++;
+    importGenRef.current++;
     setPreview(null);
     setIncludeVitals(true);
     setIncludeLabs(true);
-    setLoading(false);
-    setImporting(false);
     setDragActive(false);
   };
 
@@ -63,13 +69,15 @@ export const ClinicalRecordImportDialog = ({
   };
 
   const processFile = async (file: File) => {
-    setLoading(true);
+    const currentGen = ++previewGenRef.current;
     try {
-      const data = await previewClinicalRecords(file);
+      const data = await previewMutation.mutateAsync(file);
+      if (currentGen !== previewGenRef.current) return;
       setPreview(data);
       setIncludeVitals(data.vitals.length > 0);
       setIncludeLabs(data.labs.length > 0);
     } catch (err) {
+      if (currentGen !== previewGenRef.current) return;
       toast({
         title: t('common.error', 'Error'),
         description:
@@ -82,8 +90,6 @@ export const ClinicalRecordImportDialog = ({
         variant: 'destructive',
       });
       reset();
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -132,13 +138,24 @@ export const ClinicalRecordImportDialog = ({
       return;
     }
 
-    setImporting(true);
+    const currentImportGen = ++importGenRef.current;
     try {
-      const result = await executeClinicalImport({
+      const result = await importMutation.mutateAsync({
         vitals: vitalsToImport,
         labs: labsToImport,
         sourceLabel: 'mychart_clinical_import',
       });
+
+      if (currentImportGen !== importGenRef.current) return;
+
+      if (result.errors && result.errors.length > 0) {
+        toast({
+          title: t('common.error', 'Error'),
+          description: result.errors.join(', '),
+          variant: 'destructive',
+        });
+        return;
+      }
 
       toast({
         title: t('common.success', 'Success'),
@@ -155,6 +172,7 @@ export const ClinicalRecordImportDialog = ({
       handleOpenChange(false);
       onImportComplete?.();
     } catch (err) {
+      if (currentImportGen !== importGenRef.current) return;
       toast({
         title: t('common.error', 'Error'),
         description:
@@ -166,8 +184,6 @@ export const ClinicalRecordImportDialog = ({
               ),
         variant: 'destructive',
       });
-    } finally {
-      setImporting(false);
     }
   };
 
@@ -256,11 +272,21 @@ export const ClinicalRecordImportDialog = ({
               <div className="flex items-center justify-between text-sm bg-muted/50 p-3 rounded-lg border">
                 <div>
                   <div className="font-medium">
-                    {preview.sourceDocuments.length} document(s) detected
+                    {t(
+                      'settings.dataImport.clinical.documentsDetected',
+                      '{{count}} document(s) detected',
+                      { count: preview.sourceDocuments.length }
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {preview.vitalsCount} vitals · {preview.labsCount} lab
-                    results
+                    {t(
+                      'settings.dataImport.clinical.countsSummary',
+                      '{{vitals}} vitals · {{labs}} lab results',
+                      {
+                        vitals: preview.vitalsCount,
+                        labs: preview.labsCount,
+                      }
+                    )}
                   </div>
                 </div>
                 <Button
@@ -292,7 +318,11 @@ export const ClinicalRecordImportDialog = ({
                         {t('settings.dataImport.clinical.vitalsTab', 'Vitals')}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {preview.vitals.length} records detected
+                        {t(
+                          'settings.dataImport.clinical.recordsDetected',
+                          '{{count}} records detected',
+                          { count: preview.vitals.length }
+                        )}
                       </div>
                     </div>
                   </div>
@@ -300,7 +330,10 @@ export const ClinicalRecordImportDialog = ({
                     checked={includeVitals}
                     disabled={preview.vitals.length === 0}
                     onCheckedChange={setIncludeVitals}
-                    aria-label="Toggle vitals import"
+                    aria-label={t(
+                      'settings.dataImport.clinical.toggleVitals',
+                      'Toggle vitals import'
+                    )}
                   />
                 </div>
 
@@ -322,7 +355,11 @@ export const ClinicalRecordImportDialog = ({
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {preview.labs.length} records detected
+                        {t(
+                          'settings.dataImport.clinical.recordsDetected',
+                          '{{count}} records detected',
+                          { count: preview.labs.length }
+                        )}
                       </div>
                     </div>
                   </div>
@@ -330,7 +367,10 @@ export const ClinicalRecordImportDialog = ({
                     checked={includeLabs}
                     disabled={preview.labs.length === 0}
                     onCheckedChange={setIncludeLabs}
-                    aria-label="Toggle labs import"
+                    aria-label={t(
+                      'settings.dataImport.clinical.toggleLabs',
+                      'Toggle labs import'
+                    )}
                   />
                 </div>
               </div>

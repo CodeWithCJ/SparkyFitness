@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateClinicalRecords } from '@/hooks/ClinicalRecords/useClinicalRecords';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -101,6 +103,7 @@ const ImportLauncher = ({
 
 export const DataImportSettings = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { mutateAsync: importFoodsCsv } = useImportCsvMutation();
   const { mutateAsync: importFoodDiaryCsv } = useImportFoodDiaryCsvMutation();
   const { mutateAsync: importExercisesJson } = useImportExercisesJsonMutation();
@@ -280,7 +283,10 @@ export const DataImportSettings = () => {
               onOpenChange={(open) => {
                 if (!open) close();
               }}
-              onImportComplete={close}
+              onImportComplete={() => {
+                invalidateClinicalRecords(queryClient);
+                close();
+              }}
             />
           )}
         </ImportLauncher>

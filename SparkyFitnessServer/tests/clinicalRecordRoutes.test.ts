@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
+// @ts-expect-error TS(7016): supertest does not publish declarations in this workspace
 import request from 'supertest';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -26,7 +27,7 @@ vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
 vi.mock('../services/measurementService.js', () => ({
   default: {
     processHealthData: vi.fn().mockResolvedValue({
-      processedResults: [{ id: 1 }, { id: 2 }],
+      processed: [{ id: 1 }, { id: 2 }],
       skipped: [],
       errors: [],
     }),
@@ -44,6 +45,20 @@ describe('Clinical Record Routes (/api/v2/clinical-records)', () => {
   const app = express();
   app.use(express.json());
   app.use('/api/v2/clinical-records', clinicalRecordRoutes);
+  app.use((err: any, req: any, res: any, next: any) => {
+    res
+      .status(err.name === 'ValidationError' ? 400 : 500)
+      .json({ error: err.message });
+  });
+
+  it('returns 400 for unparseable uploads', async () => {
+    const res = await request(app)
+      .post('/api/v2/clinical-records/preview')
+      .attach('file', Buffer.from('not an xml or zip'), 'corrupted.txt');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Failed to parse clinical record');
+  });
 
   it('POST /preview parses uploaded XML and returns counts and items', async () => {
     const fixturePath = path.resolve(

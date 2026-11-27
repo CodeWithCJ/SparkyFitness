@@ -25,12 +25,6 @@ describe('Clinical Record Parser Service', () => {
       __dirname,
       'fixtures/sample_mychart_vitals_and_labs.xml'
     );
-    if (!fs.existsSync(xmlPath)) {
-      console.warn(
-        'Fixture sample_mychart_vitals_and_labs.xml not found, skipping'
-      );
-      return;
-    }
     const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
     const result = extractCcdaXml(xmlContent);
 
@@ -67,12 +61,6 @@ describe('Clinical Record Parser Service', () => {
       __dirname,
       'fixtures/sample_mychart_lucy_export.zip'
     );
-    if (!fs.existsSync(zipPath)) {
-      console.warn(
-        'Fixture sample_mychart_lucy_export.zip not found, skipping'
-      );
-      return;
-    }
     const buf = fs.readFileSync(zipPath);
     const pkg = parseClinicalRecordBuffer(
       buf,
@@ -82,5 +70,53 @@ describe('Clinical Record Parser Service', () => {
     expect(pkg.sourceDocuments.length).toBeGreaterThan(0);
     expect(pkg.vitals.length).toBeGreaterThan(0);
     expect(pkg.labs.length).toBeGreaterThan(0);
+  });
+
+  it('skips negated and non-completed observations', () => {
+    const xml = `
+      <ClinicalDocument xmlns="urn:hl7-org:v3">
+        <component>
+          <structuredBody>
+            <component>
+              <section>
+                <templateId root="2.16.840.1.113883.10.20.22.2.4.1"/>
+                <title>Vital Signs</title>
+                <entry>
+                  <observation classCode="OBS" moodCode="EVN" negationInd="true">
+                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                    <code code="8867-4" displayName="Heart rate"/>
+                    <statusCode code="completed"/>
+                    <effectiveTime value="20261023100000"/>
+                    <value unit="/min" value="80"/>
+                  </observation>
+                </entry>
+                <entry>
+                  <observation classCode="OBS" moodCode="EVN">
+                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                    <code code="8867-4" displayName="Heart rate"/>
+                    <statusCode code="cancelled"/>
+                    <effectiveTime value="20261023100000"/>
+                    <value unit="/min" value="75"/>
+                  </observation>
+                </entry>
+                <entry>
+                  <observation classCode="OBS" moodCode="EVN">
+                    <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+                    <code code="8867-4" displayName="Heart rate"/>
+                    <statusCode code="completed"/>
+                    <effectiveTime value="20261023100000"/>
+                    <value unit="/min" value="72"/>
+                  </observation>
+                </entry>
+              </section>
+            </component>
+          </structuredBody>
+        </component>
+      </ClinicalDocument>
+    `;
+
+    const res = extractCcdaXml(xml);
+    expect(res.vitals).toHaveLength(1);
+    expect(res.vitals[0].value).toBe(72);
   });
 });

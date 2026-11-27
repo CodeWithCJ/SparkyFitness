@@ -12,10 +12,11 @@ import {
   previewClinicalRecord,
   executeClinicalImport,
 } from '../../services/clinicalRecordIngestionService.js';
+import { ValidationError } from '../../utils/errors.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
 
 const router = express.Router();
@@ -42,16 +43,26 @@ router.post(
   upload.single('file'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // @ts-expect-error TS(2339): Property 'file' added by multer middleware
       if (!req.file || !req.file.buffer) {
         return res
           .status(400)
           .json({ error: 'Missing uploaded file (expected field "file")' });
       }
 
-      const preview = previewClinicalRecord(
-        req.file.buffer,
-        req.file.originalname
-      );
+      let preview;
+      try {
+        preview = previewClinicalRecord(
+          // @ts-expect-error TS(2339): Property 'file' added by multer middleware
+          req.file.buffer,
+          // @ts-expect-error TS(2339): Property 'file' added by multer middleware
+          req.file.originalname
+        );
+      } catch (parseError) {
+        throw new ValidationError(
+          `Failed to parse clinical record: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+        );
+      }
       res.status(200).json(preview);
     } catch (error) {
       next(error);
@@ -72,11 +83,21 @@ router.post(
       const { targetUserId, authenticatedUserId } = actingUsers(req);
 
       // If file uploaded directly:
+      // @ts-expect-error TS(2339): Property 'file' added by multer middleware
       if (req.file && req.file.buffer) {
-        const preview = previewClinicalRecord(
-          req.file.buffer,
-          req.file.originalname
-        );
+        let preview;
+        try {
+          preview = previewClinicalRecord(
+            // @ts-expect-error TS(2339): Property 'file' added by multer middleware
+            req.file.buffer,
+            // @ts-expect-error TS(2339): Property 'file' added by multer middleware
+            req.file.originalname
+          );
+        } catch (parseError) {
+          throw new ValidationError(
+            `Failed to parse clinical record: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+          );
+        }
         const result = await executeClinicalImport(
           targetUserId,
           {

@@ -1,10 +1,9 @@
-import { parseZipArchive, type ZipEntry } from '../utils/zipUtils.js';
+import { parseZipArchive } from '../utils/zipUtils.js';
 import {
   parseXml,
   findDescendantsByLocalName,
   findFirstChildByLocalName,
   getElementText,
-  type XmlNode,
 } from '../utils/xmlParser.js';
 
 export interface ParsedVital {
@@ -210,12 +209,18 @@ function normalizeVitalValue(
 
   switch (kind) {
     case 'weight': {
-      const factor = WEIGHT_FACTORS[normUnit] ?? 1.0;
+      if (!normUnit || !(normUnit in WEIGHT_FACTORS)) {
+        return null;
+      }
+      const factor = WEIGHT_FACTORS[normUnit];
       canon = value * factor;
       break;
     }
     case 'height': {
-      const factor = HEIGHT_FACTORS[normUnit] ?? 1.0;
+      if (!normUnit || !(normUnit in HEIGHT_FACTORS)) {
+        return null;
+      }
+      const factor = HEIGHT_FACTORS[normUnit];
       canon = value * factor;
       break;
     }
@@ -315,6 +320,21 @@ export function extractCcdaXml(xmlContent: string): {
     if (isVitals) {
       const observations = findDescendantsByLocalName(sec, 'observation');
       for (const obs of observations) {
+        const negation =
+          obs.attributes['negationInd'] || obs.attributes['actionNegationInd'];
+        if (negation === 'true') continue;
+
+        const statusNode = findFirstChildByLocalName(obs, 'statusCode');
+        const statusCode = statusNode?.attributes['code']?.toLowerCase();
+        if (
+          statusCode &&
+          ['aborted', 'cancelled', 'nullified', 'entered-in-error'].includes(
+            statusCode
+          )
+        ) {
+          continue;
+        }
+
         const codeNode = findFirstChildByLocalName(obs, 'code');
         const code = codeNode?.attributes['code'] || '';
         const kind = LOINC_TO_VITAL_KIND[code];
@@ -354,6 +374,21 @@ export function extractCcdaXml(xmlContent: string): {
     if (isResults) {
       const observations = findDescendantsByLocalName(sec, 'observation');
       for (const obs of observations) {
+        const negation =
+          obs.attributes['negationInd'] || obs.attributes['actionNegationInd'];
+        if (negation === 'true') continue;
+
+        const statusNode = findFirstChildByLocalName(obs, 'statusCode');
+        const statusCode = statusNode?.attributes['code']?.toLowerCase();
+        if (
+          statusCode &&
+          ['aborted', 'cancelled', 'nullified', 'entered-in-error'].includes(
+            statusCode
+          )
+        ) {
+          continue;
+        }
+
         const effTime = findFirstChildByLocalName(obs, 'effectiveTime');
         const timeVal =
           effTime?.attributes['value'] ||
@@ -459,20 +494,49 @@ export function parseClinicalRecordBuffer(
   };
 
   if (isZip) {
+    const MAX_XML_ENTRIES = 32;
+    const MAX_TOTAL_UNCOMPRESSED_BYTES = 64 * 1024 * 1024;
+    const MAX_EXTRACTED_RECORDS = 50000;
+
     const entries = parseZipArchive(buffer);
+    let xmlEntryCount = 0;
+    let totalUncompressedBytes = 0;
+
     for (const entry of entries) {
       if (entry.isDirectory) continue;
       const lowerPath = entry.path.toLowerCase();
-      if (lowerPath.endsWith('.xml')) {
-        try {
-          const content = entry.getData().toString('utf-8');
-          const extracted = extractCcdaXml(content);
-          pkg.vitals.push(...extracted.vitals);
-          pkg.labs.push(...extracted.labs);
-          pkg.sourceDocuments.push(entry.path);
-        } catch {
-          // Ignore invalid XML entries inside archive
-        }
+      if (!lowerPath.endsWith('.xml')) continue;
+
+      xmlEntryCount += 1;
+      if (xmlEntryCount > MAX_XML_ENTRIES) {
+        throw new Error(
+          `Archive contains more than ${MAX_XML_ENTRIES} XML documents`
+        );
+      }
+      if (
+        totalUncompressedBytes + entry.uncompressedSize >
+        MAX_TOTAL_UNCOMPRESSED_BYTES
+      ) {
+        throw new Error(
+          'Archive exceeds the maximum total uncompressed size for clinical records'
+        );
+      }
+
+      try {
+        const data = entry.getData();
+        totalUncompressedBytes += data.length;
+        const extracted = extractCcdaXml(data.toString('utf-8'));
+        pkg.vitals.push(...extracted.vitals);
+        pkg.labs.push(...extracted.labs);
+        pkg.sourceDocuments.push(entry.path);
+      } catch {
+        // Ignore invalid XML entries inside archive
+      }
+
+      if (pkg.vitals.length + pkg.labs.length > MAX_EXTRACTED_RECORDS) {
+        throw new Error(
+          `Archive contains more than ${MAX_EXTRACTED_RECORDS} clinical records`
+        );
       }
     }
   } else {
@@ -482,6 +546,24 @@ export function parseClinicalRecordBuffer(
     pkg.labs.push(...extracted.labs);
     pkg.sourceDocuments.push(filename || 'document.xml');
   }
+
+  // Deduplicate vitals
+  const seenVitals = new Set<string>();
+  pkg.vitals = pkg.vitals.filter((v) => {
+    const key = `${v.kind}_${v.isoDate}_${v.value}_${v.unit}_${v.recordedAt}`;
+    if (seenVitals.has(key)) return false;
+    seenVitals.add(key);
+    return true;
+  });
+
+  // Deduplicate labs
+  const seenLabs = new Set<string>();
+  pkg.labs = pkg.labs.filter((l) => {
+    const key = `${l.markerName}_${l.entryDate}_${l.valueNumeric ?? ''}_${l.valueText ?? ''}_${l.unit ?? ''}_${l.recordedAt}`;
+    if (seenLabs.has(key)) return false;
+    seenLabs.add(key);
+    return true;
+  });
 
   return pkg;
 }

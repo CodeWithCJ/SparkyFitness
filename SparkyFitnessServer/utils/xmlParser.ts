@@ -13,11 +13,38 @@ export interface XmlNode {
 }
 
 export function parseXml(xmlString: string): XmlNode {
-  // Strip XML declarations and comments
-  const cleanXml = xmlString
-    .replace(/<\?xml[^>]*\?>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .trim();
+  const MAX_XML_CHARS = 10 * 1024 * 1024;
+  if (xmlString.length > MAX_XML_CHARS) {
+    throw new Error('Failed to parse XML: document exceeds maximum size');
+  }
+
+  // Single forward scan: skip declarations and comments without backtracking.
+  let cleanXml = '';
+  let cursor = 0;
+  while (cursor < xmlString.length) {
+    const lt = xmlString.indexOf('<', cursor);
+    if (lt === -1) {
+      cleanXml += xmlString.slice(cursor);
+      break;
+    }
+    cleanXml += xmlString.slice(cursor, lt);
+    if (
+      xmlString.startsWith('<?xml', lt) ||
+      xmlString.startsWith('<?XML', lt)
+    ) {
+      const piEnd = xmlString.indexOf('?>', lt);
+      cursor = piEnd === -1 ? xmlString.length : piEnd + 2;
+      continue;
+    }
+    if (xmlString.startsWith('<!--', lt)) {
+      const commentEnd = xmlString.indexOf('-->', lt + 4);
+      cursor = commentEnd === -1 ? xmlString.length : commentEnd + 3;
+      continue;
+    }
+    cleanXml += '<';
+    cursor = lt + 1;
+  }
+  cleanXml = cleanXml.trim();
 
   let pos = 0;
   const len = cleanXml.length;
@@ -42,11 +69,11 @@ export function parseXml(xmlString: string): XmlNode {
 
   function unescapeXml(str: string): string {
     return str
-      .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'");
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&');
   }
 
   function parseElement(): XmlNode | null {
@@ -70,7 +97,7 @@ export function parseXml(xmlString: string): XmlNode {
 
     pos++; // skip '<'
     const tagStart = pos;
-    while (pos < len && !/[\s\/>]/.test(cleanXml[pos])) {
+    while (pos < len && !/[\s/>]/.test(cleanXml[pos])) {
       pos++;
     }
     const fullTag = cleanXml.slice(tagStart, pos);

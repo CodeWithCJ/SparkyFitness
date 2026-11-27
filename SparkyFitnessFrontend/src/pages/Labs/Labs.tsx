@@ -39,7 +39,6 @@ import { toast } from '@/hooks/use-toast';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import {
   LAB_HISTORY_LIMIT,
-  invalidateLabs,
   useDeleteLabImports,
   useDeleteLabMarker,
   useDeleteLabResult,
@@ -49,6 +48,7 @@ import {
 } from '@/hooks/Labs/useLabResults';
 import LabImportDialog from './LabImportDialog';
 import ClinicalRecordImportDialog from '@/pages/Settings/ClinicalRecordImportDialog';
+import { invalidateClinicalRecords } from '@/hooks/ClinicalRecords/useClinicalRecords';
 import LabMarkerChart from './LabMarkerChart';
 import LabResultDialog from './LabResultDialog';
 import { formatLabRange, labResultText } from './labFormat';
@@ -422,8 +422,8 @@ const Labs = () => {
           open
           onOpenChange={setClinicalImportOpen}
           onImportComplete={() => {
-            // Refreshes the labs query
-            invalidateLabs(queryClient);
+            // Refreshes the labs and check-in measurement queries
+            invalidateClinicalRecords(queryClient);
           }}
         />
       )}

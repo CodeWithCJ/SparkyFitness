@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ClinicalRecordImportDialog from '@/pages/Settings/ClinicalRecordImportDialog';
 import * as clinicalRecordsApi from '@/api/ClinicalRecords/clinicalRecordsApi';
 
@@ -10,6 +11,15 @@ jest.mock('@/api/ClinicalRecords/clinicalRecordsApi');
 jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
 
 const api = jest.mocked(clinicalRecordsApi);
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+};
 
 describe('ClinicalRecordImportDialog', () => {
   const previewData = {
@@ -46,14 +56,18 @@ describe('ClinicalRecordImportDialog', () => {
   });
 
   it('renders file upload prompt when open', () => {
-    render(<ClinicalRecordImportDialog open={true} onOpenChange={jest.fn()} />);
+    renderWithQueryClient(
+      <ClinicalRecordImportDialog open={true} onOpenChange={jest.fn()} />
+    );
     expect(screen.getByText(/Choose File/i)).toBeInTheDocument();
   });
 
   it('previews vitals and labs upon file selection', async () => {
     api.previewClinicalRecords.mockResolvedValueOnce(previewData);
 
-    render(<ClinicalRecordImportDialog open={true} onOpenChange={jest.fn()} />);
+    renderWithQueryClient(
+      <ClinicalRecordImportDialog open={true} onOpenChange={jest.fn()} />
+    );
 
     const input = document.querySelector(
       'input[type="file"]'
@@ -80,7 +94,7 @@ describe('ClinicalRecordImportDialog', () => {
     const onImportComplete = jest.fn();
     const onOpenChange = jest.fn();
 
-    render(
+    renderWithQueryClient(
       <ClinicalRecordImportDialog
         open={true}
         onOpenChange={onOpenChange}
