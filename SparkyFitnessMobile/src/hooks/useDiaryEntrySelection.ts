@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type RefObject,
 } from 'react';
 import { Alert, BackHandler } from 'react-native';
@@ -12,6 +13,7 @@ import Toast from 'react-native-toast-message';
 import type { CopyMealSheetRef } from '../components/CopyMealSheet';
 import type { FoodRowSelection } from '../components/SwipeableFoodRow';
 import { accountGeneration } from '../offline/accountGeneration';
+import { subscribeAccountChanged } from '../offline/events';
 import { isPendingEntryId } from '../offline/foodEntryHandOver';
 import { dropSupersededUpdate } from '../offline/foodEntryUpdateHandOver';
 import {
@@ -19,10 +21,13 @@ import {
   moveDiaryEntries,
 } from '../services/api/foodEntriesApi';
 import { deleteFoodEntryMeal } from '../services/api/foodEntryMealsApi';
-import { getActiveServerConfig } from '../services/storage';
 import type { FoodEntry } from '../types/foodEntries';
 import { invalidateFoodCache } from './invalidateFoodCache';
-import { foodEntryMealDetailQueryKey } from './queryKeys';
+import {
+  foodEntryMealDetailQueryKey,
+  waterIntakeRangeRootQueryKey,
+} from './queryKeys';
+import { serverOnScreen } from './serverOnScreen';
 import { invalidateMealUsageCaches } from './useMeals';
 
 function selectable(entry: FoodEntry) {
@@ -61,7 +66,10 @@ export function useDiaryEntrySelection({
 }) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const generation = accountGeneration();
+  const generation = useSyncExternalStore(
+    subscribeAccountChanged,
+    accountGeneration
+  );
   const scope = enabled ? `${generation}/${date}` : '';
   const [selection, setSelection] = useState<{
     scope: string;
@@ -149,9 +157,8 @@ export function useDiaryEntrySelection({
     }
     const failed = new Set<string>();
     try {
-      const serverConfig = await getActiveServerConfig();
-      if (generation !== accountGeneration()) return;
-      if (!serverConfig) throw new Error('No active server configuration');
+      const serverConfig = serverOnScreen(queryClient);
+      if (!serverConfig) throw new Error('No server for the displayed diary');
 
       if (action.kind === 'move') {
         const requestStartedAt = Date.now();
@@ -223,6 +230,9 @@ export function useDiaryEntrySelection({
         invalidateFoodCache(queryClient, date);
         if (action.kind === 'move' && action.date !== date) {
           invalidateFoodCache(queryClient, action.date);
+          void queryClient.invalidateQueries({
+            queryKey: waterIntakeRangeRootQueryKey,
+          });
         }
         for (const id of loggedMealIds) {
           void queryClient.invalidateQueries({

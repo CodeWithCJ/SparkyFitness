@@ -3,6 +3,13 @@ import { Alert } from 'react-native';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDiaryEntrySelection } from '../../src/hooks/useDiaryEntrySelection';
+import { serverConfigsQueryKey } from '../../src/hooks/queryKeys';
+import { beginAccountChange } from '../../src/offline/accountGeneration';
+import { notifyAccountChanged } from '../../src/offline/events';
+import {
+  getActiveServerConfig,
+  type ServerConfig,
+} from '../../src/services/storage';
 import {
   deleteFoodEntry,
   moveDiaryEntries,
@@ -11,7 +18,7 @@ import { deleteFoodEntryMeal } from '../../src/services/api/foodEntryMealsApi';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
 jest.mock('../../src/services/storage', () => ({
-  getActiveServerConfig: jest.fn().mockResolvedValue({ id: 'test-server' }),
+  getActiveServerConfig: jest.fn().mockResolvedValue({ id: 'other-server' }),
 }));
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   deleteFoodEntry: jest.fn(),
@@ -26,6 +33,11 @@ jest.mock('../../src/offline/foodEntryUpdateHandOver', () => ({
 
 const date = '2026-11-24';
 const targetDate = '2026-11-25';
+const displayedServer: ServerConfig = {
+  id: 'test-server',
+  url: 'http://example.invalid',
+  apiKey: 'test-key',
+};
 
 function food(id: string, meal?: string): FoodEntry {
   return {
@@ -52,7 +64,8 @@ const all = [oats, banana, coffee, ingredient1, ingredient2];
 function renderSelection(entries = all) {
   const client = new QueryClient();
   const moveSheetRef = { current: null };
-  return renderHook(
+  client.setQueryData(serverConfigsQueryKey, { activeConfig: displayedServer });
+  const rendered = renderHook(
     () =>
       useDiaryEntrySelection({ date, entries, enabled: true, moveSheetRef }),
     {
@@ -61,6 +74,7 @@ function renderSelection(entries = all) {
       ),
     }
   );
+  return { ...rendered, client };
 }
 
 afterEach(() => {
@@ -94,7 +108,32 @@ it('moves only the selected entries and refreshes the selection on success', asy
       foodEntryIds: ['Oats', 'Banana'],
       loggedMealIds: [],
     },
-    { id: 'test-server' }
+    displayedServer
+  );
+  expect(getActiveServerConfig).not.toHaveBeenCalled();
+});
+
+it('starts a new selection after an account change on the mounted diary', async () => {
+  const { client, result } = renderSelection();
+  act(() => result.current.rowSelection(oats)?.onToggle?.());
+  expect(result.current.selectedCount).toBe(1);
+
+  const nextServer = { ...displayedServer, id: 'next-server' };
+  await act(async () => {
+    await beginAccountChange(async () => true);
+    client.setQueryData(serverConfigsQueryKey, { activeConfig: nextServer });
+    notifyAccountChanged();
+  });
+
+  expect(result.current.isSelecting).toBe(false);
+  act(() => result.current.rowSelection(banana)?.onToggle?.());
+  act(() => result.current.openMove());
+  act(() => result.current.move.onConfirm(targetDate, 'dinner'));
+
+  await waitFor(() => expect(result.current.isSelecting).toBe(false));
+  expect(moveDiaryEntries).toHaveBeenCalledWith(
+    expect.objectContaining({ foodEntryIds: ['Banana'] }),
+    nextServer
   );
 });
 
@@ -112,7 +151,7 @@ it('moves a whole diary meal and includes a logged meal only once', async () => 
       foodEntryIds: ['Oats', 'Banana', 'Coffee'],
       loggedMealIds: ['group'],
     },
-    { id: 'test-server' }
+    displayedServer
   );
 });
 

@@ -2,8 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MoveDiaryEntriesBody } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { moveDiaryEntries } from '../models/foodEntryMove.js';
+import {
+  lockWaterAggregates,
+  recomputeWaterAggregate,
+} from '../models/measurementRepository.js';
 
 vi.mock('../db/poolManager.js', () => ({ getClient: vi.fn() }));
+vi.mock('../models/measurementRepository.js', () => ({
+  lockWaterAggregates: vi.fn(),
+  recomputeWaterAggregate: vi.fn(),
+}));
 
 const query = vi.fn();
 const release = vi.fn();
@@ -20,6 +28,8 @@ describe('moveDiaryEntries', () => {
   beforeEach(() => {
     query.mockReset();
     release.mockClear();
+    vi.mocked(lockWaterAggregates).mockReset();
+    vi.mocked(recomputeWaterAggregate).mockReset();
     vi.mocked(getClient).mockResolvedValue({
       query,
       release,
@@ -31,8 +41,10 @@ describe('moveDiaryEntries', () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce({ rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [{ food_entry_meal_id: null }] })
-      .mockResolvedValueOnce({});
+      .mockResolvedValueOnce({
+        rows: [{ id: 'standalone-food', food_entry_meal_id: null }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
 
     await moveDiaryEntries('owner', 'actor', move);
 
@@ -67,6 +79,101 @@ describe('moveDiaryEntries', () => {
     expect(release).toHaveBeenCalled();
   });
 
+  function mockLinkedDrinks() {
+    query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 'standalone-food', food_entry_meal_id: null },
+          { id: 'component-food', food_entry_meal_id: 'logged-meal' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { id: 'drink-1', entryDate: move.sourceDate, source: 'manual' },
+          { id: 'drink-2', entryDate: move.sourceDate, source: 'manual' },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 2 });
+  }
+
+  it('moves drink credits for standalone foods and meal components and rebuilds both days', async () => {
+    mockLinkedDrinks();
+    await moveDiaryEntries('owner', 'actor', move);
+
+    expect(query).toHaveBeenNthCalledWith(
+      5,
+      expect.stringContaining('FROM water_intake_entries'),
+      ['owner', ['standalone-food', 'component-food'], move.targetDate]
+    );
+    expect(lockWaterAggregates).toHaveBeenCalledWith(
+      expect.objectContaining({ query }),
+      'owner',
+      [
+        { entryDate: move.sourceDate, source: 'manual' },
+        { entryDate: move.targetDate, source: 'manual' },
+      ]
+    );
+    expect(
+      vi.mocked(lockWaterAggregates).mock.invocationCallOrder[0]
+    ).toBeLessThan(query.mock.invocationCallOrder[5]);
+    expect(query).toHaveBeenNthCalledWith(
+      6,
+      expect.stringContaining('UPDATE water_intake_entries'),
+      [
+        move.targetDate,
+        'owner',
+        ['drink-1', 'drink-2'],
+        [move.sourceDate, move.sourceDate],
+        ['manual', 'manual'],
+      ]
+    );
+    expect(recomputeWaterAggregate).toHaveBeenCalledTimes(2);
+    for (const date of [move.sourceDate, move.targetDate]) {
+      expect(recomputeWaterAggregate).toHaveBeenCalledWith(
+        expect.objectContaining({ query }),
+        'owner',
+        'actor',
+        date,
+        'manual'
+      );
+    }
+    expect(query).toHaveBeenLastCalledWith('COMMIT');
+  });
+
+  it('rolls the entire move back if rebuilding a water total fails', async () => {
+    mockLinkedDrinks();
+    vi.mocked(recomputeWaterAggregate).mockRejectedValueOnce(
+      new Error('water total unavailable')
+    );
+
+    await expect(moveDiaryEntries('owner', 'actor', move)).rejects.toThrow(
+      'water total unavailable'
+    );
+    expect(query).toHaveBeenLastCalledWith('ROLLBACK');
+  });
+
+  it('does not change the hydration ledger for a move within one day', async () => {
+    query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [{ id: 'standalone-food', food_entry_meal_id: null }],
+      });
+
+    await moveDiaryEntries('owner', 'actor', {
+      ...move,
+      targetDate: move.sourceDate,
+    });
+
+    expect(query).toHaveBeenCalledTimes(5);
+    expect(lockWaterAggregates).not.toHaveBeenCalled();
+    expect(recomputeWaterAggregate).not.toHaveBeenCalled();
+    expect(query).toHaveBeenLastCalledWith('COMMIT');
+  });
   it('rolls back both changes if a selected food is stale or inaccessible', async () => {
     query
       .mockResolvedValueOnce({})
