@@ -441,7 +441,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
 
     const drainDeferredEnds = async (
       ownerKey: string,
-      startOutcome: 'confirmed' | 'rejected' = 'confirmed'
+      startOutcome: 'confirmed' | 'rejected' | 'terminal' = 'confirmed',
+      settledStartClientId?: string
     ) => {
       const pending = deferredEndsByOwnerRef.current.get(ownerKey);
       if (!pending || pending.length === 0) return;
@@ -456,8 +457,12 @@ export function useWatchFastingBridge(enabled: boolean): void {
           deferred.blockedByStartIds = new Set(currentBlockers);
           stillBlocked.push(deferred);
         } else {
+          const retiredByTerminalStart =
+            startOutcome === 'terminal' &&
+            (!settledStartClientId ||
+              deferred.blockedByStartIds.has(settledStartClientId));
           if (
-            startOutcome === 'rejected' &&
+            (startOutcome === 'rejected' || retiredByTerminalStart) &&
             !deferred.supersededByStartPrune &&
             isStartlessEnd(deferred.payload)
           ) {
@@ -537,6 +542,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
         // not stop the wrist from starting a real fast.
         let confirmedWatchFast: WatchContextPayload['fast'] = null;
         let deferAckUntilRefresh = false;
+        let replayedTerminalStart = false;
         if (!current || current.is_auto_calculated) {
           const startMs =
             payload.startedAt != null &&
@@ -564,6 +570,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
             return;
           }
           if (isTerminalFast(created)) {
+            replayedTerminalStart = true;
             // A replayed start can return an already-ended or cancelled fast;
             // re-fetch /current so the watch gets true server state instead of
             // reviving the terminal fast with an optimistic payload.
@@ -628,7 +635,11 @@ export function useWatchFastingBridge(enabled: boolean): void {
             );
           }
         }
-        await drainDeferredEnds(resolvedOwner);
+        await drainDeferredEnds(
+          resolvedOwner,
+          replayedTerminalStart ? 'terminal' : 'confirmed',
+          payload.clientId
+        );
       } catch (error) {
         addLog(`[Watch] Fast start failed: ${String(error)}`, 'WARNING');
         if (isPermanentWatchClientRejection(error)) {

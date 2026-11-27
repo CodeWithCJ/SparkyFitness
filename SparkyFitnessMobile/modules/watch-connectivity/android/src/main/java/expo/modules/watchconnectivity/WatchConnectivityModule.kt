@@ -1527,15 +1527,18 @@ internal object WatchConnectivityHub {
       val (_, revocationIncomplete) = runPendingRevocationDeletesUnderMutex(appCtx)
       if (revocationIncomplete) return@withContext false
 
+      var durableContextPublished = false
       if (json.isNotEmpty()) {
         val allowedBeforePut = synchronized(credentialsStateLock) {
           if (!isContextPublishAuthorizedLocked(appCtx, expectedOwner, expectedGeneration)) {
             return@synchronized false
           }
-          val latestCachedSeq = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getLong(LAST_CACHED_CONTEXT_SEQ_KEY, 0L)
+          val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          val latestCachedSeq = prefs.getLong(LAST_CACHED_CONTEXT_SEQ_KEY, 0L)
           val (_, publishedSeq) = readPublishedContextWatermarksLocked(appCtx)
-          expectedSeq >= latestCachedSeq && expectedSeq >= publishedSeq
+          prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) == acceptedFastRev &&
+            expectedSeq >= latestCachedSeq &&
+            expectedSeq >= publishedSeq
         }
         if (allowedBeforePut) {
           val durableOk = try {
@@ -1551,14 +1554,16 @@ internal object WatchConnectivityHub {
           }
 
           val allowedBeforeLive = synchronized(credentialsStateLock) {
-            val latestCachedSeq = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-              .getLong(LAST_CACHED_CONTEXT_SEQ_KEY, 0L)
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val latestCachedSeq = prefs.getLong(LAST_CACHED_CONTEXT_SEQ_KEY, 0L)
             val (_, publishedSeq) = readPublishedContextWatermarksLocked(appCtx)
             val ok = isContextPublishAuthorizedLocked(appCtx, expectedOwner, expectedGeneration) &&
+              prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) == acceptedFastRev &&
               expectedSeq >= latestCachedSeq &&
               expectedSeq >= publishedSeq
             if (ok && durableOk) {
               recordContextPublishedLocked(appCtx, expectedGeneration, expectedSeq)
+              durableContextPublished = true
             }
             ok
           }
@@ -1575,6 +1580,7 @@ internal object WatchConnectivityHub {
       }
       if (!stillCurrent) return@withContext false
 
+      var ackDelivered = true
       if (!ackClientId.isNullOrEmpty()) {
         val ackPayload = withoutNulls(
           buildFastAckPayload(
@@ -1584,18 +1590,31 @@ internal object WatchConnectivityHub {
             fast = ackFast
           )
         )
-        sendLiveBytes(
+        val liveAckSent = sendLiveBytes(
           appCtx,
           "/sparky/message",
           mapToJsonObject(ackPayload).toString().toByteArray(Charsets.UTF_8)
         )
+        ackDelivered = if (json.isEmpty()) liveAckSent else (durableContextPublished || liveAckSent)
       }
-      true
+      ackDelivered
+    }
+  }
+
+  internal fun snapshotActiveFastAckAuth(context: Context): Pair<String, Long> {
+    val appCtx = context.applicationContext
+    return synchronized(credentialsStateLock) {
+      val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      val owner = prefs.getString(TELEMETRY_OWNER_KEY, "") ?: ""
+      val gen = prefs.getLong(CREDENTIALS_GENERATION_KEY, 0L)
+      owner to gen
     }
   }
 
   suspend fun sendSerializedFastAck(
     context: Context,
+    expectedOwner: String,
+    expectedGeneration: Long,
     payload: Map<String, Any?>
   ) {
     val appCtx = context.applicationContext
@@ -1605,6 +1624,16 @@ internal object WatchConnectivityHub {
       withContext(Dispatchers.IO) {
         val (_, revocationIncomplete) = runPendingRevocationDeletesUnderMutex(appCtx)
         if (revocationIncomplete) return@withContext
+        val authorized = synchronized(credentialsStateLock) {
+          if (expectedOwner.isEmpty()) {
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.getLong(CREDENTIALS_GENERATION_KEY, 0L) == expectedGeneration &&
+              !readRevocationWatermarksLocked(appCtx).hasUnfinished
+          } else {
+            isContextPublishAuthorizedLocked(appCtx, expectedOwner, expectedGeneration)
+          }
+        }
+        if (!authorized) return@withContext
         sendLiveBytes(appCtx, "/sparky/message", bytes)
       }
     }
@@ -1715,7 +1744,7 @@ internal object WatchConnectivityHub {
       } ?: return@withContext
       val (freshKnown, freshFast) = fetchFreshFastState(creds)
       if (!freshKnown || !isHeadlessOwnerStillActive(appCtx, creds)) return@withContext
-      patchCachedContextAfterHeadlessWrite(
+      val ackDelivered = patchCachedContextAfterHeadlessWrite(
         context = appCtx,
         expectedOwner = pendingFastSnap.owner,
         expectedGeneration = creds.generation,
@@ -1725,6 +1754,10 @@ internal object WatchConnectivityHub {
         fastReadRev = refreshRev,
         sendFastAckOnSuccess = true
       )
+      if (ackDelivered) {
+        removeQueuedInboundEvent(appCtx, pendingFastSnap.clientId, type = "fastStart", ownerId = pendingFastSnap.owner)
+        removeQueuedInboundEvent(appCtx, pendingFastSnap.clientId, type = "fastEnd", ownerId = pendingFastSnap.owner)
+      }
     }
   }
 
@@ -2056,28 +2089,33 @@ internal object WatchConnectivityHub {
 
   private fun hasQueuedFastStartForOwner(context: Context, ownerId: String): Boolean {
     if (ownerId.isEmpty()) return false
-    synchronized(inboundLock) {
+    val queuedStartClientIds: List<String> = synchronized(inboundLock) {
       if (hasInFlightForegroundFastStartLocked(ownerId)) return true
       val file = inboundQueueFile(context)
       if (!file.exists()) return false
-      return try {
+      try {
         val arr = JSONArray(file.readText(Charsets.UTF_8))
+        val ids = mutableListOf<String>()
         for (i in 0 until arr.length()) {
           val raw = arr.optString(i, "")
           if (raw.isEmpty()) continue
-          val matches = try {
+          try {
             val obj = JSONObject(raw)
-            obj.optString("type", "") == "fastStart" &&
+            if (
+              obj.optString("type", "") == "fastStart" &&
               obj.optString("ownerId", "").trim() == ownerId
-          } catch (_: Throwable) {
-            false
-          }
-          if (matches) return true
+            ) {
+              ids.add(obj.optString("clientId", "").trim())
+            }
+          } catch (_: Throwable) {}
         }
-        false
+        ids
       } catch (_: Throwable) {
-        false
+        emptyList()
       }
+    }
+    return queuedStartClientIds.any { cid ->
+      cid.isEmpty() || getSettledFastStartOutcome(context, ownerId, cid) == null
     }
   }
 
@@ -2186,7 +2224,7 @@ internal object WatchConnectivityHub {
     ownerId: String
   ): List<String> {
     if (ownerId.isEmpty()) return emptyList()
-    synchronized(inboundLock) {
+    val (queuedStartClientIds, pendingEnds) = synchronized(inboundLock) {
       if (hasInFlightForegroundFastStartLocked(ownerId)) return emptyList()
       val file = inboundQueueFile(context)
       if (!file.exists()) return emptyList()
@@ -2195,35 +2233,26 @@ internal object WatchConnectivityHub {
       } catch (_: Throwable) {
         return emptyList()
       }
+      val startIds = mutableListOf<String>()
+      val ends = mutableListOf<String>()
       for (i in 0 until arr.length()) {
         val raw = arr.optString(i, "")
         if (raw.isEmpty()) continue
-        val isQueuedStart = try {
+        try {
           val obj = JSONObject(raw)
-          obj.optString("type", "") == "fastStart" &&
-            obj.optString("ownerId", "").trim() == ownerId
-        } catch (_: Throwable) {
-          false
-        }
-        if (isQueuedStart) return emptyList()
+          if (obj.optString("ownerId", "").trim() != ownerId) continue
+          when (obj.optString("type", "")) {
+            "fastStart" -> startIds.add(obj.optString("clientId", "").trim())
+            "fastEnd" -> ends.add(raw)
+          }
+        } catch (_: Throwable) {}
       }
-      val pendingEnds = mutableListOf<String>()
-      for (i in 0 until arr.length()) {
-        val raw = arr.optString(i, "")
-        if (raw.isEmpty()) continue
-        val isQueuedEnd = try {
-          val obj = JSONObject(raw)
-          obj.optString("type", "") == "fastEnd" &&
-            obj.optString("ownerId", "").trim() == ownerId
-        } catch (_: Throwable) {
-          false
-        }
-        if (isQueuedEnd) {
-          pendingEnds.add(raw)
-        }
-      }
-      return pendingEnds
+      startIds to ends
     }
+    val hasUnsettledStart = queuedStartClientIds.any { cid ->
+      cid.isEmpty() || getSettledFastStartOutcome(context, ownerId, cid) == null
+    }
+    return if (hasUnsettledStart) emptyList() else pendingEnds
   }
 
   private fun enqueueInboundJson(context: Context, rawJson: String) {
@@ -4386,7 +4415,6 @@ internal object WatchConnectivityHub {
             .put("id", id)
             .put("start_time", startTime)
             .put("end_time", Instant.ofEpochMilli(safeEndMs).toString())
-          fastReadRev = readCachedFastRev()
           val (eStatus, _) = performHeadlessHttp(creds, "/api/fasting/end", "POST", body)
           if (eStatus == HEADLESS_HTTP_OWNER_RETIRED) return
           if (eStatus !in 200..299) {
@@ -4400,6 +4428,20 @@ internal object WatchConnectivityHub {
             }
             return
           }
+          fastReadRev = readCachedFastRev()
+          val (freshKnown, freshFast) = fetchFreshFastState(creds)
+          if (!isHeadlessOwnerStillActive(context, creds)) return
+          if (!freshKnown) {
+            removeQueuedInboundEvent(context, clientId, type = "fastEnd", ownerId = payloadOwner)
+            if (!isHeadlessOwnerStillActive(context, creds)) return
+            recordFastEndClientSettled(context, payloadOwner, clientId, null)
+            activeModule?.emitEvent("onWatchServerSynced", mapOf("domain" to "fasting", "ownerId" to payloadOwner))
+            if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
+              enqueueInboundJson(context, rawJson)
+            }
+            return
+          }
+          settledFastJson = freshFast
         }
       } catch (_: Throwable) {
         if (rawJson != null) enqueueInboundJson(context, rawJson)
@@ -6570,6 +6612,7 @@ class WatchConnectivityModule : Module() {
 
     AsyncFunction("sendFastAck") { clientId: String, ok: Boolean, fastKnown: Boolean, fast: ReadableMap? ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
+      val (expectedOwner, expectedGeneration) = WatchConnectivityHub.snapshotActiveFastAckAuth(ctx)
       val ownersToDrain = WatchConnectivityHub.clearFastStartAndCollectDrainOwners(ctx, clientId, ok)
       val fastJson = fast?.toHashMap()?.let {
         WatchConnectivityHub.mapToJsonObject(WatchConnectivityHub.withoutNulls(it))
@@ -6577,6 +6620,8 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.sendSerializedFastAck(
           ctx,
+          expectedOwner,
+          expectedGeneration,
           WatchConnectivityHub.buildFastAckPayload(
             clientId = clientId,
             ok = ok,

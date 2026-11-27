@@ -2239,4 +2239,79 @@ describe('useWatchFastingBridge', () => {
       delete watchMock.sendFastAck;
     }
   });
+
+  it('retires deferred startless end when replayed start is terminal so a newer active fast B is not ended', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const startClientId = '66666666-6666-4666-8666-666666666666';
+      const endClientId = '77777777-7777-4777-8777-777777777777';
+      const fastB = {
+        id: 'fast-b',
+        start_time: '2026-11-25T18:00:00.000Z',
+        end_time: null,
+        target_end_time: '2026-11-26T10:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      // 1. Initial Start A fails transiently -> marked retrying.
+      // 2. Startless End arrives -> deferred behind retrying Start A.
+      // 3. Start A retries: initial /current is null, startFast returns COMPLETED A,
+      //    post-replay /current returns newer active Fast B, and superseded End replay
+      //    fetches Fast B without calling endFast.
+      (fetchCurrentFast as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(fastB)
+        .mockResolvedValueOnce(fastB);
+      (startFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce({
+          id: 'fast-a',
+          client_id: startClientId,
+          start_time: '2026-11-25T08:00:00.000Z',
+          end_time: '2026-11-25T16:00:00.000Z',
+          target_end_time: '2026-11-26T00:00:00.000Z',
+          fasting_type: '16:8 Leangains',
+          status: 'COMPLETED',
+        });
+
+      renderHook(() => useWatchFastingBridge(true));
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+      await waitFor(() => expect(startFast).toHaveBeenCalledTimes(1));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endClientId,
+        ownerId: 'srv-1',
+      });
+
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-b' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
 });
