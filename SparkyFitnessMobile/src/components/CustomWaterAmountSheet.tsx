@@ -85,9 +85,17 @@ const CustomWaterAmountSheet = forwardRef<
 
   const [isOpen, setIsOpen] = useState(false);
 
+  // A synchronous latch, not state: two Log presses can both fire before the
+  // sheet's dismiss animation finishes, and each would mint its own
+  // `client_id`, so replay dedup on the server does not catch the second one.
+  const submittedRef = useRef(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
   useImperativeHandle(ref, () => ({
     present: () => {
       setAmountText('0');
+      submittedRef.current = false;
+      setIsSubmitted(false);
       bottomSheetRef.current?.present();
     },
     dismiss: () => {
@@ -107,7 +115,9 @@ const CustomWaterAmountSheet = forwardRef<
   };
 
   const handleLog = () => {
-    if (amount <= 0) return;
+    if (amount <= 0 || submittedRef.current) return;
+    submittedRef.current = true;
+    setIsSubmitted(true);
     onSubmit(volumeToMl(amount, unit));
     bottomSheetRef.current?.dismiss();
   };
@@ -174,7 +184,11 @@ const CustomWaterAmountSheet = forwardRef<
           </View>
         </View>
 
-        <Button variant="primary" onPress={handleLog} disabled={amount <= 0}>
+        <Button
+          variant="primary"
+          onPress={handleLog}
+          disabled={amount <= 0 || isSubmitted}
+        >
           {t('waterIntake.logAmount', { defaultValue: 'Log' })}
         </Button>
       </BottomSheetView>

@@ -58,4 +58,45 @@ describe('CustomWaterAmountSheet', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('ignores a second Log press before the sheet finishes dismissing', () => {
+    const onSubmit = jest.fn();
+    const ref = createRef<CustomWaterAmountSheetRef>();
+    const { getByTestId, getByText } = render(
+      <CustomWaterAmountSheet ref={ref} unit="ml" onSubmit={onSubmit} />
+    );
+
+    act(() => {
+      ref.current?.present();
+    });
+
+    fireEvent.changeText(getByTestId('custom-water-amount-input'), '250');
+    fireEvent.press(getByText('Log'));
+    fireEvent.press(getByText('Log'));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a new Log press after reopening the sheet', () => {
+    const onSubmit = jest.fn();
+    const ref = createRef<CustomWaterAmountSheetRef>();
+    const { getByTestId, getByText } = render(
+      <CustomWaterAmountSheet ref={ref} unit="ml" onSubmit={onSubmit} />
+    );
+
+    act(() => {
+      ref.current?.present();
+    });
+    fireEvent.changeText(getByTestId('custom-water-amount-input'), '250');
+    fireEvent.press(getByText('Log'));
+
+    act(() => {
+      ref.current?.present();
+    });
+    fireEvent.changeText(getByTestId('custom-water-amount-input'), '100');
+    fireEvent.press(getByText('Log'));
+
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+    expect(onSubmit).toHaveBeenLastCalledWith(100);
+  });
 });
