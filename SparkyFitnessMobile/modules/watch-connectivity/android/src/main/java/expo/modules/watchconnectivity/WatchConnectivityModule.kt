@@ -1433,7 +1433,7 @@ internal object WatchConnectivityHub {
       val editor = prefs.edit()
         .putString(LAST_CONTEXT_JSON_KEY, json)
         .putLong(LAST_CACHED_CONTEXT_SEQ_KEY, nextSeq)
-      bumpCachedFastRevIfChangedLocked(prefs, editor, prefs.getString(LAST_CONTEXT_JSON_KEY, null), nextObj)
+      bumpCachedFastRevForContextLocked(prefs, editor, prefs.getString(LAST_CONTEXT_JSON_KEY, null), nextObj)
       editor.apply()
       Triple(expectedGeneration, nextSeq, json)
     } ?: return
@@ -3069,7 +3069,9 @@ internal object WatchConnectivityHub {
       }
       val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
       if (raw == null) {
-        if (updateFast && (fastReadRev == null || prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) == fastReadRev)) {
+        val currentFastRev = prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L)
+        if (updateFast && (fastReadRev == null || currentFastRev == fastReadRev)) {
+          prefs.edit().putLong(LAST_CACHED_FAST_REV_KEY, currentFastRev + 1L).apply()
           return@synchronized HeadlessContextPatchResult(expectedGeneration, 0L, "", true)
         }
         return@synchronized null
@@ -3217,7 +3219,9 @@ internal object WatchConnectivityHub {
         val editor = prefs.edit()
           .putString(LAST_CONTEXT_JSON_KEY, nextJson)
           .putLong(LAST_CACHED_CONTEXT_SEQ_KEY, nextSeq)
-        bumpCachedFastRevIfChangedLocked(prefs, editor, raw, obj)
+        if (updateFast) {
+          editor.putLong(LAST_CACHED_FAST_REV_KEY, currentFastRev + 1L)
+        }
         editor.apply()
         HeadlessContextPatchResult(expectedGeneration, nextSeq, nextJson, waterTotalApplied)
       } catch (_: Throwable) {
@@ -3236,28 +3240,27 @@ internal object WatchConnectivityHub {
     return if (updateFast) true else updatedSnapshot.waterTotalApplied
   }
 
-  private fun readCachedFastState(obj: JSONObject): Pair<String, Boolean> {
-    val fastJson = obj.optJSONObject("fast")?.toString() ?: ""
-    val fastKnown = obj.optBoolean("fastKnown", false)
-    return fastJson to fastKnown
-  }
+  private fun hasAuthoritativeFastState(obj: JSONObject): Boolean =
+    obj.optBoolean("fastKnown", false) || obj.optJSONObject("fast") != null
 
-  private fun bumpCachedFastRevIfChangedLocked(
+  private fun bumpCachedFastRevForContextLocked(
     prefs: android.content.SharedPreferences,
     editor: android.content.SharedPreferences.Editor,
     prevRaw: String?,
     nextObj: JSONObject
   ) {
-    val prevState = if (prevRaw.isNullOrEmpty()) {
-      null
+    val shouldBump = if (hasAuthoritativeFastState(nextObj)) {
+      true
+    } else if (prevRaw.isNullOrEmpty()) {
+      false
     } else {
       try {
-        readCachedFastState(JSONObject(prevRaw))
+        hasAuthoritativeFastState(JSONObject(prevRaw))
       } catch (_: Throwable) {
-        null
+        true
       }
     }
-    if (prevState != readCachedFastState(nextObj)) {
+    if (shouldBump) {
       editor.putLong(LAST_CACHED_FAST_REV_KEY, prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) + 1L)
     }
   }
@@ -3297,7 +3300,7 @@ internal object WatchConnectivityHub {
         val editor = prefs.edit()
           .putString(LAST_CONTEXT_JSON_KEY, nextJson)
           .putLong(LAST_CACHED_CONTEXT_SEQ_KEY, nextSeq)
-        bumpCachedFastRevIfChangedLocked(prefs, editor, raw, obj)
+          .putLong(LAST_CACHED_FAST_REV_KEY, prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) + 1L)
         editor.apply()
         HeadlessContextPatchResult(expectedGeneration, nextSeq, nextJson, false)
       } catch (_: Throwable) {
