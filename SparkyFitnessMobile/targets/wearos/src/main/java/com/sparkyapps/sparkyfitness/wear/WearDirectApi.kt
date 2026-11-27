@@ -2531,34 +2531,33 @@ object WearDirectApiClient {
 
   internal fun resolveFastStartOutcome(
     startResBody: String?,
-    fallbackStartMs: Long,
-    fallbackTargetMs: Long,
-    fallbackFastingType: String,
     fetchLatestCurrent: () -> String?
   ): DirectWriteOutcome {
-    if (isCompletedFastJson(startResBody)) {
-      val latestBody = fetchLatestCurrent()
-      if (!latestBody.isNullOrBlank()) {
-        val (latestFast, known) = parseFastJson(latestBody)
-        if (known) {
-          return DirectWriteOutcome.Applied(
-            syncedDomain = "fasting",
-            fast = latestFast,
-            fastUpdated = true
-          )
-        }
+    if (!isCompletedFastJson(startResBody)) {
+      val (fast, known) = parseFastJson(startResBody)
+      if (known && fast != null) {
+        return DirectWriteOutcome.Applied(
+          syncedDomain = "fasting",
+          fast = fast,
+          fastUpdated = true
+        )
       }
-      return DirectWriteOutcome.Applied(
-        syncedDomain = "fasting",
-        fast = null,
-        fastUpdated = false
-      )
     }
-    val (fast, _) = parseFastJson(startResBody)
+    val latestBody = fetchLatestCurrent()
+    if (!latestBody.isNullOrBlank()) {
+      val (latestFast, known) = parseFastJson(latestBody)
+      if (known) {
+        return DirectWriteOutcome.Applied(
+          syncedDomain = "fasting",
+          fast = latestFast,
+          fastUpdated = true
+        )
+      }
+    }
     return DirectWriteOutcome.Applied(
       syncedDomain = "fasting",
-      fast = fast ?: WatchFast(fallbackStartMs, fallbackTargetMs, fallbackFastingType),
-      fastUpdated = true
+      fast = null,
+      fastUpdated = false
     )
   }
 
@@ -2603,10 +2602,7 @@ object WearDirectApiClient {
         }
       }
       return resolveFastStartOutcome(
-        startResBody = startRes.body,
-        fallbackStartMs = startMs,
-        fallbackTargetMs = targetMs,
-        fallbackFastingType = fastingType
+        startResBody = startRes.body
       ) {
         if (WearServerCredentialsStore.admitDirectRequest(context, creds, isAccountActive)) {
           request(creds, "GET", "/api/fasting/current").takeIf { it.isSuccess }?.body

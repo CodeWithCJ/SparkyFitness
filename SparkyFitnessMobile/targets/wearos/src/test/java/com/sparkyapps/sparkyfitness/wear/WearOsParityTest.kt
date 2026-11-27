@@ -7242,9 +7242,6 @@ class WearOsParityTest {
         // Replaying an already-completed fast never revives it on the watch (re-fetches /api/fasting/current)
         val outcomeNull = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = completedJson,
-            fallbackStartMs = 1_700_000_000_000L,
-            fallbackTargetMs = 1_700_057_600_000L,
-            fallbackFastingType = "16:8 Leangains",
             fetchLatestCurrent = { "null" }
         )
         assertTrue(outcomeNull is DirectWriteOutcome.Applied)
@@ -7252,12 +7249,19 @@ class WearOsParityTest {
         assertNull(appliedNull.fast)
         assertTrue(appliedNull.fastUpdated)
 
+        // Unreadable 2xx start body also queries /api/fasting/current instead of fabricating a timer
+        val outcomeUnreadable = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = null,
+            fetchLatestCurrent = { "null" }
+        )
+        assertTrue(outcomeUnreadable is DirectWriteOutcome.Applied)
+        val appliedUnreadable = outcomeUnreadable as DirectWriteOutcome.Applied
+        assertNull(appliedUnreadable.fast)
+        assertTrue(appliedUnreadable.fastUpdated)
+
         // Transient failure or invalid JSON on re-fetch settles start with fastUpdated = false (fast state unknown)
         val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = endedJson,
-            fallbackStartMs = 1_700_000_000_000L,
-            fallbackTargetMs = 1_700_057_600_000L,
-            fallbackFastingType = "16:8 Leangains",
             fetchLatestCurrent = { null }
         )
         assertTrue(outcomeTransient is DirectWriteOutcome.Applied)
@@ -7267,9 +7271,6 @@ class WearOsParityTest {
 
         val outcomeInvalid = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = endedJson,
-            fallbackStartMs = 1_700_000_000_000L,
-            fallbackTargetMs = 1_700_057_600_000L,
-            fallbackFastingType = "16:8 Leangains",
             fetchLatestCurrent = { "{}" }
         )
         assertTrue(outcomeInvalid is DirectWriteOutcome.Applied)
