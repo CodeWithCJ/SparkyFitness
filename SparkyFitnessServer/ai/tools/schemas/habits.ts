@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { dateSchema, optionalDateSchema, uuidSchema } from './common.js';
+import {
+  dateSchema,
+  optionalDateSchema,
+  uuidSchema,
+  withDayNote,
+} from './common.js';
 
 const listHabitsSchema = z
   .object({
@@ -11,7 +16,7 @@ const logHabitSchema = z
   .object({
     action: z.literal('log_habit'),
     habit_id: uuidSchema.describe('UUID of the habit'),
-    entry_date: dateSchema.describe('Date to log the habit for'),
+    entry_date: dateSchema.describe(withDayNote('Date to log the habit for')),
     completed: z.boolean().describe('Whether the habit was completed'),
   })
   .strict();
@@ -47,13 +52,15 @@ export const manageHabitsInput = z.object({
     .describe('log_habit / get_habit_history: UUID of the habit'),
   entry_date: dateSchema
     .optional()
-    .describe('log_habit: date to log the habit for'),
+    .describe(withDayNote('log_habit: date to log the habit for')),
   completed: z
     .boolean()
     .optional()
     .describe('log_habit: whether the habit was completed'),
   start_date: optionalDateSchema.describe(
-    'get_habit_history: range start date'
+    withDayNote('get_habit_history: range start date')
   ),
-  end_date: optionalDateSchema.describe('get_habit_history: range end date'),
+  end_date: optionalDateSchema.describe(
+    withDayNote('get_habit_history: range end date')
+  ),
 });

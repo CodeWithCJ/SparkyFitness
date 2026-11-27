@@ -8,13 +8,13 @@ import nutrientGoalPreferenceService from '../../services/nutrientGoalPreference
 import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { formatJsonResult } from './formatting.js';
-import { optionalDateSchema } from './schemas/common.js';
+import { optionalDateSchema, withDayNote } from './schemas/common.js';
 import { normalizeDayKeywords } from './dates.js';
 
 const dayStatusSchema = z
   .object({
     date: optionalDateSchema.describe(
-      "YYYY-MM-DD, today or yesterday, in the user's timezone. Defaults to today."
+      withDayNote('YYYY-MM-DD, today, yesterday or tomorrow. Defaults to today')
     ),
   })
   .strict();

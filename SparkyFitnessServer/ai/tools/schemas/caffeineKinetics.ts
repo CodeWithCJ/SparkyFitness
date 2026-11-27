@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalDateSchema } from './common.js';
+import { optionalDateSchema, withDayNote } from './common.js';
 
 export const CAFFEINE_KINETICS_ACTIONS = ['active_caffeine'] as const;
 
@@ -8,7 +8,9 @@ export const caffeineKineticsSchema = z.discriminatedUnion('action', [
     .object({
       action: z.literal('active_caffeine'),
       date: optionalDateSchema.describe(
-        'The calendar day (YYYY-MM-DD) to evaluate. Defaults to today.'
+        withDayNote(
+          'The calendar day (YYYY-MM-DD) to evaluate. Defaults to today.'
+        )
       ),
       dose_mg: z.coerce
         .number()
@@ -26,6 +28,9 @@ export type CaffeineKineticsInput = z.infer<typeof caffeineKineticsSchema>;
 // Flat shape published to the LLM as `inputSchema`.
 export const caffeineKineticsInput = z.object({
   action: z.enum(CAFFEINE_KINETICS_ACTIONS).optional(),
-  date: z.string().optional(),
+  date: z
+    .string()
+    .optional()
+    .describe(withDayNote('Date (YYYY-MM-DD). Defaults to today')),
   dose_mg: z.coerce.number().positive().optional(),
 });

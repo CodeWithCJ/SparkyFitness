@@ -10,6 +10,7 @@ import {
   heightUnitEnum,
   measurementsUnitEnum,
   fastingStatusEnum,
+  withDayNote,
 } from './common.js';
 
 const logBiometricsSchema = z
@@ -227,8 +228,10 @@ const getBiometricsHistorySchema = z
     action: z.literal('get_biometrics_history'),
     start_date: dateSchema
       .optional()
-      .describe('Start date for the history range'),
-    end_date: dateSchema.optional().describe('End date for the history range'),
+      .describe(withDayNote('Start date for the history range')),
+    end_date: dateSchema
+      .optional()
+      .describe(withDayNote('End date for the history range')),
   })
   .strict();
 
@@ -237,8 +240,10 @@ const getCustomMetricsHistorySchema = z
     action: z.literal('get_custom_metrics_history'),
     start_date: dateSchema
       .optional()
-      .describe('Start date for the history range'),
-    end_date: dateSchema.optional().describe('End date for the history range'),
+      .describe(withDayNote('Start date for the history range')),
+    end_date: dateSchema
+      .optional()
+      .describe(withDayNote('End date for the history range')),
     category_name: z
       .string()
       .trim()
@@ -254,8 +259,10 @@ const getOralCareSummarySchema = z
     action: z.literal('get_oral_care_summary'),
     start_date: dateSchema
       .optional()
-      .describe('First day (defaults to 6 days before end_date)'),
-    end_date: dateSchema.optional().describe('Last day (defaults to today)'),
+      .describe(withDayNote('First day (defaults to 6 days before end_date)')),
+    end_date: dateSchema
+      .optional()
+      .describe(withDayNote('Last day (defaults to today)')),
   })
   .strict();
 
@@ -297,7 +304,9 @@ export const manageCheckinInput = z.object({
     ])
     .optional()
     .describe('Action to perform; see tool description for per-action fields.'),
-  entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
+  entry_date: dateSchema
+    .optional()
+    .describe(withDayNote('Date for the entry (YYYY-MM-DD)')),
   // biometrics
   weight: z.coerce.number().min(0).optional().describe('Weight value'),
   weight_unit: weightUnitEnum
@@ -420,6 +429,8 @@ export const manageCheckinInput = z.object({
   // history range
   start_date: dateSchema
     .optional()
-    .describe('Start date for the history range'),
-  end_date: dateSchema.optional().describe('End date for the history range'),
+    .describe(withDayNote('Start date for the history range')),
+  end_date: dateSchema
+    .optional()
+    .describe(withDayNote('End date for the history range')),
 });

@@ -191,6 +191,7 @@ describe('sparky_get_day_status', () => {
     try {
       expect((await run()).date).toBe('2026-11-25');
       expect((await run({ date: 'yesterday' })).date).toBe('2026-11-24');
+      expect((await run({ date: 'tomorrow' })).date).toBe('2026-11-26');
     } finally {
       vi.useRealTimers();
     }

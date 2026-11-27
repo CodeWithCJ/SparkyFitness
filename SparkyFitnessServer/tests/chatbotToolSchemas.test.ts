@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { readdirSync } from 'node:fs';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { zodSchema } from 'ai';
-import type { z } from 'zod';
+import { z } from 'zod';
+import {
+  DAY_TIMEZONE_NOTE,
+  dateSchema,
+  optionalDateSchema,
+  withDayNote,
+} from '../ai/tools/schemas/common.js';
 import { manageFoodInput, manageFoodSchema } from '../ai/tools/schemas/food.js';
 import {
   manageExerciseInput,
@@ -494,6 +501,100 @@ describe('published (flat) chatbot tool schemas', () => {
     expect(properties.quantity?.description).toContain(
       'For create_food, also the serving the nutrients are for.'
     );
+  });
+});
+
+describe('shared date params', () => {
+  it('say which timezone days and "today" use', () => {
+    const note =
+      'profile timezone (UTC if none is set), so "today" resolves there.';
+    const dateJson = toJson(z.object({ d: dateSchema, o: optionalDateSchema }));
+
+    expect(dateJson.properties?.d?.description).toContain(note);
+    expect(dateJson.properties?.o?.description).toContain(note);
+  });
+
+  it('keep the note when a call site re-describes the shared schema', () => {
+    const json = toJson(
+      z.object({ d: dateSchema.describe(withDayNote('Date to log for')) })
+    );
+
+    expect(json.properties?.d?.description).toMatch(
+      /^Date to log for\. Days are calendar days in the active account's profile timezone/
+    );
+    expect(
+      toJson(manageFoodInput).properties?.entry_date?.description
+    ).toContain('profile timezone');
+  });
+});
+
+describe('date params in the flat tool inputs', () => {
+  // Every date, entry_date and *_date param carries the note. Symptom from/to
+  // are not resolved as day keywords, so they must not (tested below).
+  const modules: Record<string, Record<string, unknown>> = {};
+  beforeAll(async () => {
+    const dir = new URL('../ai/tools/schemas/', import.meta.url);
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.ts'))) {
+      modules[file] = await import(`../ai/tools/schemas/${file}`);
+    }
+  });
+
+  const collect = () =>
+    Object.entries(modules).flatMap(([file, exports]) =>
+      Object.entries(exports)
+        .filter(
+          ([name, value]) =>
+            /Input$/.test(name) &&
+            typeof value === 'object' &&
+            value !== null &&
+            'safeParse' in value
+        )
+        .map(([name, value]) => ({
+          key: `${file}:${name}`,
+          schema: value as z.ZodType,
+        }))
+    );
+
+  it('finds the flat inputs', () => {
+    expect(collect().length).toBeGreaterThan(20);
+  });
+
+  it('mention the timezone note on every date, entry_date and *_date param', () => {
+    const missing: string[] = [];
+    for (const { key, schema } of collect()) {
+      for (const [prop, def] of Object.entries(
+        toJson(schema).properties ?? {}
+      )) {
+        if (!/^(date|entry_date|.+_date)$/.test(prop)) continue;
+        if (!def.description?.includes(DAY_TIMEZONE_NOTE)) {
+          missing.push(`${key}.${prop}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  // Symptom from/to are not run through the day-keyword resolver, so they
+  // must not promise that "today" works.
+  it('keeps the timezone note off symptom from/to', () => {
+    const symptoms = collect().find((c) =>
+      c.key.endsWith(':manageSymptomsInput')
+    );
+    expect(symptoms).toBeDefined();
+    const props = toJson(symptoms!.schema).properties ?? {};
+    expect(props.from).toBeDefined();
+    expect(props.to).toBeDefined();
+    expect(props.from?.description ?? '').not.toContain(DAY_TIMEZONE_NOTE);
+    expect(props.to?.description ?? '').not.toContain(DAY_TIMEZONE_NOTE);
+  });
+
+  it('still accept "yesterday" and reject malformed days', () => {
+    const schema = optionalDateSchema;
+    expect(schema.safeParse('yesterday').success).toBe(true);
+    expect(schema.safeParse('2026-11-25').success).toBe(true);
+    expect(schema.safeParse(undefined).success).toBe(true);
+    expect(schema.safeParse('25.11.2026').success).toBe(false);
+    expect(dateSchema.safeParse('next week').success).toBe(false);
   });
 });
 

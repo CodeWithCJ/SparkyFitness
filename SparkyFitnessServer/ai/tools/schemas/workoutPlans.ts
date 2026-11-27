@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateSchema, setTypeEnum, uuidSchema } from './common.js';
+import { dateSchema, setTypeEnum, uuidSchema, withDayNote } from './common.js';
 
 // workout_plan_templates.id is a SERIAL PRIMARY KEY (integer), so plan_id must be
 // a positive integer, not a UUID. z.coerce accepts the numeric string the model
@@ -131,7 +131,9 @@ const getActiveWorkoutPlanSchema = z
     date: dateSchema
       .optional()
       .describe(
-        'Date in YYYY-MM-DD format to check active plan progression for (defaults to today in user timezone)'
+        withDayNote(
+          'Date in YYYY-MM-DD format to check active plan progression for (defaults to today)'
+        )
       ),
   })
   .strict();
@@ -168,10 +170,10 @@ const createWorkoutPlanSchema = z
       .describe('Whether this plan is active'),
     start_date: dateSchema
       .optional()
-      .describe('Start date for the plan (YYYY-MM-DD)'),
+      .describe(withDayNote('Start date for the plan (YYYY-MM-DD)')),
     end_date: dateSchema
       .optional()
-      .describe('End date for the plan (YYYY-MM-DD)'),
+      .describe(withDayNote('End date for the plan (YYYY-MM-DD)')),
     sessions: workoutPlanSessionsInputSchema.optional(),
     assignments: workoutPlanSessionsInputSchema.optional(),
   })

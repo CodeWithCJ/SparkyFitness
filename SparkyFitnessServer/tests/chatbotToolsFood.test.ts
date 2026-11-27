@@ -489,7 +489,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      'No verified match is available for "dragonfruit smoothie". Try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.'
+      'No verified match is available for "dragonfruit smoothie". If the user asked for an estimate, use create_food with estimated values. Otherwise try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.'
     );
     expect(
       externalProviderRepository.getActiveProvidersByTypes
@@ -798,6 +798,31 @@ describe('lookup_food_nutrition', () => {
     expect(result).not.toContain('28 mg');
   });
 
+  it('lists a failing provider type once and only offers an estimate after asking', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodRepository.countFoods).mockResolvedValue(0);
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      { id: 'prov-1', provider_type: 'usda', provider_name: 'USDA 1' },
+      { id: 'prov-2', provider_type: 'usda', provider_name: 'USDA 2' },
+    ]);
+    vi.mocked(searchProviderFoods).mockRejectedValue(new Error('down'));
+
+    const result = (await tools.sparky_manage_food.execute!(
+      { action: 'lookup_food_nutrition', food_name: 'apple' },
+      opts
+    )) as string;
+
+    expect(result).toContain(
+      'one or more providers failed (usda, openfoodfacts).'
+    );
+    expect(result).toContain(
+      'ask whether they still want a labelled estimate before logging one'
+    );
+    expect(result).not.toContain('create_food');
+  });
+
   it('reports provider failure without authorizing invented nutrition', async () => {
     vi.mocked(
       externalProviderRepository.getActiveProvidersByTypes
@@ -816,8 +841,10 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      'No verified match is available for "apple"; one or more providers failed. Try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.'
+      'No verified match is available for "apple"; one or more providers failed (usda). Try another provider or official source (up to three candidates), then ask for the label or portion weight. If the user explicitly asked for an estimate, tell them the lookup is unavailable and ask whether they still want a labelled estimate before logging one. Do not invent nutrition.'
     );
+    // An outage must not point the model at an estimate.
+    expect(result).not.toContain('create_food');
     // Explicit provider bypasses the internal search entirely.
     expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
     expect(searchProviderFoods).toHaveBeenCalledTimes(1);
@@ -4846,6 +4873,25 @@ describe('update_entry', () => {
 });
 
 describe('update_food_variant', () => {
+  it('describes what update_existing_entries does to diary entries', () => {
+    const description = tools.sparky_manage_food.description ?? '';
+
+    expect(description).toContain(
+      "the active account's diary entries (any date)"
+    );
+    expect(description).toContain(
+      "the parent food's name, brand and photos (diary-set photos are replaced; their files are deleted once nothing else uses them)"
+    );
+    expect(description).toContain(
+      'an entry whose unit changes is left as it was when its quantity is unknown, or when the units do not convert and the old or new serving size is unknown'
+    );
+    expect(description).toContain(
+      'Quantity is kept when the unit is unchanged'
+    );
+    expect(description).toContain('the serving count is kept');
+    expect(description).toContain('No undo.');
+  });
+
   it('updates only the provided fields and renders the updated variant', async () => {
     vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
       id: VARIANT_ID,
