@@ -2715,9 +2715,6 @@
       "leaveBlankToKeepExisting": "（留空就保留而家嘅）",
       "openFoodFactsPasswordOptional": "Open Food Facts 密碼（可選）",
       "appURL": "App URL",
-      "eGHttpsNorishYour": "例如：https://norish.your-domain.com",
-      "eGHttpYourTandoor": "例如：http://your-tandoor-instance.com",
-      "eGHttpYourMealie": "例如：http://your-mealie-instance.com",
       "apiKey": "API 金鑰",
       "enterNorishAPIKey": "輸入 Norish API 金鑰",
       "enterTandoorAPIKey": "輸入 Tandoor API 金鑰",
@@ -2900,7 +2897,6 @@
     },
     "providerSpecificFields": {
       "appURL": "App URL",
-      "eGHttpYourInstance": "例如：http://your-{{provider_type}}-instance.com",
       "clientID": "Client ID",
       "yazioEmailUsername": "YAZIO 電郵／用戶名稱",
       "appID": "App ID",
@@ -3156,6 +3152,9 @@
       },
       "labResults": {
         "description": "記錄驗血結果，長期追蹤每個指標."
+      },
+      "medications": {
+        "description": "藥物、補充品同 GLP-1 追蹤。補充品嘅營養素仍然會計入您嘅總量."
       }
     },
     "foodProviders": {
@@ -3228,7 +3227,7 @@
       "mcpOAuthAccessWarning": "批准應用程式就等於畀佢完整 MCP 存取權，包括可以寫入或刪除資料嘅工具。只批准您信得過嘅應用程式.",
       "mcpOAuthHttpsRequired": "遠端 MCP OAuth 需要公開 HTTPS。純 HTTP 只支援本機回環開發.",
       "mcpOAuthRedirectAllowlist": "允許嘅 OAuth 重新導向 URI",
-      "mcpOAuthRedirectAllowlistDescription": "每行輸入一個完整 URI 或回環範式。用 http://localhost:*、http://127.0.0.1:* 或 http://[::1]:* 允許桌面客戶端用任何本機回調埠.",
+      "mcpOAuthRedirectAllowlistDescription": "每行輸入一個完整 URI 或者範式。用 http://localhost:*、http://127.0.0.1:* 或 http://[::1]:* 可以允許桌面客戶端用任何本機回調埠。以 /* 結尾嘅 HTTPS URI 會允許該主機下任何路徑，Gemini 就需要咁樣（https://oauth-redirect.googleusercontent.com/r/*）.",
       "saveMcpOAuthRedirects": "儲存 OAuth 重新導向白名單",
       "mcpOAuthRedirectsUpdated": "OAuth 重新導向白名單更新成功.",
       "mcpOAuthRedirectsFailed": "儲存 OAuth 重新導向白名單失敗.",
@@ -4172,7 +4171,9 @@
     "editFoodDatabase": "編輯食材資料庫",
     "editFoodDatabaseDescription": "喺資料庫編輯呢個食材嘅營養資訊.",
     "editingTemporarilyUnavailable": "由於架構更改，編輯食材詳情暫時唔可用.",
-    "copyFood": "複製食物"
+    "copyFood": "複製食物",
+    "fromTime": "由 {{time}} 起",
+    "nothingLogged": "仲未記錄，加食物"
   },
   "checkIn": {
     "neutral": "普通平靜",
@@ -4922,7 +4923,7 @@
       "caloriesBurned": "消耗熱量",
       "sets": "組數",
       "reps": "次數",
-      "weight": "負重數值",
+      "weight": "負重數值 ({{unit}})",
       "notes": "備註",
       "category": "動作分類",
       "equipment": "所需器材",

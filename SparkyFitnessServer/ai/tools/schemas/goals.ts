@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateSchema, optionalDateSchema } from './common.js';
+import { dateSchema, optionalDateSchema, withDayNote } from './common.js';
 
 // Models fill unused fields with null, '' or ' '. z.coerce.number() would turn
 // those into 0, which set_goals stores as a 0 goal, so they mean "not given".
@@ -30,7 +30,7 @@ const getGoalsSchema = z
   .object({
     action: z.literal('get_goals'),
     target_date: optionalDateSchema.describe(
-      'Date to fetch goals for (defaults to today)'
+      withDayNote('Date to fetch goals for (defaults to today)')
     ),
   })
   .strict();
@@ -40,7 +40,7 @@ const setGoalsSchema = z
     action: z.literal('set_goals'),
     start_date: dateSchema
       .optional()
-      .describe('Date when these goals take effect'),
+      .describe(withDayNote('Date when these goals take effect')),
     calories: goalNumber().describe('Daily calorie goal'),
     protein: goalNumber().describe('Daily protein goal (g)'),
     carbs: goalNumber().describe('Daily carbohydrate goal (g)'),
@@ -98,11 +98,11 @@ export const manageGoalsInput = z.object({
       'Action to perform; see the tool description for the fields each action needs.'
     ),
   target_date: optionalDateSchema.describe(
-    'get_goals: date to fetch goals for (defaults to today)'
+    withDayNote('get_goals: date to fetch goals for (defaults to today)')
   ),
   start_date: dateSchema
     .optional()
-    .describe('set_goals: date when these goals take effect'),
+    .describe(withDayNote('set_goals: date when these goals take effect')),
   calories: goalNumber().describe('set_goals: daily calorie goal'),
   protein: goalNumber().describe('set_goals: daily protein goal (g)'),
   carbs: goalNumber().describe('set_goals: daily carbohydrate goal (g)'),

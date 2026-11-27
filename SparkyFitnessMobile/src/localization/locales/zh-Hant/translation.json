@@ -2689,7 +2689,8 @@
   "foodSummary": {
     "tapToAddFood": "點選以新增食物",
     "caloriesShort": "千卡",
-    "nutritionBreakdown": "{{label}} 營養明細"
+    "nutritionBreakdown": "{{label}} 營養明細",
+    "fromTime": "從 {{time}} 起"
   },
   "exerciseSummary": {
     "tapToAdd": "點選以新增訓練",
@@ -3880,7 +3881,21 @@
     "duplicate": "複製動作",
     "viewImages": "全螢幕檢視圖片",
     "duplicateName": "{{name}}（副本）",
-    "caloriesPerHourWithUnit": "{{unit}} / 小時"
+    "caloriesPerHourWithUnit": "{{unit}} / 小時",
+    "progress": {
+      "title": "進度",
+      "weeks": "週",
+      "months": "月",
+      "years": "年",
+      "estimated1RM": "估算 1RM",
+      "heaviest": "最重重量",
+      "volume": "總量",
+      "volumeUnit": "{{unit}} × 次",
+      "weekOf": "{{date}} 起的那一週",
+      "loadFailed": "無法載入進度",
+      "empty": "此期間沒有紀錄",
+      "footnote": "每期最佳。圓點代表新高。"
+    }
   },
   "mealTypeSettings": {
     "reorder": "重新排序 {{name}}",
@@ -5379,6 +5394,11 @@
       "rangeLabel": "範圍",
       "loadFailed": "無法載入心率資料",
       "empty": "此期間沒有心率資料"
+    },
+    "mood": {
+      "title": "心情",
+      "loadFailed": "無法載入心情資料",
+      "empty": "此期間沒有心情紀錄"
     }
   },
   "exerciseLibrary": {
@@ -6404,7 +6424,7 @@
     "cm": "{{value}} 公分",
     "mmolL": "{{value}} mmol/L",
     "ms": "{{value}} 毫秒",
-    "vo2": "{{value}} ml/min/kg",
+    "vo2": "{{value}} ml/kg/min",
     "minutes": "{{count}} 分鐘",
     "meters": "{{value}} 公尺",
     "watts": "{{value}} 瓦",
@@ -6822,7 +6842,37 @@
     "mediaAccessDisclosureBody": "Android 需要通知存取權限，Wear OS 手錶才能讀取目前播放的歌曲與歌手。SparkyFitness 只會讀取使用中的媒體工作階段，不會理會您的訊息與其他通知。",
     "mediaAccessOpenSettings": "開啟設定",
     "mediaAccessOpenErrorTitle": "無法開啟設定",
-    "mediaAccessOpenErrorBody": "前往 Android 設定 → 通知 → 通知讀取、回覆與控制，然後開啟 SparkyFitness 媒體控制。"
+    "mediaAccessOpenErrorBody": "前往 Android 設定 → 通知 → 通知讀取、回覆與控制，然後開啟 SparkyFitness 媒體控制。",
+    "complicationsTitle": "複雜功能",
+    "complicationsRow": "您的複雜功能",
+    "complicationsSubtitle": "自行製作複雜功能放上錶面，並可匯入與匯出。",
+    "complications": {
+      "sources": {
+        "calories": "熱量",
+        "caloriesRemaining": "剩餘熱量",
+        "caloriesBurned": "消耗熱量",
+        "protein": "蛋白質",
+        "carbs": "碳水",
+        "fat": "脂肪",
+        "water": "水分",
+        "steps": "步數",
+        "fasting": "斷食",
+        "weight": "體重",
+        "bodyFat": "體脂",
+        "deepSleep": "深層睡眠",
+        "exerciseCalories": "運動熱量",
+        "exerciseMinutes": "運動分鐘",
+        "hrv": "夜間 HRV",
+        "lightSleep": "淺層睡眠",
+        "remSleep": "REM 睡眠",
+        "restingHeartRate": "靜息心率",
+        "sleepDuration": "睡眠時間",
+        "sleepScore": "睡眠分數",
+        "spo2": "血氧",
+        "timeInBed": "臥床時間",
+        "workouts": "今天運動"
+      }
+    }
   },
   "guidedWorkout": {
     "cue": {
@@ -9555,7 +9605,11 @@
       "description": "記錄抽血檢驗並隨時間追蹤每個指標。"
     },
     "someOff": "有些功能已關閉",
-    "manage": "管理"
+    "manage": "管理",
+    "medications": {
+      "title": "藥物",
+      "description": "藥物、補充品與 GLP-1 追蹤。關閉期間提醒會停止，重新開啟後恢復；補充品的營養素仍會計入您的總量。"
+    }
   },
   "addMenuSettings": {
     "reorder": "重排 {{name}}",
@@ -10953,5 +11007,127 @@
       "workoutDays_other": "{{count}} 天"
     },
     "youHost": "您是主辦"
+  },
+  "watchComplications": {
+    "deleteTitle": "刪除複雜功能",
+    "deleteMessage": "刪除 {{name}}？錶面上顯示它的位置會變空白。",
+    "exportFailed": "無法匯出您的複雜功能",
+    "importTooLarge": "此檔案太大",
+    "importFailed": "無法讀取此檔案",
+    "importInvalid": "不是複雜功能檔案",
+    "importInvalidSubtitle": "請選擇從「複雜功能」頁面匯出的檔案。",
+    "importTitle": "匯入複雜功能",
+    "importAdd": "新增",
+    "importReplace": "取代",
+    "resetTitle": "重設為預設",
+    "resetMessage": "要將您的複雜功能換成預設組合嗎？您自己做的會遺失。",
+    "resetConfirm": "重設",
+    "title": "複雜功能",
+    "add": "新增複雜功能",
+    "menu": "複雜功能選項",
+    "reload": "重新載入複雜功能",
+    "reloadHint": "將您的複雜功能傳送到 Apple Watch 並重新整理。",
+    "reloaded": "已傳送到您的手錶",
+    "reloadedSubtitle": "若選擇器仍顯示舊清單，請開啟手錶 App。",
+    "reloadFailed": "無法傳送到您的手錶",
+    "builtInTitle": "內建複雜功能",
+    "builtInHelp": "這些是 App 內建的。可以變更其顏色與圖示。",
+    "changeBuiltIn": "變更 {{name}}",
+    "builtInReset": "還原原本外觀",
+    "builtInDailyEnergy": "每日能量目標",
+    "builtInEnergyReset": "還原原本顏色",
+    "builtIn": {
+      "calorieGoal": "熱量目標",
+      "proteinGoal": "蛋白質目標",
+      "carbsGoal": "碳水目標",
+      "fatGoal": "脂肪目標",
+      "water": "水分攝取",
+      "fasting": "斷食",
+      "steps": "步數"
+    },
+    "export": "匯出",
+    "import": "匯入",
+    "reset": "重設為預設",
+    "withGauge": "儀表環",
+    "editNamed": "編輯 {{name}}",
+    "moveUp": "將 {{name}} 上移",
+    "moveDown": "將 {{name}} 下移",
+    "deleteNamed": "刪除 {{name}}",
+    "intro": "自行製作複雜功能放上錶面。每個顯示您一天之中的一個數字。在手錶上，將「自訂複雜功能」加到一個位置，再選擇其中一個。",
+    "starterNote": "這些是預設複雜功能。變更或新增一個，清單就會變成您自己的。",
+    "emptyTitle": "尚無複雜功能",
+    "emptySubtitle": "新增一個，例如「今天剩餘蛋白質」，或匯入檔案。",
+    "nameRequired": "為它取個名稱",
+    "nameRequiredSubtitle": "這個名稱就是您在錶面上挑選的名稱。",
+    "saved": "複雜功能已儲存",
+    "editTitle": "編輯複雜功能",
+    "createTitle": "新增複雜功能",
+    "previewNote": "每個尺寸都以同一天範例預覽。最終外觀由錶面決定。",
+    "preview": {
+      "left": "剩",
+      "leftUnit": "剩 {{unit}}",
+      "ofGoal": "共 {{goal}}"
+    },
+    "name": "名稱",
+    "namePlaceholder": "例如「剩餘蛋白質」",
+    "source": "顯示",
+    "sourceHelp": "您在手錶「目標」頁面顯示的營養素也會列出。",
+    "format": "顯示方式",
+    "noGoalNote": "此項沒有目標，因此只能顯示數值。",
+    "gauge": "儀表環",
+    "gaugeSubtitle": "用圓環或長條顯示目標完成多少。",
+    "color": "顏色",
+    "icon": "圖示",
+    "formats": {
+      "value": "數值",
+      "percent": "百分比",
+      "remaining": "剩餘"
+    },
+    "colors": {
+      "calories": "紫羅蘭",
+      "protein": "金色",
+      "carbs": "綠色",
+      "fat": "天藍色",
+      "water": "青色",
+      "steps": "薄荷綠",
+      "fasting": "橙色",
+      "weight": "藍綠色",
+      "neutral": "白色",
+      "exercise": "亮綠色",
+      "heart": "粉紅色",
+      "sleep": "靛藍色"
+    },
+    "icons": {
+      "flame": "火焰",
+      "fish": "魚",
+      "leaf": "葉",
+      "drop": "水滴",
+      "walk": "步行",
+      "timer": "計時器",
+      "scale": "體重計",
+      "heart": "心形",
+      "bolt": "閃電",
+      "fork": "刀叉",
+      "chart": "長條圖",
+      "gauge": "儀表環",
+      "bed": "床",
+      "dumbbell": "啞鈴",
+      "heartbeat": "心跳",
+      "lungs": "肺",
+      "moon": "月亮"
+    },
+    "importDone_other": "已匯入 {{count}} 個複雜功能",
+    "importMessage_other": "在檔案中找到 {{count}} 個複雜功能。要加入您的清單，或用它們取代您的清單？",
+    "importSkipped_other": "{{count}} 項無法使用。",
+    "addValue": "新增另一個數值",
+    "moreValues": "更多數值",
+    "moreValuesHelp": "最多可同時顯示三個數值：圓形與角落尺寸以圓環呈現，長方形尺寸各佔一行。",
+    "remove": "移除",
+    "removeValue": "移除數值 {{number}}",
+    "ringsNote": "超過一個數值時，每個有目標的數值都有獨立的圓環或長條。",
+    "starters": {
+      "macros": "三大營養素"
+    },
+    "valueNumber": "數值 {{number}}"
   }
 }

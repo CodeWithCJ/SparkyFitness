@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bestSetOneRepMaxKg,
   buildTrainingReview,
   countStalledSessions,
+  entryOneRepMaxKg,
   type ReviewEntry,
 } from '@workspace/shared';
 
@@ -160,5 +162,57 @@ describe('buildTrainingReview', () => {
     const review = buildTrainingReview(entries, TODAY);
     expect(review.muscleSets).toEqual({ chest: 2 });
     expect(review.untrainedMuscles).toEqual(['lats']);
+  });
+});
+
+describe('bestSetOneRepMaxKg', () => {
+  it('uses the raw weight, skips warm-ups and ignores sets above 12 reps', () => {
+    expect(
+      bestSetOneRepMaxKg([
+        { reps: 5, weight: 200, set_type: 'warmup' },
+        { reps: 13, weight: 100 },
+        { reps: 3, weight: 100 },
+      ])
+    ).toBeCloseTo(110);
+    expect(bestSetOneRepMaxKg([{ reps: 13, weight: 100 }])).toBe(0);
+  });
+
+  it('reads numeric-string weights and treats a null weight as no load', () => {
+    expect(
+      bestSetOneRepMaxKg([{ reps: 3, weight: '100' as unknown as number }])
+    ).toBeCloseTo(110);
+    expect(bestSetOneRepMaxKg([{ reps: 3, weight: null }])).toBe(0);
+  });
+
+  it('applies a custom load function', () => {
+    expect(
+      bestSetOneRepMaxKg([{ reps: 3, weight: 20 }], () => 100)
+    ).toBeCloseTo(110);
+  });
+});
+
+describe('entryOneRepMaxKg', () => {
+  const sets = [{ set_type: 'normal', reps: 5, weight: 100 }];
+  const entry = (extra: Partial<ReviewEntry>): ReviewEntry => ({
+    exercise_name: 'Bench Press',
+    exercise_modality: 'weight_reps',
+    sets,
+    ...extra,
+  });
+
+  it('returns the Epley estimate for a weight_reps entry', () => {
+    expect(entryOneRepMaxKg(entry({}))).toBeCloseTo(100 * (1 + 5 / 30));
+  });
+
+  it.each([
+    ['a cardio entry', { exercise_modality: 'duration_distance' }],
+    ['synced Active Calories', { exercise_name: 'Active Calories' }],
+    ['a bodyweight_reps entry', { exercise_modality: 'bodyweight_reps' }],
+    [
+      'an entry with only warm-up sets',
+      { sets: [{ set_type: 'warmup', reps: 5, weight: 100 }] },
+    ],
+  ])('returns 0 for %s', (_label, extra) => {
+    expect(entryOneRepMaxKg(entry(extra as Partial<ReviewEntry>))).toBe(0);
   });
 });

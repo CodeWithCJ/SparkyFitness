@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateSchema, optionalDateSchema } from './common.js';
+import { dateSchema, optionalDateSchema, withDayNote } from './common.js';
 
 const scaleTypeEnum = z.enum(['1-5', '1-10', 'none-severe', 'count', 'text']);
 const templateEnum = z.enum([
@@ -113,7 +113,7 @@ const logEntrySchema = z
       .describe('Optional custom symptom ID'),
     severity: z.number().min(0).max(10).optional().describe('Severity rating'),
     entry_date: optionalDateSchema.describe(
-      'Calendar date (YYYY-MM-DD), defaults to today'
+      withDayNote('Calendar date (YYYY-MM-DD), defaults to today')
     ),
     started_at: z
       .string()
@@ -245,7 +245,9 @@ const markSymptomFreeSchema = z
   .object({
     action: z.literal('mark_symptom_free'),
     entry_date: optionalDateSchema.describe(
-      'Calendar date (YYYY-MM-DD) to mark as symptom-free, defaults to today'
+      withDayNote(
+        'Calendar date (YYYY-MM-DD) to mark as symptom-free, defaults to today'
+      )
     ),
   })
   .strict();
@@ -341,7 +343,7 @@ export const manageSymptomsInput = z.object({
   entry_date: z
     .string()
     .optional()
-    .describe('Date for the log or metric (YYYY-MM-DD)'),
+    .describe(withDayNote('Date for the log or metric (YYYY-MM-DD)')),
   started_at: flatDateTime()
     .optional()
     .describe('ISO timestamp when symptom/episode started'),

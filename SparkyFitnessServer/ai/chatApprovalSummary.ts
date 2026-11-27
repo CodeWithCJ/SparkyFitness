@@ -20,6 +20,7 @@ import { withFixedActor } from '../db/poolManager.js';
 import {
   DESTRUCTIVE_ACTIONS,
   isDestructiveToolCall,
+  isEntryRewrite,
 } from './chatToolApproval.js';
 
 export type ApprovalSummary = { text: string; kind: 'delete' | 'change' };
@@ -115,6 +116,7 @@ async function summarize(
         'update_entry',
         'update_medication',
         'set_run_program_schedule',
+        'update_food_variant',
       ])
     ) ?? {};
   const action = text(args.action);
@@ -138,7 +140,8 @@ async function summarize(
       name === 'sparky_manage_run_program' &&
       action === 'set_run_program_schedule' &&
       args.end_date === null
-    )
+    ) &&
+    !isEntryRewrite(name, args)
   )
     return undefined;
   const id = (key: string) => text(args[key]);
@@ -156,6 +159,12 @@ async function summarize(
           target = row(
             await foodRepository.getFoodEntryById(id('entry_id'), userId)
           );
+        } else if (action === 'update_food_variant') {
+          kind = 'change';
+          const food = id('food_id')
+            ? row(await foodRepository.getFoodById(id('food_id'), userId))
+            : undefined;
+          phrase = `Rewrite all diary entries of ${(food && describe(food)) || 'this food'}`;
         } else if (['delete_food', 'set_food_notes'].includes(action)) {
           target = row(
             id('food_id')

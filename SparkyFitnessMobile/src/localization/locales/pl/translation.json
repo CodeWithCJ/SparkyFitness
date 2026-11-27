@@ -271,7 +271,8 @@
       "moodCheckin": "Wpisy nastroju",
       "oralCare": "Przypomnienia o szczotkowaniu",
       "mindfulness": "Timer medytacji",
-      "challenges": "Wyzwania"
+      "challenges": "Wyzwania",
+      "coaches": "Trenerzy"
     },
     "actions": {
       "completeSet": "Wykonaj serię",
@@ -2785,7 +2786,8 @@
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
     "caloriesShort": "kcal",
-    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
+    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}",
+    "fromTime": "od {{time}}"
   },
   "exerciseSummary": {
     "tapToAdd": "Dotknij, aby dodać ćwiczenie",
@@ -4002,7 +4004,21 @@
     "viewImages": "Wyświetl obrazy na pełnym ekranie",
     "duplicateName": "{{name}} (kopia)",
     "deleteSheetTitle": "Usuń ćwiczenie",
-    "caloriesPerHourWithUnit": "{{unit}} / godz."
+    "caloriesPerHourWithUnit": "{{unit}} / godz.",
+    "progress": {
+      "title": "Postęp",
+      "weeks": "Tygodnie",
+      "months": "Miesiące",
+      "years": "Lata",
+      "estimated1RM": "Szac. 1RM",
+      "heaviest": "Największy ciężar",
+      "volume": "Objętość",
+      "volumeUnit": "{{unit}} × powt.",
+      "weekOf": "Tydzień od {{date}}",
+      "loadFailed": "Nie udało się wczytać postępu",
+      "empty": "Nic nie zapisano w tym okresie",
+      "footnote": "Najlepszy wynik w okresie. Kropki oznaczają nowe rekordy."
+    }
   },
   "mealTypeSettings": {
     "reorder": "Zmień kolejność: {{name}}",
@@ -5480,6 +5496,11 @@
       "rangeLabel": "ZAKRES",
       "loadFailed": "Nie udało się wczytać danych tętna",
       "empty": "Brak danych tętna w tym okresie"
+    },
+    "mood": {
+      "title": "Nastrój",
+      "loadFailed": "Nie udało się wczytać danych o nastroju",
+      "empty": "Brak zapisanego nastroju w tym okresie"
     }
   },
   "exerciseLibrary": {
@@ -7181,7 +7202,37 @@
     "mediaAccessDisclosureBody": "Android wymaga dostępu do powiadomień, aby odczytać aktualnie odtwarzany utwór i wykonawcę dla zegarka Wear OS. SparkyFitness odczytuje tylko aktywne sesje multimedialne i ignoruje Twoje wiadomości oraz inne powiadomienia.",
     "mediaAccessOpenSettings": "Otwórz ustawienia",
     "mediaAccessOpenErrorTitle": "Nie można otworzyć ustawień",
-    "mediaAccessOpenErrorBody": "Otwórz Ustawienia Androida → Powiadomienia → Odczyt, odpowiadanie i sterowanie powiadomieniami i włącz Sterowanie multimediami SparkyFitness."
+    "mediaAccessOpenErrorBody": "Otwórz Ustawienia Androida → Powiadomienia → Odczyt, odpowiadanie i sterowanie powiadomieniami i włącz Sterowanie multimediami SparkyFitness.",
+    "complicationsTitle": "Komplikacje",
+    "complicationsRow": "Twoje komplikacje",
+    "complicationsSubtitle": "Twórz własne na tarczę zegarka oraz importuj je lub eksportuj.",
+    "complications": {
+      "sources": {
+        "calories": "Kalorie",
+        "caloriesRemaining": "Pozostałe kalorie",
+        "caloriesBurned": "Spalone kalorie",
+        "protein": "Białko",
+        "carbs": "Węglowodany",
+        "fat": "Tłuszcz",
+        "water": "Woda",
+        "steps": "Kroki",
+        "fasting": "Post",
+        "weight": "Waga",
+        "bodyFat": "Tkanka tłuszczowa",
+        "deepSleep": "Głęboki sen",
+        "exerciseCalories": "Kalorie z ćwiczeń",
+        "exerciseMinutes": "Minuty ćwiczeń",
+        "hrv": "Nocne HRV",
+        "lightSleep": "Płytki sen",
+        "remSleep": "Sen REM",
+        "restingHeartRate": "Tętno spoczynkowe",
+        "sleepDuration": "Czas snu",
+        "sleepScore": "Wynik snu",
+        "spo2": "Natlenienie krwi",
+        "timeInBed": "Czas w łóżku",
+        "workouts": "Dzisiejsze treningi"
+      }
+    }
   },
   "progressPhotos": {
     "card": {
@@ -10445,7 +10496,24 @@
       "serverTooOld": "Twój serwer nie obsługuje jeszcze tagów NFC",
       "failed": "Nie udało się tego zapisać",
       "serverTooOldSubtitle": "Zaktualizuj serwer SparkyFitness i spróbuj ponownie.",
-      "failedSubtitle": "Nic nie zapisano. Sprawdź połączenie i spróbuj ponownie."
+      "failedSubtitle": "Nic nie zapisano. Sprawdź połączenie i spróbuj ponownie.",
+      "amountAndUnit": "Ilość i jednostka",
+      "configureTag": "Ustawienia tagu",
+      "confirmWithCalories": "Zapisz (+{{calories}} kcal)",
+      "customTime": "Godzina (GG:MM)",
+      "invalidTime": "Podaj poprawną godzinę (np. 08:30 lub 8:30 PM).",
+      "lastUsedAmount": "Ostatnio: {{value}} {{unit}}",
+      "mealContext": "Posiłek",
+      "ofGoal": "dziennego celu",
+      "quickAmounts": "Szybkie ilości",
+      "tapToLogActive": "Dotknij, aby zapisać od razu",
+      "kcalUnit": "kcal",
+      "proteinShort": "B:",
+      "carbsShort": "W:",
+      "fatShort": "T:",
+      "timePlaceholder": "GG:MM",
+      "unitOz": "oz",
+      "unitLiter": "litr"
     },
     "form": {
       "errors": {
@@ -10489,7 +10557,16 @@
       "mealType": "Zapisz w",
       "mealTypeHint": "Opcja „Według pory dnia” używa zwykłej pory każdego typu posiłku, tak jak szybkie zapisywanie.",
       "foodOrMeal": "Produkt lub posiłek",
-      "foodOrMealPlaceholder": "Wybierz produkt lub posiłek"
+      "foodOrMealPlaceholder": "Wybierz produkt lub posiłek",
+      "allowAmountAdjustment": "Pozwól na zmianę ilości/mnożnika przy potwierdzeniu",
+      "allowAmountAdjustmentHint": "Pozwala wybrać szybki szablon lub własną ilość w oknie potwierdzenia, zachowując domyślny wybór.",
+      "advancedMode": "Zaawansowane szablony i tryb ml",
+      "allowCustomTimestamp": "Pozwól na własną godzinę przy skanowaniu",
+      "allowCustomTimestampHint": "Gdy wyłączone, zapisuje od razu o bieżącej godzinie. Gdy włączone, pokazuje pole godziny podczas skanowania.",
+      "presetAmountsLabel": "Domyślne ilości (ml dla napojów lub sztuki produktu)",
+      "tapToLog": "Dotknij ilości, aby zapisać od razu",
+      "tooManyPresets": "Podaj maksymalnie 8 domyślnych ilości",
+      "invalidPresetAmount": "Każda domyślna ilość musi być poprawną liczbą większą od 0 i nie większą niż 10000"
     },
     "unsupportedTitle": "Ten telefon nie obsługuje tagów NFC",
     "unsupportedSubtitle": "Tagi NFC wymagają telefonu z modułem NFC.",
@@ -11175,7 +11252,15 @@
       "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
     },
     "someOff": "Niektóre funkcje są wyłączone",
-    "manage": "Zarządzaj"
+    "manage": "Zarządzaj",
+    "medications": {
+      "title": "Leki",
+      "description": "Śledzenie leków, suplementów i GLP-1. Gdy jest wyłączone, przypomnienia zatrzymują się i wracają po włączeniu; składniki odżywcze z suplementów nadal wliczają się do sum."
+    },
+    "aiCoaches": {
+      "title": "Trenerzy",
+      "description": "Trenerzy AI, którzy śledzą Twoje jedzenie, trening i sen oraz wysyłają krótką wiadomość, gdy warto coś powiedzieć."
+    }
   },
   "offline": {
     "keptAdded_one": "Zdjęcia {{count}} ćwiczenia będą przechowywane offline",
@@ -11427,5 +11512,509 @@
       "workoutDays_many": "{{count}} dni"
     },
     "youHost": "Jesteś gospodarzem"
+  },
+  "watchComplications": {
+    "deleteTitle": "Usuń komplikację",
+    "deleteMessage": "Usunąć {{name}}? Miejsce na tarczy zegarka, które ją wyświetla, stanie się puste.",
+    "exportFailed": "Nie udało się wyeksportować komplikacji",
+    "importTooLarge": "Ten plik jest za duży",
+    "importFailed": "Nie udało się odczytać tego pliku",
+    "importInvalid": "To nie jest plik komplikacji",
+    "importInvalidSubtitle": "Wybierz plik wyeksportowany z ekranu Komplikacje.",
+    "importTitle": "Importuj komplikacje",
+    "importAdd": "Dodaj",
+    "importReplace": "Zastąp",
+    "resetTitle": "Przywróć startowe",
+    "resetMessage": "Zastąpić Twoje komplikacje zestawem startowym? Twoje zostaną utracone.",
+    "resetConfirm": "Resetuj",
+    "title": "Komplikacje",
+    "add": "Dodaj komplikację",
+    "menu": "Opcje komplikacji",
+    "reload": "Odśwież komplikacje",
+    "reloadHint": "Wysyła komplikacje do Apple Watch i odświeża je.",
+    "reloaded": "Wysłano na zegarek",
+    "reloadedSubtitle": "Otwórz aplikację na zegarku, jeśli lista wyboru nadal pokazuje starą listę.",
+    "reloadFailed": "Nie udało się wysłać na zegarek",
+    "builtInTitle": "Wbudowane komplikacje",
+    "builtInHelp": "Są dołączone do aplikacji. Zmień ich kolory i ikony.",
+    "changeBuiltIn": "Zmień {{name}}",
+    "builtInReset": "Przywróć pierwotny wygląd",
+    "builtInDailyEnergy": "Dzienny cel kalorii",
+    "builtInEnergyReset": "Przywróć pierwotne kolory",
+    "builtIn": {
+      "calorieGoal": "Cel kalorii",
+      "proteinGoal": "Cel białka",
+      "carbsGoal": "Cel węglowodanów",
+      "fatGoal": "Cel tłuszczu",
+      "water": "Spożycie wody",
+      "fasting": "Post",
+      "steps": "Kroki"
+    },
+    "export": "Eksportuj",
+    "import": "Importuj",
+    "reset": "Przywróć startowe",
+    "withGauge": "Wskaźnik",
+    "editNamed": "Edytuj {{name}}",
+    "moveUp": "Przenieś {{name}} w górę",
+    "moveDown": "Przenieś {{name}} w dół",
+    "deleteNamed": "Usuń {{name}}",
+    "intro": "Twórz własne komplikacje na tarczę zegarka. Każda pokazuje liczbę z Twojego dnia. Na zegarku dodaj własną komplikację do wybranego miejsca i wybierz jedną z poniższych.",
+    "starterNote": "To są startowe komplikacje. Zmień lub dodaj jedną, a lista stanie się Twoja.",
+    "emptyTitle": "Brak komplikacji",
+    "emptySubtitle": "Dodaj własną, np. pozostałe białko na dziś, albo zaimportuj plik.",
+    "nameRequired": "Podaj nazwę",
+    "nameRequiredSubtitle": "Nazwa to to, co wybierasz na tarczy zegarka.",
+    "saved": "Komplikacja zapisana",
+    "editTitle": "Edytuj komplikację",
+    "createTitle": "Dodaj komplikację",
+    "previewNote": "Przykładowy dzień w każdym rozmiarze. Ostateczny wygląd zależy od tarczy zegarka.",
+    "preview": {
+      "left": "pozostało",
+      "leftUnit": "pozostało {{unit}}",
+      "ofGoal": "z {{goal}}"
+    },
+    "name": "Nazwa",
+    "namePlaceholder": "np. Pozostałe białko",
+    "source": "Pokazuje",
+    "sourceHelp": "Składniki odżywcze wyświetlane na stronie Celów zegarka również są na liście.",
+    "format": "Pokaż jako",
+    "noGoalNote": "Ta pozycja nie ma celu, więc może pokazywać tylko swoją wartość.",
+    "gauge": "Wskaźnik",
+    "gaugeSubtitle": "Rysuj pierścień lub pasek pokazujący postęp celu.",
+    "color": "Kolor",
+    "icon": "Ikona",
+    "formats": {
+      "value": "Wartość",
+      "percent": "Procent",
+      "remaining": "Pozostało"
+    },
+    "colors": {
+      "calories": "Fioletowy",
+      "protein": "Złoty",
+      "carbs": "Zielony",
+      "fat": "Błękitny",
+      "water": "Cyjan",
+      "steps": "Miętowy",
+      "fasting": "Pomarańczowy",
+      "weight": "Morski",
+      "neutral": "Biały",
+      "exercise": "Jasnozielony",
+      "heart": "Różowy",
+      "sleep": "Indygo"
+    },
+    "icons": {
+      "flame": "Płomień",
+      "fish": "Ryba",
+      "leaf": "Liść",
+      "drop": "Kropla",
+      "walk": "Chód",
+      "timer": "Stoper",
+      "scale": "Waga",
+      "heart": "Serce",
+      "bolt": "Błyskawica",
+      "fork": "Widelec i nóż",
+      "chart": "Wykres słupkowy",
+      "gauge": "Wskaźnik",
+      "bed": "Łóżko",
+      "dumbbell": "Hantel",
+      "heartbeat": "Bicie serca",
+      "lungs": "Płuca",
+      "moon": "Księżyc"
+    },
+    "importDone_one": "Zaimportowano {{count}} komplikację",
+    "importDone_few": "Zaimportowano {{count}} komplikacje",
+    "importDone_many": "Zaimportowano {{count}} komplikacji",
+    "importMessage_one": "Znaleziono {{count}} komplikację w pliku. Dodać ją do listy czy zastąpić nią Twoją listę?",
+    "importMessage_few": "Znaleziono {{count}} komplikacje w pliku. Dodać je do listy czy zastąpić nimi Twoją listę?",
+    "importMessage_many": "Znaleziono {{count}} komplikacji w pliku. Dodać je do listy czy zastąpić nimi Twoją listę?",
+    "importSkipped_one": "Nie można użyć {{count}} wpisu.",
+    "importSkipped_few": "Nie można użyć {{count}} wpisów.",
+    "importSkipped_many": "Nie można użyć {{count}} wpisów.",
+    "addValue": "Dodaj kolejną wartość",
+    "moreValues": "Więcej wartości",
+    "moreValuesHelp": "Pokazuj do trzech wartości naraz: pierścienie w rozmiarach okrągłym i narożnym, po jednym wierszu w rozmiarze prostokątnym.",
+    "remove": "Usuń",
+    "removeValue": "Usuń wartość {{number}}",
+    "ringsNote": "Przy więcej niż jednej wartości każda wartość mająca cel otrzymuje własny pierścień lub pasek.",
+    "starters": {
+      "macros": "Makroskładniki"
+    },
+    "valueNumber": "Wartość {{number}}",
+    "reloadHintWearOs": "Wysyła komplikacje na zegarek Wear OS i odświeża je."
+  },
+  "coaches": {
+    "saved": "Zapisano.",
+    "saveFailed": "Nie udało się zapisać ustawień trenerów.",
+    "previewFailed": "Nie udało się sprawdzić tego trenera.",
+    "because": "Powód: {{reason}}",
+    "rulesToggle": "Kiedy się odzywa",
+    "settings": {
+      "title": "Trenerzy",
+      "description": "Trenerzy AI, którzy analizują Twoje dane i odzywają się, gdy ma to znaczenie",
+      "turnOn": "Włącz trenerów",
+      "loadError": "Nie udało się wczytać trenerów.",
+      "weekday": "Działa w",
+      "focusHabit": "Nawyk do skupienia",
+      "noHabit": "Jeszcze brak",
+      "off": "Trenerzy są wyłączeni. Włącz ich w Ustawienia → Funkcje, aby otrzymywać krótkie, trafne wiadomości od trenerów analizujących Twoje jedzenie, trening i sen.",
+      "openFeatures": "Otwórz Funkcje"
+    },
+    "aboutMe": {
+      "title": "O mnie",
+      "description": "Korzystają z tego Twoi trenerzy i czat Sparky. Możesz to zmienić lub wyczyścić w dowolnym momencie.",
+      "diet": "Dieta",
+      "tone": "Ton",
+      "notSet": "Nie ustawiono",
+      "foodsAvoid": "Produkty do unikania",
+      "foodsPrefer": "Produkty, które lubię",
+      "notes": "Co jeszcze trenerzy powinni wiedzieć",
+      "allergies": "Alergie",
+      "noAllergies": "Brak zapisanych.",
+      "allergiesHint": "Zarządzane w Ustawienia → Odżywianie i dieta → Preferencje alergenów.",
+      "clear": "Wyczyść wszystko"
+    },
+    "diets": {
+      "omnivore": "Bez ograniczeń",
+      "vegetarian": "Wegetariańska",
+      "vegan": "Wegańska",
+      "pescatarian": "Pescowegetariańska",
+      "keto": "Keto",
+      "halal": "Halal",
+      "kosher": "Koszerna",
+      "other": "Inna"
+    },
+    "tones": {
+      "friendly": "Przyjazny i krótki",
+      "direct": "Bezpośredni",
+      "encouraging": "Motywujący",
+      "neutral": "Neutralny"
+    },
+    "schedule": {
+      "title": "Kiedy trenerzy sprawdzają dane",
+      "description": "Trenerzy sprawdzają Twoje dane tylko o tych porach, w Twojej strefie czasowej, i odzywają się tylko wtedy, gdy warto coś powiedzieć.",
+      "checkInTime": "Godzina sprawdzenia",
+      "removeTime": "Usuń tę godzinę",
+      "addTime": "Dodaj godzinę",
+      "maxMessages": "Maksymalnie tyle wiadomości dziennie",
+      "maxMessagesLabel": "Limit dzienny",
+      "checkIn": "Sprawdzenie {{number}}",
+      "checkInAccessibility": "Sprawdzenie {{number}}, {{time}}",
+      "removeCheckIn": "Usuń sprawdzenie {{number}}"
+    },
+    "pause": {
+      "title": "Wstrzymaj trenerów",
+      "description": "Choroba, podróż lub kontuzja? Trenerzy pozostaną cicho do wybranego dnia.",
+      "until": "Wstrzymano do {{date}}.",
+      "untilLabel": "Do",
+      "reason": "Powód",
+      "pause": "Wstrzymaj",
+      "resume": "Wznów teraz",
+      "reasons": {
+        "sick": "Choroba",
+        "travel": "Podróż",
+        "injury": "Kontuzja",
+        "other": "Inny"
+      },
+      "days_one": "{{count}} dzień",
+      "days_few": "{{count}} dni",
+      "days_many": "{{count}} dni"
+    },
+    "list": {
+      "title": "Twoi trenerzy",
+      "cost": "Trenerzy korzystają z Twojego dostawcy AI tylko wtedy, gdy pasuje reguła. Bez niego otrzymasz krótką, stałą wiadomość.",
+      "create": "Utwórz własnego trenera",
+      "limit": "Osiągnięto limit {{count}} własnych trenerów.",
+      "aiDecides": "AI decyduje, kiedy się odezwać.",
+      "customRules_one": "{{count}} reguła",
+      "customRules_few": "{{count}} reguły",
+      "customRules_many": "{{count}} reguł"
+    },
+    "preview": {
+      "button": "Czy odezwałby się teraz?",
+      "yes": "Tak, odezwałby się:",
+      "no": "Nie. Nic teraz nie pasuje, więc pozostałby cicho.",
+      "today": "Podgląd na dziś",
+      "aiDecides": "AI decyduje przy każdym sprawdzeniu, więc nie ma tu nic do przetestowania."
+    },
+    "thread": {
+      "sparky": "Sparky",
+      "label": "Czat z",
+      "readOnly": "Dodaj dostawcę AI w Ustawieniach, aby odpowiadać trenerom.",
+      "unread_one": "{{count}} nieprzeczytana",
+      "unread_few": "{{count}} nieprzeczytane",
+      "unread_many": "{{count}} nieprzeczytanych"
+    },
+    "names": {
+      "recovery": "Regeneracja",
+      "consistency": "Regularność",
+      "nutrition": "Odżywianie",
+      "sleep_recovery": "Sen i regeneracja",
+      "custom": "Trener",
+      "daily_outlook": "Prognoza dnia",
+      "weekly_review": "Podsumowanie tygodnia",
+      "training": "Trening",
+      "habits": "Nawyki"
+    },
+    "descriptions": {
+      "recovery": "Obserwuje trening i jedzenie razem, abyś jadł wystarczająco dużo białka i węglowodanów po ciężkich sesjach.",
+      "consistency": "Zauważa przerwy i serie w zapisywaniu oraz pomaga łagodnie wrócić na właściwe tory.",
+      "nutrition": "Porównuje dzisiejsze białko, błonnik, kalorie i wodę z Twoimi celami.",
+      "sleep_recovery": "Porównuje ostatni sen z Twoją normą i niedawnym treningiem.",
+      "daily_outlook": "Każdego ranka: docisnąć, normalnie czy spokojniej dzisiaj — na podstawie snu i niedawnego treningu.",
+      "weekly_review": "Raz w tygodniu: jak minął tydzień oraz, jeśli wskazuje na to trend masy ciała, nowy cel kalorii do zastosowania.",
+      "training": "Analizuje Twoje ciężary i proponuje zmiany w planie, gdy warto zwiększyć lub zmniejszyć obciążenie.",
+      "habits": "Pomaga z jednym drobnym nawykiem naraz, z łagodnym wieczornym sprawdzeniem."
+    },
+    "when": {
+      "morning": "Rano",
+      "evening": "Wieczorem",
+      "any": "Dowolne sprawdzenie",
+      "first_morning": "Pierwsze poranne sprawdzenie",
+      "weekday": "Raz w tygodniu",
+      "after_workout": "Po treningu"
+    },
+    "units": {
+      "percent": "%",
+      "hours": "h",
+      "minutes": "min",
+      "days": "dni"
+    },
+    "directions": {
+      "toward": "w kierunku celu",
+      "away": "od celu",
+      "flat": "stabilnie",
+      "fertile": "dni płodne",
+      "ovulation": "owulacja",
+      "menstrual": "miesiączka",
+      "follicular": "faza folikularna",
+      "luteal": "faza lutealna"
+    },
+    "ops": {
+      "lt": "jest poniżej",
+      "lte": "wynosi co najwyżej",
+      "gt": "jest powyżej",
+      "gte": "wynosi co najmniej",
+      "eq": "wynosi"
+    },
+    "signals": {
+      "protein_pct_of_goal": "Białko (% celu)",
+      "carbs_pct_of_goal": "Węglowodany (% celu)",
+      "fiber_pct_of_goal": "Błonnik (% celu)",
+      "calories_pct_of_goal": "Kalorie (% celu)",
+      "water_pct_of_goal": "Woda (% celu)",
+      "hours_since_strength": "Godziny od treningu siłowego",
+      "hours_since_hard_cardio": "Godziny od ciężkiego cardio",
+      "sleep_minutes_vs_avg": "Sen względem Twojej normy",
+      "training_load_ratio": "Obciążenie treningowe względem średniej z 4 tygodni",
+      "weight_trend_direction": "Trend masy ciała",
+      "days_since_last_log": "Dni od ostatniego wpisu",
+      "logging_streak_days": "Seria dni z wpisami",
+      "new_prs_since_last_checkin": "Nowe rekordy życiowe",
+      "protein_goal_hit_streak_days": "Dni z rzędu ze spełnionym celem białka",
+      "calorie_goal_hit_streak_days": "Dni z rzędu w celu kalorycznym",
+      "stalled_lifts": "Ćwiczenia bez progresu",
+      "mood_checkin_today": "Wpis nastroju dzisiaj (1 = tak)",
+      "focus_habit_done_today": "Nawyk dnia wykonany dzisiaj (1 = tak)",
+      "focus_habit_streak_days": "Seria nawyku",
+      "cycle_phase": "Faza cyklu",
+      "workout_is_strength": "Trening jest siłowy (1 = tak)",
+      "workout_is_cardio": "Trening jest cardio (1 = tak)",
+      "workout_duration_min": "Czas trwania treningu",
+      "workout_hard": "Trening był ciężki (1 = tak)",
+      "workout_new_pr": "Trening ustanowił rekord (1 = tak)"
+    },
+    "rules": {
+      "recovery": {
+        "protein_after_strength": "Niski poziom białka po treningu siłowym",
+        "carbs_after_hard_cardio": "Niski poziom węglowodanów po ciężkim cardio",
+        "after_strength_session": "Po ciężkim treningu siłowym",
+        "new_pr": "Ustanowiono nowy rekord"
+      },
+      "consistency": {
+        "logging_gap": "Dawno nic nie zapisano",
+        "nothing_logged_today": "Nic dzisiaj nie zapisano",
+        "streak_7": "Tygodniowa seria wpisów",
+        "streak_30": "Miesięczna seria wpisów",
+        "energy_question": "Zapytaj o poziom energii"
+      },
+      "nutrition": {
+        "fiber_low": "Niski poziom błonnika",
+        "protein_low": "Niski poziom białka",
+        "water_low": "Niski poziom wody",
+        "protein_streak": "Cel białka spełniony kilka dni z rzędu"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "Krótki sen przed ciężkim tygodniem",
+        "short_sleep": "Znacznie krótszy sen niż zwykle"
+      },
+      "daily_outlook": {
+        "outlook": "Poranna prognoza"
+      },
+      "weekly_review": {
+        "weekly": "Podsumowanie tygodnia"
+      },
+      "training": {
+        "weekly_plan_review": "Cotygodniowy przegląd planu",
+        "stall": "Ćwiczenie przestało robić postępy",
+        "after_workout_review": "Po treningu"
+      },
+      "habits": {
+        "not_done_evening": "Nawyk jeszcze niewykonany dzisiaj",
+        "streak_win": "Seria nawyku"
+      }
+    },
+    "templates": {
+      "recovery": {
+        "protein_after_strength": "Masz {{protein_pct_of_goal}}% celu białka po treningu siłowym {{hours_since_strength}} godz. temu. Posiłek bogaty w białko pomoże w regeneracji.",
+        "carbs_after_hard_cardio": "Masz {{carbs_pct_of_goal}}% celu węglowodanów po ciężkim cardio. Trochę węglowodanów pomoże uzupełnić energię.",
+        "after_strength_session": "Dobra sesja ({{workout_minutes}} min). Posiłek bogaty w białko w ciągu najbliższych godzin pomoże w regeneracji.",
+        "new_pr": "Ustanowiono nowy rekord życiowy. Świetna robota."
+      },
+      "consistency": {
+        "logging_gap": "Minęło {{days_since_last_log}} dni od ostatniego wpisu. Nie trzeba nadrabiać zaległości: zapisanie kolejnego posiłku przywróci rytm.",
+        "nothing_logged_today": "Dzisiaj jeszcze nic nie zapisano. Wystarczy zapisać kolejny posiłek, aby zacząć.",
+        "streak_7": "Zapisujesz już {{logging_streak_days}} dni z rzędu. Świetna regularność.",
+        "streak_30": "{{logging_streak_days}} dni zapisywania z rzędu. To już prawdziwy nawyk."
+      },
+      "nutrition": {
+        "fiber_low": "Błonnik wynosi {{fiber_pct_of_goal}}% celu. Pomogą warzywa, owoce, rośliny strączkowe lub płatki owsiane.",
+        "protein_low": "Białko wynosi dziś {{protein_pct_of_goal}}% celu. Rozważ posiłek bogaty w białko.",
+        "water_low": "Woda wynosi {{water_pct_of_goal}}% celu. Szklanka lub dwie pomogą.",
+        "protein_streak": "Cel białka spełniony {{protein_goal_hit_streak_days}} dni z rzędu."
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "Spałeś krócej niż zwykle, a obciążenie treningowe jest wysokie. Rozważ dziś lżejszą sesję.",
+        "short_sleep": "Spałeś znacznie krócej niż zwykle. Odpuść dziś trochę i zadbaj o dzisiejszy sen."
+      },
+      "daily_outlook": {
+        "outlook": {
+          "push": "Dobry dzień, aby docisnąć: ostatnie obciążenie treningowe jest lekkie i jesteś wypoczęty.",
+          "normal": "Normalny dzień treningowy: sen i obciążenie treningowe wyglądają stabilnie.",
+          "easy": "Podejdź dziś spokojniej: krótki sen lub ciężki tydzień treningowy sugerują regenerację."
+        }
+      },
+      "weekly_review": {
+        "weekly": "Twój tydzień: trzymałeś się celu przez około {{followed_target_percent}}% w ciągu {{days_logged}} zapisanych dni."
+      },
+      "training": {
+        "weekly_plan_review": "Cotygodniowe spojrzenie na Twój plan treningowy.",
+        "stall": "W {{stalled_lifts}} Twoich ćwiczeniach zatrzymał się progres.",
+        "after_workout_review": "Dobra robota na tej sesji ({{workout_minutes}} min)."
+      },
+      "habits": {
+        "streak_win": "{{focus_habit_streak_days}} dni z rzędu w Twoim głównym nawyku. Tak trzymaj."
+      }
+    },
+    "answerFailed": "Nie udało się zapisać odpowiedzi.",
+    "kind": {
+      "win": "Sukces",
+      "outlook": "Prognoza"
+    },
+    "weekdays": {
+      "0": "Niedziela",
+      "1": "Poniedziałek",
+      "2": "Wtorek",
+      "3": "Środa",
+      "4": "Czwartek",
+      "5": "Piątek",
+      "6": "Sobota"
+    },
+    "editor": {
+      "created": "Trener utworzony.",
+      "deleted": "Trener usunięty.",
+      "newTitle": "Utwórz własnego trenera",
+      "editTitle": "Edytuj trenera",
+      "description": "Wybierz, o czym mówi, na co może patrzeć i kiedy się odzywa.",
+      "name": "Nazwa",
+      "instructions": "Jak ma do mnie mówić",
+      "access": "Na co może patrzeć",
+      "when": "Kiedy ma się odezwać",
+      "modeRules": "Tylko gdy pasują te reguły",
+      "modeRulesHint": "AI nie jest używane, dopóki reguła nie zadziała.",
+      "modeAi": "Pozwól decydować AI",
+      "modeAiHint": "Jedno wywołanie AI przy każdym sprawdzeniu (do {{count}} dziennie), aby zdecydować, czy się odezwać.",
+      "modeAiNeedsProvider": "Wymaga dostawcy AI. Najpierw dodaj go w Ustawieniach.",
+      "aiRule": "Na co ma zwracać uwagę?",
+      "aiRulePlaceholder": "Powiedz mi, jeśli coś wygląda niepokojąco przed moim półmaratonem 14 marca.",
+      "addRule": "Dodaj regułę",
+      "removeRule": "Usuń tę regułę",
+      "addCondition": "i kolejny warunek",
+      "removeCondition": "Usuń ten warunek",
+      "whenLabel": "Kiedy",
+      "signalLabel": "Liczba do obserwacji",
+      "valueLabel": "Wartość",
+      "opLabel": "Porównanie",
+      "deleteTitle": "Usunąć tego trenera?",
+      "deleteBody": "Jego ustawienia zostaną usunięte. Wysłane wcześniej wiadomości pozostaną na czacie."
+    },
+    "suggestion": {
+      "goalDayProtein": "Podnieść dzisiejszy cel białka do {{to}} g (z {{from}} g)? Jutro wróci do zwykłego.",
+      "calorieTarget": "Nowy dzienny cel kalorii od dzisiaj: {{to}} {{unit}} (obecnie {{from}}).",
+      "planChanges": "Zmiany w planie treningowym: {{up}} zwiększeń, {{down}} lżejszych dni.",
+      "apply": "Zastosuj",
+      "dismiss": "Nie, dziękuję",
+      "applyFailed": "Nie udało się tego zastosować. Być może zostało już obsłużone lub nie ma już zastosowania.",
+      "status": {
+        "applied": "Zastosowano.",
+        "dismissed": "Nie zastosowano.",
+        "expired": "To dotyczyło innego dnia."
+      }
+    },
+    "feedback": {
+      "helpful": "To pomogło",
+      "notHelpful": "To nie pomogło"
+    },
+    "knowledge": {
+      "title": "Co wiedzą moi trenerzy",
+      "nothing": "Nic jeszcze nie zapisano w sekcji O mnie.",
+      "avoids": "Unika: {{foods}}",
+      "likes": "Lubi: {{foods}}",
+      "allergies": "Alergie: {{list}}",
+      "noCoaches": "Żaden trener nie jest włączony.",
+      "muted": "Przestano wspominać: {{rule}}",
+      "unmute": "Włącz ponownie"
+    },
+    "questions": {
+      "answer": "Twoja odpowiedź",
+      "low": "Niski",
+      "high": "Wysoki",
+      "yes": "Tak",
+      "notYetButton": "Jeszcze nie",
+      "markedDone": "Oznaczono jako zrobione.",
+      "notYet": "Odnotowano. Dzisiaj jeszcze nie.",
+      "saved": "Zapisano we wpisie dnia.",
+      "energy": {
+        "ask": "Jaki jest dziś Twój poziom energii?"
+      },
+      "mood": {
+        "ask": "Jaki masz dziś nastrój?"
+      },
+      "focus": {
+        "ask": "Jak dziś z Twoim skupieniem?"
+      },
+      "habit_done": {
+        "ask": "Czy wykonałeś dziś swój główny nawyk?"
+      }
+    },
+    "checkInNow": {
+      "title": "Sprawdź teraz",
+      "button": "Sprawdź teraz",
+      "openChat": "Otwórz czat",
+      "last": "Ostatnie sprawdzenie: {{when}}.",
+      "never": "Żadne sprawdzenie jeszcze się nie odbyło. Uruchamiają się o ustawionych godzinach.",
+      "sent_one": "{{count}} nowa wiadomość. Otwórz czat, aby ją przeczytać.",
+      "sent_few": "{{count}} nowe wiadomości. Otwórz czat, aby je przeczytać.",
+      "sent_many": "{{count}} nowych wiadomości. Otwórz czat, aby je przeczytać.",
+      "reasonPaused": "Trenerzy są wstrzymani.",
+      "reasonNoCoaches": "Żaden trener nie jest włączony. Włącz jednego na liście poniżej.",
+      "reasonLimit": "Dzisiejszy limit wiadomości został już osiągnięty.",
+      "reasonNothing": "Nic do powiedzenia w tej chwili: żadna reguła nie pasuje do dzisiejszych danych lub trenerzy powiedzieli to już dzisiaj."
+    },
+    "notifications": {
+      "title": "Powiadomienia na telefonie",
+      "description": "Powiadomienie pojawia się, gdy trener napisze. Na iPhonie może dotrzeć chwilę po godzinie sprawdzenia.",
+      "all": "Powiadamiaj mnie o wiadomościach trenerów",
+      "coach": "Powiadamiaj mnie o {{name}}"
+    }
   }
 }

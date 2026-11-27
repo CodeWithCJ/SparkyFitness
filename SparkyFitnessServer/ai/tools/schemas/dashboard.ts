@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalDateSchema } from './common.js';
+import { optionalDateSchema, withDayNote } from './common.js';
 
 export const DASHBOARD_ACTIONS = ['daily_summary'] as const;
 
@@ -8,7 +8,9 @@ export const dashboardSchema = z.discriminatedUnion('action', [
     .object({
       action: z.literal('daily_summary'),
       date: optionalDateSchema.describe(
-        'The calendar day (YYYY-MM-DD) to summarize. Defaults to today.'
+        withDayNote(
+          'The calendar day (YYYY-MM-DD) to summarize. Defaults to today.'
+        )
       ),
     })
     .strict(),
@@ -18,5 +20,8 @@ export type DashboardInput = z.infer<typeof dashboardSchema>;
 
 export const dashboardInput = z.object({
   action: z.enum(DASHBOARD_ACTIONS).optional(),
-  date: z.string().optional(),
+  date: z
+    .string()
+    .optional()
+    .describe(withDayNote('Date (YYYY-MM-DD). Defaults to today')),
 });

@@ -71,8 +71,8 @@ describe.runIf(RUN)('exercise progress with a NULL entry modality', () => {
     );
     const entry = await db.query(
       `INSERT INTO public.exercise_entries
-         (user_id, exercise_id, entry_date, duration_minutes, calories_burned, modality)
-       VALUES ($1, $2, '2026-11-02', 10, 50, NULL)
+         (user_id, exercise_id, exercise_name, entry_date, duration_minutes, calories_burned, modality)
+       VALUES ($1, $2, 'Pull-up', '2026-11-02', 10, 50, NULL)
        RETURNING id`,
       [userId, exerciseId]
     );
@@ -81,6 +81,21 @@ describe.runIf(RUN)('exercise progress with a NULL entry modality', () => {
          (exercise_entry_id, set_number, set_type, reps, weight)
        VALUES ($1, 1, 'Working Set', 8, NULL)`,
       [entry.rows[0].id]
+    );
+    // December: one standalone entry and one linked to an AMRAP session.
+    const presetEntryId = randomUUID();
+    await db.query(
+      `INSERT INTO public.exercise_preset_entries
+         (id, user_id, name, entry_date, source, workout_format)
+       VALUES ($1, $2, 'Murph-ish', '2026-12-02', 'manual', 'amrap')`,
+      [presetEntryId, userId]
+    );
+    await db.query(
+      `INSERT INTO public.exercise_entries
+         (user_id, exercise_id, entry_date, duration_minutes, calories_burned, exercise_preset_entry_id)
+       VALUES ($1, $2, '2026-12-01', 10, 50, NULL),
+              ($1, $2, '2026-12-02', 10, 50, $3)`,
+      [userId, exerciseId, presetEntryId]
     );
   });
 
@@ -102,5 +117,49 @@ describe.runIf(RUN)('exercise progress with a NULL entry modality', () => {
     expect(row.modality).toBe('bodyweight_reps');
     expect(countedTrendSets(row)).toHaveLength(1);
     expect(exerciseTrendEntryValueKg(row, 'volume')).toBe(80 * 8);
+  });
+
+  it('returns the session workout_format (null for a standalone entry)', async () => {
+    const rows = (await getExerciseProgressData(
+      userId,
+      exerciseId,
+      '2026-12-01',
+      '2026-12-31'
+    )) as { entry_date: unknown; workout_format: string | null }[];
+    expect(rows.map((r) => r.workout_format)).toEqual([null, 'amrap']);
+  });
+
+  it('returns the raw entry modality and the entry name', async () => {
+    const rows = (await getExerciseProgressData(
+      userId,
+      exerciseId,
+      '2026-11-01',
+      '2026-11-30'
+    )) as { entry_modality: string | null; exercise_name: string | null }[];
+    // The 11-02 entry stores a NULL modality although the exercise has one.
+    expect(rows[0]!.entry_modality).toBeNull();
+    expect(rows[0]!.exercise_name).toBe('Pull-up');
+
+    await db.query(
+      `UPDATE public.exercise_entries SET modality = 'bodyweight_reps'
+        WHERE user_id = $1 AND entry_date = '2026-11-02'`,
+      [userId]
+    );
+    let after: { entry_modality: string | null }[];
+    try {
+      after = (await getExerciseProgressData(
+        userId,
+        exerciseId,
+        '2026-11-01',
+        '2026-11-30'
+      )) as { entry_modality: string | null }[];
+    } finally {
+      await db.query(
+        `UPDATE public.exercise_entries SET modality = NULL
+          WHERE user_id = $1 AND entry_date = '2026-11-02'`,
+        [userId]
+      );
+    }
+    expect(after[0]!.entry_modality).toBe('bodyweight_reps');
   });
 });

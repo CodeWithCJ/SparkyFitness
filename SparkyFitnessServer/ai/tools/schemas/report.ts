@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { optionalDateSchema } from './common.js';
+import { optionalDateSchema, withDayNote } from './common.js';
 
 const getWeeklyReportSchema = z
   .object({
     action: z.literal('get_weekly_report'),
     end_date: optionalDateSchema.describe(
-      'The end date for the weekly report (YYYY-MM-DD)'
+      withDayNote('The end date for the weekly report (YYYY-MM-DD)')
     ),
   })
   .strict();
@@ -24,7 +24,9 @@ export const manageReportInput = z.object({
     .optional()
     .describe('Action to perform.'),
   end_date: optionalDateSchema.describe(
-    'get_weekly_report: end date for the weekly report (YYYY-MM-DD)'
+    withDayNote(
+      'get_weekly_report: end date for the weekly report (YYYY-MM-DD)'
+    )
   ),
 });
 

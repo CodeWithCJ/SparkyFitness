@@ -316,6 +316,110 @@ it.each([
   expect(isDestructiveToolCall(name, input)).toBe(false);
 });
 
+it.each([
+  [
+    {
+      action: 'update_food_variant',
+      food_id: 'f',
+      update_existing_entries: true,
+    },
+    true,
+  ],
+  [
+    {
+      action: 'update_food_variant',
+      food_id: 'f',
+      update_existing_entries: 'false',
+    },
+    true,
+  ],
+  [
+    { update_food_variant: { food_id: 'f', update_existing_entries: true } },
+    true,
+  ],
+  [{ action: 'update_food_variant', food_id: 'f', calories: 100 }, false],
+  [
+    {
+      action: 'update_food_variant',
+      food_id: 'f',
+      update_existing_entries: false,
+    },
+    false,
+  ],
+  [
+    {
+      update_food_variant: { food_id: 'f', update_existing_entries: true },
+      update_entry: { entry_id: 'e', quantity: 1 },
+    },
+    true,
+  ],
+  [
+    {
+      update_entry: {
+        action: 'update_food_variant',
+        food_id: 'f',
+        update_existing_entries: true,
+      },
+    },
+    true,
+  ],
+  [
+    { update_food_variant: { food_id: 'f' }, update_existing_entries: '0' },
+    true,
+  ],
+  [{ action: 'update_food_variant', update_existing_entries: null }, false],
+  [
+    {
+      action: 'search_food',
+      update_entry: {
+        update_food_variant: { food_id: 'f', update_existing_entries: true },
+      },
+    },
+    true,
+  ],
+])(
+  'cards update_food_variant only when it rewrites entries: %j',
+  (input, expected) => {
+    expect(isDestructiveToolCall('sparky_manage_food', input)).toBe(expected);
+  }
+);
+
+it("uses a wrapper's own action like the executor does", () => {
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      action: 'search_food',
+      update_entry: { action: 'set_food_notes', food_id: 'f', notes: '' },
+    })
+  ).toBe(true);
+});
+
+it('cards a wrapper whose own action is empty, since the executor infers one', () => {
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      update_entry: { action: null, entry_id: 'e' },
+    })
+  ).toBe(true);
+});
+
+it('cards food input nested too deep to inspect', () => {
+  let deep: Record<string, unknown> = { food_id: 'f' };
+  for (let i = 0; i < 40; i++) deep = { x: deep };
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      action: 'search_food',
+      deep,
+    })
+  ).toBe(true);
+});
+
+it('cards a wrapper whose own action is destructive', () => {
+  expect(
+    isDestructiveToolCall('sparky_manage_food', {
+      update_entry: { action: 'delete_food', food_id: 'f' },
+    })
+  ).toBe(true);
+});
+
 it('cards a nested delete mode', () => {
   expect(
     isDestructiveToolCall('sparky_manage_food', {

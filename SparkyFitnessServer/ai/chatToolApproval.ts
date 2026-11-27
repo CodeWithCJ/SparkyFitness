@@ -55,6 +55,7 @@ export function isDestructiveToolCall(name: string, input: unknown): boolean {
   if (!Object.hasOwn(DESTRUCTIVE_ACTIONS, name)) return false;
   if (!input || typeof input !== 'object') return false;
   const args: Record<string, unknown> = { ...input };
+  if (rewritesEntries(name, args)) return true;
   // Only action wrappers are lifted by the handlers. Ordinary nested data must
   // not replace the outer action and bypass a destructive-call approval.
   for (const [key, value] of Object.entries(input)) {
@@ -63,16 +64,23 @@ export function isDestructiveToolCall(name: string, input: unknown): boolean {
       const nested: Record<string, unknown> = { ...value };
       if (nested.mode === 'delete' || nested.mode === 'delete_with_history')
         return true;
+      // normalizeActionArgs lets a wrapper's own action win over its key.
+      if (
+        typeof nested.action === 'string' &&
+        DESTRUCTIVE_ACTIONS[name].includes(nested.action)
+      )
+        return true;
       if (
         [
           'set_food_notes',
           'update_entry',
           'update_medication',
           'set_run_program_schedule',
+          'update_food_variant',
         ].includes(key)
       ) {
         Object.assign(args, nested);
-        args.action = key;
+        args.action = Object.hasOwn(nested, 'action') ? nested.action : key;
       }
     }
   }
@@ -92,7 +100,48 @@ export function isDestructiveToolCall(name: string, input: unknown): boolean {
       (args.notes === null || args.notes === '')) ||
     (name === 'sparky_manage_run_program' &&
       args.action === 'set_run_program_schedule' &&
-      args.end_date === null)
+      args.end_date === null) ||
+    isEntryRewrite(name, args)
+  );
+}
+
+// The executor lifts wrappers, wrappers inside wrappers and a wrapper's own
+// action, in its own order. Rather than replay that, card any call that names
+// update_food_variant anywhere and sets update_existing_entries anywhere.
+function rewritesEntries(name: string, args: Record<string, unknown>): boolean {
+  if (name !== 'sparky_manage_food') return false;
+  let names = false;
+  let flag = false;
+  let tooDeep = false;
+  const seen = new Set<object>();
+  const walk = (value: unknown, depth = 0): void => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    if (depth > 32) {
+      tooDeep = true;
+      return;
+    }
+    seen.add(value);
+    if (Array.isArray(value)) return value.forEach((v) => walk(v, depth + 1));
+    const obj = value as Record<string, unknown>;
+    if (Object.hasOwn(obj, 'update_food_variant')) names = true;
+    if (obj.action === 'update_food_variant') names = true;
+    if (obj.update_existing_entries) flag = true;
+    Object.values(obj).forEach((v) => walk(v, depth + 1));
+  };
+  walk(args);
+  return tooDeep || (names && flag);
+}
+
+// Rewrites every diary entry of the variant and can delete photo files, with
+// no undo. Truthy like the schema's z.coerce.boolean(), so "false" counts.
+export function isEntryRewrite(
+  name: string,
+  args: Record<string, unknown>
+): boolean {
+  return (
+    name === 'sparky_manage_food' &&
+    args.action === 'update_food_variant' &&
+    Boolean(args.update_existing_entries)
   );
 }
 

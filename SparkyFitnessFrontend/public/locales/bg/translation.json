@@ -2129,9 +2129,6 @@
       "openFoodFactsPasswordOptional": "Парола за Open Food Facts (по желание)",
       "leaveBlankToKeepExisting2": "•••••••• (оставете празно, за да запазите текущата)",
       "appURL": "URL адрес на приложението",
-      "eGHttpsNorishYour": "напр. https://norish.your-domain.com",
-      "eGHttpYourTandoor": "напр. http://your-tandoor-instance.com",
-      "eGHttpYourMealie": "напр. http://your-mealie-instance.com",
       "apiKey": "API ключ",
       "enterNorishAPIKey": "Въведете API ключ за Norish",
       "enterTandoorAPIKey": "Въведете API ключ за Tandoor",
@@ -2326,7 +2323,6 @@
     },
     "providerSpecificFields": {
       "appURL": "URL адрес на приложението",
-      "eGHttpYourInstance": "напр. http://your-{{provider_type}}-instance.com",
       "clientID": "Client ID",
       "yazioEmailUsername": "Имейл / Потребителско име за YAZIO",
       "appID": "App ID",

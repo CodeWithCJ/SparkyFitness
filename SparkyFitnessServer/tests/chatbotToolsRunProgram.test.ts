@@ -30,6 +30,31 @@ const tool = buildRunProgramTools('user-1', 'UTC').sparky_manage_run_program;
 const run = (args: Record<string, unknown>) =>
   (tool.execute as (a: unknown, o: unknown) => Promise<string>)(args, toolOpts);
 
+describe('sparky_manage_run_program description', () => {
+  it('says imported runs do not complete program workouts', () => {
+    expect(tool.description).toContain(
+      'other runs imported or synced from a device do not complete workouts'
+    );
+    expect(tool.description).toContain(
+      'only change workouts from the current place on'
+    );
+    expect(tool.description).toContain('1-9, default 1');
+    expect(tool.description).toContain('can include workouts already done');
+    expect(tool.description).toContain(
+      "started from the program's next workout completes every step"
+    );
+    expect(tool.description).toContain(
+      'move_run_program and repeat_run_program_week set the place directly'
+    );
+    expect(tool.description).toContain(
+      'a later place raises N without completing the skipped workouts and an earlier one lowers it'
+    );
+    expect(tool.description).toContain(
+      'realign_run_program keeps the place, so N stays the same'
+    );
+  });
+});
+
 const program = (overrides: Partial<RunProgramResponse> = {}) =>
   ({
     id: 'p1',
@@ -304,6 +329,39 @@ describe('sparky_manage_run_program', () => {
       );
       expect(text).toContain('Diary days: Mon, Wed, Sat');
       expect(text).toContain('First day: 2026-10-20');
+    });
+
+    it('resolves day keywords in start_date and end_date', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-24T23:30:00Z'));
+      try {
+        vi.mocked(getRunProgram).mockResolvedValue(program());
+        vi.mocked(upsertRunProgram).mockResolvedValue(program());
+        // 23:30 UTC is already the next day in Vienna.
+        const vienna = buildRunProgramTools(
+          'user-1',
+          'Europe/Vienna'
+        ).sparky_manage_run_program;
+        await vienna.execute!(
+          {
+            action: 'set_run_program_schedule',
+            start_date: 'today',
+            end_date: 'tomorrow',
+            confirmed: true,
+          } as never,
+          {} as never
+        );
+        expect(upsertRunProgram).toHaveBeenCalledWith(
+          'user-1',
+          expect.objectContaining({
+            start_date: '2026-11-25',
+            end_date: '2026-11-26',
+          }),
+          'user-1'
+        );
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('refuses an empty change and a bad date', async () => {
