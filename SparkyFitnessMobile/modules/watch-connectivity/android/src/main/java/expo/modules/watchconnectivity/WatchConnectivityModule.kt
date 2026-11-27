@@ -3067,7 +3067,13 @@ internal object WatchConnectivityHub {
       if (!isContextCacheAuthorizedLocked(appCtx, expectedOwner, expectedGeneration)) {
         return@synchronized null
       }
-      val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null) ?: return@synchronized null
+      val raw = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
+      if (raw == null) {
+        if (updateFast && (fastReadRev == null || prefs.getLong(LAST_CACHED_FAST_REV_KEY, 0L) == fastReadRev)) {
+          return@synchronized HeadlessContextPatchResult(expectedGeneration, 0L, "", true)
+        }
+        return@synchronized null
+      }
       try {
         val obj = JSONObject(raw)
         val ctxOwner = obj.optString("workoutServerId", "")
@@ -3218,14 +3224,16 @@ internal object WatchConnectivityHub {
         null
       }
     } ?: return false
-    publishAuthorizedContextJson(
-      appCtx = appCtx,
-      expectedOwner = expectedOwner,
-      expectedGeneration = updatedSnapshot.generation,
-      expectedSeq = updatedSnapshot.seq,
-      json = updatedSnapshot.json
-    )
-    return updatedSnapshot.waterTotalApplied
+    if (updatedSnapshot.json.isNotEmpty()) {
+      publishAuthorizedContextJson(
+        appCtx = appCtx,
+        expectedOwner = expectedOwner,
+        expectedGeneration = updatedSnapshot.generation,
+        expectedSeq = updatedSnapshot.seq,
+        json = updatedSnapshot.json
+      )
+    }
+    return if (updateFast) true else updatedSnapshot.waterTotalApplied
   }
 
   private fun readCachedFastState(obj: JSONObject): Pair<String, Boolean> {
@@ -3883,17 +3891,7 @@ internal object WatchConnectivityHub {
     removeQueuedInboundEvent(context, clientId, type = "fastStart", ownerId = payloadOwner)
     if (!isHeadlessOwnerStillActive(context, creds)) return
     recordFastStartClientSettled(context, payloadOwner, clientId, ok = true)
-    sendMessageOrTransfer(
-      context,
-      buildFastAckPayload(
-        clientId = clientId,
-        ok = true,
-        fastKnown = !replayRefreshFailed,
-        fast = if (replayRefreshFailed) null else confirmedFastJson
-      ),
-      durable = false
-    )
-    if (!replayRefreshFailed) {
+    val fastPatchApplied = if (!replayRefreshFailed) {
       patchCachedContextAfterHeadlessWrite(
         context = context,
         expectedOwner = payloadOwner,
@@ -3903,14 +3901,29 @@ internal object WatchConnectivityHub {
         fastUpdate = confirmedFastJson,
         fastReadRev = fastReadRev
       )
-    } else if (endedReplayFastId != null) {
-      invalidateCachedEndedFastIfMatches(
-        context = context,
-        expectedOwner = payloadOwner,
-        expectedGeneration = creds.generation,
-        endedFastId = endedReplayFastId
-      )
+    } else {
+      if (endedReplayFastId != null) {
+        invalidateCachedEndedFastIfMatches(
+          context = context,
+          expectedOwner = payloadOwner,
+          expectedGeneration = creds.generation,
+          endedFastId = endedReplayFastId
+        )
+      }
+      false
     }
+    if (!isHeadlessOwnerStillActive(context, creds)) return
+    val ackFastKnown = !replayRefreshFailed && fastPatchApplied
+    sendMessageOrTransfer(
+      context,
+      buildFastAckPayload(
+        clientId = clientId,
+        ok = true,
+        fastKnown = ackFastKnown,
+        fast = if (ackFastKnown) confirmedFastJson else null
+      ),
+      durable = false
+    )
     val startSyncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to payloadOwner)
     if (clientId.isNotEmpty()) startSyncEvent["clientId"] = clientId
     activeModule?.emitEvent("onWatchServerSynced", startSyncEvent)
