@@ -790,7 +790,7 @@ Variants:
 - [ ] From `SparkyFitnessMobile/`: `pnpm run format`, then `pnpm exec jest --watchman=false --runInBand __tests__/navigation/nativeHeaderContract.test.ts <your test files>`, then `pnpm run validate` (typecheck, lint, i18n audit, Knip, Prettier check), then the full `pnpm exec jest --watchman=false --runInBand`.
 - [ ] DESIGN.md is updated in the same change when a token, primitive or shared pattern changes; `AGENTS.md` when a route family or convention is added.
 
-## 10. Watch Apps (Apple Watch, watch complications, Wear OS)
+## 10. Watch Apps (Apple Watch, watch complications, Wear OS, Garmin)
 
 The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `global.css`, Tailwind classes) do not apply to them. They are always dark, have no Light or AMOLED variants, and share only data and the phone-owned settings. This section describes the code as it exists today.
 
@@ -801,6 +801,7 @@ The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `gl
 | Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                                                 | SwiftUI                                            |
 | Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Calorie Goal, Water, Protein, Carbs, Fat, Fasting, Steps, and the wearer's Custom Complication)    | WidgetKit                                          |
 | Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `NewWorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
+| Garmin app and glance                | `targets/garmin/source` (Monkey C views drawn with `Dc`)                                                                                                     | Connect IQ `WatchUi`                               |
 
 Android home-screen widgets (`targets/android-widget`) and the iOS phone widget (`targets/widget`) are separate from these.
 
@@ -878,18 +879,25 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - The optional **New workout view** (`NewWorkoutScreens.kt`, toggled via Settings → Wear OS → New workout view) matches the Apple Watch dark workout palette (`SetTint` / `SetSupersetPalette`), vertical page layout (`VerticalPager`: Demo when photos are synced → Metrics → Set → More), rest/hold countdown rings with audible+haptic cues (`CountdownCues.kt`), barbell plate calculator (`WatchPlates` + `BarbellDrawing`), previous-set editing (`LoggedSetOrder`), RPE/effort track, full-screen New PR celebration, and single scrolling finish summary with workout effort rating and inline preset update confirmation.
 - `WearOsParityTest` and `WorkoutDomainTest` cover Wear OS payload parsing, builders, and workout domain rules against hard-coded expectations. They do not read the Swift definitions directly, so keep both watches in step by hand.
 
-### 10.6 Known gaps
+### 10.6 Garmin app
+
+- Connect IQ device app, black canvas, drawn with `Dc` (rings with `drawArc`, system fonts). Sizes are scaled from the screen width so one layout serves every round screen; the reference is the fēnix 8 43 mm (416 × 416).
+- The Goals page and its glance use the Apple Watch `GoalPalette` values, not the Wear OS ones: calories `0x8992DC`, protein `0xDBB06F`, carbs `0x97C692`, fat `0x8AC2DA`, and the five extra nutrient colours `0xEA96B0`, `0xCDAEF6`, `0xF6D375`, `0x89D7C6`, `0xF4A284` by row position.
+- Navigation follows Garmin's own: pages in a `ViewLoop` (swipe or the up and down buttons), Select or a tap opens detail, Back leaves. Inputs must work with buttons alone as well as touch.
+- Copy lives in `targets/garmin/resources/strings/strings.xml` (English).
+
+### 10.7 Known gaps
 
 - The Wear OS non-workout palette is a Tailwind-style set unrelated to the Apple Watch `GoalPalette`, so the same macro is a different color on each watch: protein is amber on Apple Watch and cyan on Wear OS, and carbs is green on Apple Watch and amber on Wear OS.
 - Neither watch palette is derived from `global.css`; the superset palette is the only hand-copied mirror.
 - Wear OS ships five additional complications (`CaloriesRemaining`, `Sleep`, `Medications`, `Exercise`, and `Weight`), `LONG_TEXT` / `GOAL_PROGRESS` complication slot representations, and all six ProtoLayout tiles as Wear OS-only exceptions not yet mirrored in `targets/watch-widget/index.swift` on Apple Watch.
 
-### 10.7 Checklist for a watch change
+### 10.8 Checklist for a watch change
 
 - [ ] Used `WatchStyle.s` for fixed sizes, `WatchStyle.fill` for cards and `SquircleButton` for controls (Apple Watch).
 - [ ] Took colors from `GoalPalette` / `SparkyColors` and updated the table above if a value changed.
 - [ ] Fired Apple Watch haptics through `Haptics`, never `WKInterfaceDevice` directly (the one exception is the rest-finished buzz in `WatchAppDelegate`, which uses `effectiveRestBuzzEnabled` to honor the rest-alerts setting as well), and kept pages working with no phone connection.
 - [ ] A new page is added to `WatchPage`, `WATCH_PAGE_KEYS` and the phone's Apple Watch settings together.
-- [ ] A new complication is added on both Apple Watch (`index.swift`) and Wear OS (service plus manifest entry), with its tap target (URL scheme on Apple Watch, `target_page` on Wear OS), unless documented as an intentional platform-specific exception in Section 10.6.
+- [ ] A new complication is added on both Apple Watch (`index.swift`) and Wear OS (service plus manifest entry), with its tap target (URL scheme on Apple Watch, `target_page` on Wear OS), unless documented as an intentional platform-specific exception in Section 10.7.
 - [ ] Payload or context changes are made on both watches and the phone by hand, and the Wear OS parity test still passes.
 - [ ] New Apple Watch strings are localized with `String(localized:defaultValue:)` and added to `en.lproj/Localizable.strings`.

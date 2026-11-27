@@ -1988,10 +1988,13 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
     jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
     renderBridgeWithHandle({ feature_choices: {} });
     await waitFor(() => expect(watch.updateContext).toHaveBeenCalled());
-    const appStateChangeListener = (
+    // Every 'change' listener, as AppState notifies them all: the bridge's is
+    // not the only one (the Garmin sync listens for the foreground too).
+    const appStateChangeListeners = (
       AppState.addEventListener as jest.Mock
-    ).mock.calls.find(([type]) => type === 'change')?.[1] as
-      ((state: string) => void) | undefined;
+    ).mock.calls
+      .filter(([type]) => type === 'change')
+      .map(([, listener]) => listener as (state: string) => void);
 
     let resolveRange!: (
       rows: Awaited<ReturnType<typeof fetchMeasurementsRange>>
@@ -2045,7 +2048,7 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
       });
       watch.updateContext.mockClear();
       act(() => {
-        appStateChangeListener?.('active');
+        for (const listener of appStateChangeListeners) listener('active');
       });
       await waitFor(() =>
         expect(lastContext().ackedClientIds).toContain('bg-direct-water')

@@ -22,6 +22,7 @@ import { addLog } from '../services/LogService';
 import { clearBackgroundWater } from '../services/backgroundWater';
 import { refreshClientCertificateHosts } from '../services/clientCertificate';
 import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
+import { clearGarminAccount } from '../services/garminSync';
 import { cancelMedicationRemindersForAccountChange } from '../services/medicationReminderService';
 import {
   cancelChallengeWeekNotifications,
@@ -124,6 +125,13 @@ export function useAuth() {
       // after it.
       void clearAndroidWidgetSnapshots().catch((err: unknown) => {
         addLog(`Failed to clear the widget snapshots: ${err}`, 'WARNING');
+      });
+      // Garmin watches keep showing the previous account's figures, and the
+      // phone keeps a copy to replay to them, until told otherwise. Cleared
+      // here rather than on the next context push, which only runs once a
+      // server answers.
+      void clearGarminAccount().catch((err: unknown) => {
+        addLog(`Failed to clear the Garmin watches: ${err}`, 'WARNING');
       });
       // The Siri and Shortcuts copy holds the previous login and proxy
       // headers; the dashboard writes a fresh one once the new identity's

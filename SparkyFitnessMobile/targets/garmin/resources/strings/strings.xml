@@ -1,0 +1,33 @@
+<!--
+    English only; other languages come later through Weblate. The glance can
+    only load strings scoped "glance" (they stay available to the app too).
+-->
+<strings>
+    <string id="AppName" scope="glance">SparkyFitness</string>
+
+    <string id="GlanceKcalLeft" scope="glance">$1$ kcal left</string>
+    <string id="GlanceKcalOver" scope="glance">$1$ kcal over</string>
+    <string id="GlanceKjLeft" scope="glance">$1$ kJ left</string>
+    <string id="GlanceKjOver" scope="glance">$1$ kJ over</string>
+    <!-- The glance cannot sync: only the app, opened on the watch, receives. -->
+    <string id="GlanceOpenOnWatch" scope="glance">Open on the watch, phone app nearby</string>
+    <!-- When the figures are from, on a 12-hour clock; $1$ is "9:12". -->
+    <string id="TimeAm" scope="glance">$1$ AM</string>
+    <string id="TimePm" scope="glance">$1$ PM</string>
+    <!--
+        On the glance and under the Goals page rows. $1$ is a time as the
+        watch's clock shows it. Keep it short: the glance puts it beside the
+        calorie bar.
+    -->
+    <string id="AsOf" scope="glance">as of $1$</string>
+
+    <string id="GoalsKcalLeft">kcal left</string>
+    <string id="GoalsKcalOver">kcal over</string>
+    <string id="GoalsKjLeft">kJ left</string>
+    <string id="GoalsKjOver">kJ over</string>
+    <string id="GoalsEatenBurned">$1$ eaten · $2$ burned</string>
+    <string id="GoalsOpenPhoneToSync">Open SparkyFitness on your phone, nearby, to sync today's numbers.</string>
+    <string id="GoalsMoreNutrients">+$1$ more</string>
+    <string id="GoalsSyncing">Getting today's numbers from your phone…</string>
+    <string id="NutrientsTitle">Nutrients</string>
+</strings>

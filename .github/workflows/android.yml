@@ -137,6 +137,7 @@ jobs:
         run: |
           cd SparkyFitnessMobile/android
           ./gradlew :wearos:testDebugUnitTest --stacktrace
+          ./gradlew :watch-connectivity:testDebugUnitTest --stacktrace
 
       # Signed with the phone app's key: the Data Layer only connects the two
       # when package name and signature match.

@@ -526,6 +526,7 @@ export type RootStackParamList = {
   HealthTrendsSettings: undefined;
   CoachSettings: undefined;
   WatchSettings: undefined;
+  GarminSettings: undefined;
   WatchComplications: undefined;
   WatchComplicationEdit: { complicationId?: string } | undefined;
   AddMenuSettings: undefined;

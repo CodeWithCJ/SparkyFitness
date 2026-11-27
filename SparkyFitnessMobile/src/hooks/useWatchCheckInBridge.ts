@@ -131,6 +131,14 @@ import { presetName } from '../components/recording/IntervalSetup';
 import { programWorkoutLabel } from '../components/recording/RunProgramCard';
 import { getAppLocale } from '../localization';
 import { normalizeEnergyUnit } from '@workspace/shared';
+import { buildGarminSnapshot } from '../utils/garminSnapshot';
+import {
+  garminAccountEpoch,
+  getGarminSync,
+  stopGarminWhenDisabled,
+  type GarminSync,
+} from '../services/garminSync';
+import { isGarminWatchEnabled } from '../constants/garmin';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -173,6 +181,171 @@ export function suggestedExercisesForWatch(
     if (result.length === WATCH_SUGGESTED_EXERCISE_LIMIT) break;
   }
   return result;
+}
+
+/**
+ * A watch this hook can reach: an Apple Watch or Wear OS watch
+ * (`isSupported`), or a Garmin one where this install uses Garmin
+ * (`isGarminWatchEnabled`). A Garmin `requestContext` arrives as
+ * `onContextRequest` like a Wear OS one, so the same listeners serve both.
+ */
+export function hasWatchTransport(): boolean {
+  if (!WatchConnectivity) return false;
+  return WatchConnectivity.isSupported() || isGarminWatchEnabled();
+}
+
+/**
+ * Runs one send, logging a failure instead of passing it on. Answers whether
+ * it went through.
+ */
+async function sendLoggingFailure(
+  send: () => Promise<void> | undefined,
+  failure: string
+): Promise<boolean> {
+  try {
+    await send();
+    return true;
+  } catch (error) {
+    addLog(`${failure}: ${String(error)}`, 'WARNING');
+    return false;
+  }
+}
+
+/**
+ * Hands one context push to every transport there is: the context itself to
+ * an Apple Watch or Wear OS watch, and its Garmin snapshot to the Garmin sync,
+ * which decides what each Garmin watch still needs.
+ *
+ * Each is sent on its own, so one failing does not hold the other back. Both
+ * are started before anything is awaited, so a newer push cannot slip in
+ * between and leave one transport on an older context than the other. Only
+ * the Apple Watch / Wear OS send is awaited: a Garmin delivery can take up to
+ * the native send timeout per watch, and callers such as the Wear OS
+ * medication queue wait for this before taking the next tick. The Garmin sync
+ * keeps each watch's sends in order itself.
+ *
+ * `garminEpoch` is `garminAccountEpoch()` from when the push started
+ * building, so the sync drops a snapshot built before an account clear. Null
+ * (no Garmin sync then) publishes nothing to Garmin.
+ *
+ * Answers whether the context reached the Apple Watch / Wear OS transport:
+ * false when that send failed or there is none.
+ */
+export async function sendContextToWatches(
+  context: WatchContextPayload,
+  garminEpoch: number | null
+): Promise<boolean> {
+  const watch = WatchConnectivity;
+  if (!watch) return false;
+  const contextSent = watch.isSupported()
+    ? sendLoggingFailure(
+        () => watch.updateContext(context),
+        'Watch context push failed'
+      )
+    : Promise.resolve(false);
+  const garmin = getGarminSync();
+  if (garmin && garminEpoch !== null) {
+    void sendLoggingFailure(
+      () => garmin.publish(buildGarminSnapshot(context), garminEpoch),
+      'Garmin snapshot push failed'
+    );
+  }
+  return contextSent;
+}
+
+/**
+ * Keeps the Garmin sync told about the watches: which there are (seeded from
+ * `startGarmin()` and `garminStatus()`, then every `onGarminStatusChange`) and
+ * which one needs the latest snapshot in full (`onGarminResync`: it
+ * connected, asked, or the Connect IQ SDK became ready). Returns the cleanup.
+ *
+ * Not tied to the server answering: a resend needs only the last snapshot
+ * (or, before this runtime has published one, the native cache's copy), so a
+ * watch that connects or asks while the server is unreachable still gets it.
+ *
+ * Does nothing until `isGarminWatchEnabled()`, which is asked again each time
+ * the app comes to the foreground. That is also when the link is started
+ * again and the watches read again, so Garmin Connect installed while the app
+ * ran, and a watch paired meanwhile, are picked up: the Connect IQ SDK reports
+ * neither by itself. The handlers look the sync up when they run, so they
+ * follow `getGarminSync()`.
+ *
+ * Where this install does not use Garmin when it subscribes (app start), the
+ * native link is also turned off once (`stopGarminWhenDisabled`): the native
+ * side may have started it on its own from a flag an earlier development
+ * build left. Not on later foregrounds, so nothing stops a link that a
+ * foreground in this run started.
+ *
+ * The cleanup also forgets what every watch holds: with no listener the
+ * native side replays its cache by itself, so the records may be wrong when
+ * this subscribes again, and the next push is then sent in full.
+ */
+// The mounted subscription's `link`, so a change that can turn Garmin on
+// while the app is in front (the simulator switch) links at once.
+let relinkGarmin: (() => void) | null = null;
+
+/**
+ * Links the Garmin sync now when the bridge is mounted, as a return to the
+ * foreground does. For the simulator switch in Settings → Garmin, which can
+ * make `isGarminWatchEnabled()` true without leaving the app.
+ */
+export function relinkGarminSync(): void {
+  relinkGarmin?.();
+}
+
+export function subscribeGarminSync(onLinked?: () => void): () => void {
+  const watch = WatchConnectivity;
+  if (!watch) return () => {};
+  void stopGarminWhenDisabled();
+  let subscriptions: { remove: () => void }[] | null = null;
+  let linked: GarminSync | null = null;
+
+  const link = () => {
+    const garmin = getGarminSync();
+    if (!garmin) return;
+    linked = garmin;
+    if (!subscriptions) {
+      subscriptions = [
+        watch.addListener('onGarminResync', ({ deviceId }) => {
+          void getGarminSync()?.resync(deviceId);
+        }),
+        watch.addListener('onGarminStatusChange', (status) => {
+          getGarminSync()?.updateStatus(status);
+        }),
+      ];
+      onLinked?.();
+    }
+    // Listening before starting, so the status events the start causes are
+    // not missed. An answer that lands after a newer status event is dropped
+    // by the sync itself, so this needs no guard of its own.
+    void garmin.start().then(() => garmin.refreshDevices());
+  };
+
+  link();
+  relinkGarmin = link;
+  const appStateSub = AppState.addEventListener('change', (state) => {
+    if (state === 'active') link();
+  });
+  return () => {
+    if (relinkGarmin === link) relinkGarmin = null;
+    appStateSub.remove();
+    for (const subscription of subscriptions ?? []) subscription.remove();
+    linked?.forgetAll();
+  };
+}
+
+/**
+ * Mounts `subscribeGarminSync` for as long as the bridge hook is mounted,
+ * whether or not the server answers. Answers whether the sync has linked,
+ * which turns true at most once per mount: already true when Garmin was
+ * available at mount, otherwise when it becomes so (the simulator switch,
+ * Garmin Connect installed while the app runs), so the bridge can then set
+ * up the listeners it skipped and push the current context.
+ */
+export function useGarminWatchSync(): boolean {
+  const [linked, setLinked] = useState(() => getGarminSync() !== null);
+  useEffect(() => subscribeGarminSync(() => setLinked(true)), []);
+  return linked;
 }
 
 /** Clamps a goal-progress fraction to 0...1 — passing a goal always reads as 1. */
@@ -520,9 +693,14 @@ function extractCreatedWaterEntryId(response: unknown): string | null {
  * stop showing "queued", and pushes back fresh seed values plus recent history so
  * the watch's Digital Crown starts from the right number.
  *
- * Runs on iOS and Android; a no-op where the watch module is absent.
+ * Serves the Apple Watch, Wear OS and Garmin watches (`hasWatchTransport`) on
+ * iOS and Android; a no-op where there is none.
  */
 export function useWatchCheckInBridge(enabled: boolean): void {
+  // Garmin on its own, gated on `isGarminWatchEnabled()` inside rather than
+  // on `enabled`: answering a Garmin watch needs no server.
+  const garminLinked = useGarminWatchSync();
+
   // Ordinary phone-write acks relayed inside the application context (which is
   // latest-value-only and survives the watch app being asleep). Direct watch
   // acks are kept separately in `directAcksRef` with full provenance so they
@@ -1263,6 +1441,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     // keeps only the last value written, which makes late-and-stale the one
     // ordering that sticks.
     const generation = ++pushGenerationRef.current;
+    // Also before the first await: an account clear (sign-out, re-sign-in,
+    // server switch) that runs while this fetches bumps it, and the Garmin
+    // sync then drops this push's figures. The generation above cannot tell,
+    // and signing in again to the same server keeps the active-config check
+    // below passing.
+    const garminEpoch = garminAccountEpoch();
     // Snapshot ack lists before any await so an older in-flight push built with
     // pre-refetch totals can never pick up a newly recorded direct ack; direct
     // acks are only mixed in below if this rendered snapshot qualifies for the
@@ -1486,13 +1670,16 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       if ((await getActiveServerConfigId()) !== workoutServerId) return;
       if (generation !== pushGenerationRef.current) return;
 
-      await WatchConnectivity.updateContext(context);
+      const contextSent = await sendContextToWatches(context, garminEpoch);
 
       // Mark qualified direct acks as published in this session while keeping
       // their provenance in `directAcksRef` (never downgrading into plain
       // `ackedClientIdsRef`) so restarts always re-validate freshness and
       // account switches can always clear them cleanly.
+      // Only once the context carrying them reached the watch: after a failed
+      // send they wait for the next push, as they did when the send threw.
       if (
+        contextSent &&
         qualifiedDirectEntries.length > 0 &&
         (await getActiveServerConfigId()) === workoutServerId
       ) {
@@ -3286,10 +3473,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     };
   });
 
-  // Subscriptions. Depends on `enabled` alone, so these are set up once.
+  // Subscriptions. Depends on `enabled` and `garminLinked` alone, so these
+  // are set up once, and again if Garmin links after mount on a phone where
+  // they were skipped for want of a watch transport.
   useEffect(() => {
-    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported())
-      return;
+    if (!enabled || !WatchConnectivity || !hasWatchTransport()) return;
 
     // Every inbound event is a chance to notice the day has turned over: each
     // one means the watch is awake and talking to us, which after a night
@@ -3378,7 +3566,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       appStateSub.remove();
       uploadsConfirmedUnsub();
     };
-  }, [enabled]);
+  }, [enabled, garminLinked]);
 
   // Push whenever what we'd send changes — `pushContext`'s identity tracks
   // every value it reads. This is what makes food logged on the phone reach the
@@ -3386,8 +3574,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // covers the second push after a day rollover, once react-query has fetched
   // the new day.
   useEffect(() => {
-    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported())
-      return;
+    if (!enabled || !WatchConnectivity || !hasWatchTransport()) return;
     void pushContext();
-  }, [enabled, pushContext]);
+  }, [enabled, garminLinked, pushContext]);
 }

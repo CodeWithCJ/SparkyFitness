@@ -142,6 +142,7 @@ import {
   SafeHealthTrendsSettings,
   SafeCoachSettings,
   SafeWatchSettings,
+  SafeGarminSettings,
   SafeWatchComplications,
   SafeWatchComplicationEdit,
   SafeAddMenuSettings,
@@ -1388,6 +1389,11 @@ function AppContent() {
             name="WatchComplicationEdit"
             component={SafeWatchComplicationEdit}
             options={createStackScreenOptions(t('watchComplications.editTitle', { defaultValue: 'Edit complication' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="GarminSettings"
+            component={SafeGarminSettings}
+            options={createStackScreenOptions(t('screens.garminSettings', { defaultValue: 'Garmin' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="AddMenuSettings"
