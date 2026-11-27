@@ -17,9 +17,7 @@ import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
-import DiaryEntrySelectionBar, {
-  createDiaryEntrySelectionHeader,
-} from '../components/DiaryEntrySelectionBar';
+import { createDiaryEntrySelectionHeader } from '../components/DiaryEntrySelectionBar';
 import { useDiaryEntrySelection } from '../hooks/useDiaryEntrySelection';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
@@ -28,7 +26,6 @@ import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
@@ -50,7 +47,6 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
   const energyUnit = useEnergyUnit();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -264,6 +260,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     ? createDiaryEntrySelectionHeader(t, diarySelection)
     : null;
   const header = useScreenHeader({
+    title: selectionHeader?.title,
     nativeTitle:
       selectionHeader?.title ??
       mealLabel ??
@@ -351,11 +348,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
 
   return (
     <View className="flex-1 bg-background">
-      {isSelecting && !usesNativeHeader ? (
-        <DiaryEntrySelectionBar {...diarySelection} />
-      ) : (
-        header
-      )}
+      {header}
 
       <ServerGate>{renderContent()}</ServerGate>
 

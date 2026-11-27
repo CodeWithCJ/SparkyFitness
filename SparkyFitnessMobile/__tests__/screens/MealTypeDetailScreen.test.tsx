@@ -11,7 +11,6 @@ import {
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { useCopyFoodEntries } from '../../src/hooks/useCopyFoodEntries';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../../src/services/nativeTabBarPreference';
 import type { FoodRowSelection } from '../../src/components/SwipeableFoodRow';
 import type { CopyMealSheetRef } from '../../src/components/CopyMealSheet';
 import type { FoodEntry } from '../../src/types/foodEntries';
@@ -96,10 +95,6 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
     ),
   };
 });
-
-jest.mock('../../src/services/nativeTabBarPreference', () => ({
-  useNativeIOSHeadersActive: jest.fn(() => false),
-}));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
@@ -281,8 +276,6 @@ describe('MealTypeDetailScreen', () => {
 
   it('opens Move for the whole meal on iOS and switches the native header while selecting', () => {
     const os = jest.replaceProperty(Platform, 'OS', 'ios');
-    const nativeHeader = jest.mocked(useNativeIOSHeadersActive);
-    nativeHeader.mockReturnValue(true);
     try {
       const view = renderScreen({
         date: '2026-01-01',
@@ -301,6 +294,7 @@ describe('MealTypeDetailScreen', () => {
       fireEvent(view.getByTestId('food-row'), 'longPress');
       const header = jest.mocked(useScreenHeader).mock.lastCall?.[0];
       expect(header).toMatchObject({
+        title: '1 selected',
         nativeTitle: '1 selected',
         left: { kind: 'dismiss', accessibilityLabel: 'Cancel' },
         right: [
@@ -309,7 +303,8 @@ describe('MealTypeDetailScreen', () => {
         ],
         nativeOptions: { headerBackVisible: false, gestureEnabled: false },
       });
-      expect(view.queryByText('1 selected')).toBeNull();
+      expect(view.getByLabelText('Move')).toBeTruthy();
+      expect(view.getByLabelText('Delete')).toBeTruthy();
 
       const cancel = header?.left;
       if (cancel?.kind !== 'dismiss') throw new Error('Expected Cancel action');
@@ -321,7 +316,6 @@ describe('MealTypeDetailScreen', () => {
       });
       expect(view.getByLabelText('Move meal')).toBeTruthy();
     } finally {
-      nativeHeader.mockReturnValue(false);
       os.restore();
     }
   });
