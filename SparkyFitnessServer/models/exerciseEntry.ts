@@ -2137,6 +2137,9 @@ async function getExerciseProgressData(
          ee.source AS provider_name,
          ee.exercise_preset_entry_id,
          epe.name AS exercise_preset_entry_name,
+         epe.workout_format,
+         ee.modality AS entry_modality,
+         ee.exercise_name,
          e.category,
          COALESCE(ee.modality, e.modality) AS modality,
          -- Body weight that day, for a bodyweight exercise's load

@@ -2,6 +2,9 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import {
   RIR_MAX,
+  entryOneRepMaxKg,
+  isPlannedEntryRow,
+  isWarmupSetType,
   RIR_MIN,
   decideAdaptiveAdjustment,
   shouldSuggestVariation,
@@ -665,16 +668,74 @@ async function getExerciseDetails(
   };
 }
 
+interface ProgressTopSet {
+  weight: number | null;
+  reps: number;
+  rpe?: number;
+}
+
 interface ProgressDay {
   entry_date: string;
+  // Highest weight / rep count of ANY set that day, warm-ups included.
   max_weight: number | null;
   max_reps: number | null;
+  // Volume of every set, warm-ups included.
   total_volume: number | null;
+  // Heaviest non-warm-up set (ties broken by reps). A day with only warm-ups
+  // falls back to its heaviest warm-up so it still has a top set.
+  top_set?: ProgressTopSet;
+  // Same estimate as training_review. Omitted when no entry qualifies.
+  e1rm?: number;
+  working_sets: number;
+  working_volume: number;
+  notes?: string;
+}
+
+// Shared by the manage_exercise action list and the standalone tool.
+const EXERCISE_PROGRESS_FIELDS =
+  'max_weight, max_reps (highest rep count of any set that day, not the reps at max_weight) and total_volume include every row and every set, warm-ups too. top_set is the heaviest working set (ties broken by reps; a day with only warm-ups falls back to its heaviest warm-up). e1rm is the same estimate as training_review (Epley, sets of 1-12 reps, raw weight, none for entries logged as bodyweight). working_sets, working_volume, top_set, e1rm and notes leave out planned-but-not-performed rows and interval/WOD rows.';
+
+const PROGRESS_NOTES_MAX = 80;
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function truncateNote(text: string): string {
+  return text.length > PROGRESS_NOTES_MAX
+    ? `${text.slice(0, PROGRESS_NOTES_MAX - 1).trimEnd()}…`
+    : text;
+}
+
+// A weight that is missing or not a finite number counts as 0.
+function weightOf(s: ExerciseSetInput): number {
+  const weight = Number(s.weight);
+  return Number.isFinite(weight) ? weight : 0;
+}
+
+function repsOf(s: ExerciseSetInput): number {
+  const reps = Number(s.reps);
+  return Number.isFinite(reps) ? reps : 0;
+}
+
+function pickTopSet(candidates: ExerciseSetInput[]): ExerciseSetInput | null {
+  let best: ExerciseSetInput | null = null;
+  for (const s of candidates) {
+    if (
+      !best ||
+      weightOf(s) > weightOf(best) ||
+      (weightOf(s) === weightOf(best) && repsOf(s) > repsOf(best))
+    ) {
+      best = s;
+    }
+  }
+  return best;
 }
 
 // Per-date set aggregates for one exercise, paginated over the grouped days.
-// Mirrors MCP's GROUP BY query: days whose entries have no sets are excluded,
-// MAX/SUM skip null reps/weights, and volume counts null weights as 0.
+// Days whose entries have no sets are excluded. max_*/total_volume cover every
+// set; top_set/e1rm/working_*/notes skip planned-but-not-performed rows and
+// interval/WOD sessions.
 async function getExerciseProgress(
   userId: string,
   params: {
@@ -705,6 +766,9 @@ async function getExerciseProgress(
 
   // Repository rows arrive in entry_date ASC order; the Map keeps it.
   const byDate = new Map<string, ProgressDay>();
+  const countedByDate = new Map<string, ExerciseSetInput[]>();
+  const notesByDate = new Map<string, string[]>();
+  const e1rmByDate = new Map<string, number>();
   for (const entry of entries) {
     const sets: ExerciseSetInput[] = entry.sets ?? [];
     if (sets.length === 0) continue;
@@ -716,25 +780,83 @@ async function getExerciseProgress(
         max_weight: null,
         max_reps: null,
         total_volume: null,
+        working_sets: 0,
+        working_volume: 0,
       };
       byDate.set(key, day);
+      countedByDate.set(key, []);
+      notesByDate.set(key, []);
+    }
+
+    // A prefilled plan nobody started, or a non-standard (interval/WOD)
+    // session, is no strength effort. `edited`/`session` are optional in the
+    // contract; without them the row is assumed performed.
+    const planned =
+      entry.edited !== undefined &&
+      entry.session !== undefined &&
+      isPlannedEntryRow({
+        source: entry.provider_name ?? null,
+        edited: entry.edited,
+        sets: entry.sets as { completed_at?: string | null }[],
+        session: entry.session,
+      });
+    const format = String(entry.workout_format ?? '')
+      .trim()
+      .toLowerCase();
+    const counts = !planned && (format === '' || format === 'standard');
+
+    if (counts) {
+      const note =
+        typeof entry.notes === 'string'
+          ? entry.notes.replace(/\s+/g, ' ').trim()
+          : '';
+      const notes = notesByDate.get(key)!;
+      if (note && !notes.includes(note)) notes.push(note);
+      // Estimate per entry, selected like training_review does (raw entry
+      // modality, not the exercise's fallback).
+      const e1rm = entryOneRepMaxKg({
+        exercise_name: entry.exercise_name ?? null,
+        exercise_modality: entry.entry_modality ?? null,
+        sets,
+      });
+      if (e1rm > (e1rmByDate.get(key) ?? 0)) e1rmByDate.set(key, e1rm);
     }
     for (const s of sets) {
       if (isSet(s.weight)) {
-        const weight = Number(s.weight);
         day.max_weight = isSet(day.max_weight)
-          ? Math.max(day.max_weight, weight)
-          : weight;
+          ? Math.max(day.max_weight, weightOf(s))
+          : weightOf(s);
       }
       if (isSet(s.reps)) {
         day.max_reps = isSet(day.max_reps)
-          ? Math.max(day.max_reps, s.reps)
-          : s.reps;
-        day.total_volume =
-          (day.total_volume ?? 0) +
-          s.reps * (isSet(s.weight) ? Number(s.weight) : 0);
+          ? Math.max(day.max_reps, repsOf(s))
+          : repsOf(s);
+        day.total_volume = (day.total_volume ?? 0) + repsOf(s) * weightOf(s);
       }
+      if (counts && repsOf(s) > 0) countedByDate.get(key)!.push(s);
     }
+  }
+
+  for (const [key, day] of byDate) {
+    if (day.total_volume !== null) day.total_volume = round1(day.total_volume);
+    const counted = countedByDate.get(key) ?? [];
+    const working = counted.filter((s) => !isWarmupSetType(s.set_type));
+    day.working_sets = working.length;
+    day.working_volume = round1(
+      working.reduce((sum, s) => sum + weightOf(s) * repsOf(s), 0)
+    );
+    const top = pickTopSet(working.length > 0 ? working : counted);
+    if (top) {
+      day.top_set = {
+        weight: isSet(top.weight) ? weightOf(top) : null,
+        reps: repsOf(top),
+        ...(isSet(top.rpe) ? { rpe: top.rpe } : {}),
+      };
+    }
+    const e1rm = e1rmByDate.get(key) ?? 0;
+    if (e1rm > 0) day.e1rm = round1(e1rm);
+    const notes = notesByDate.get(key) ?? [];
+    if (notes.length > 0) day.notes = truncateNote(notes.join(' | '));
   }
 
   const days = [...byDate.values()];
@@ -810,7 +932,7 @@ Actions:
 - create_workout_preset(name, exercises, description?, is_public?, workout_format?, time_cap_seconds?) — exercises: array or JSON string of [{exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?, progression_mode?, rep_goal?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}]; items sharing the same superset_group are grouped as a superset; progression_mode/rep_goal/increment_type/increment_value (kg for weight) are between-session overload; ramp_increment (kg, may be negative) pre-fills each successive working set that much heavier within one session — e.g. "+10 lb per set" is 4.54 — distinct from between-session progression
 - update_workout_preset(preset_id, confirmed, name?, description?, is_public?, workout_format?, time_cap_seconds?, exercises?) — only the provided fields change; exercises, when provided, REPLACES the entire exercise list (same shape as create_workout_preset), so call get_workout_preset first and include every exercise that should remain, not just the ones being changed. Progression and ramp fields left out on an exercise keep their current values; send null to clear one. confirmed=true is required to apply; without it the tool returns a prompt and does not change anything. Get the user's go-ahead first, especially if YOU decided what to change (e.g. "review my workouts and improve them").
 - delete_workout_preset(preset_id, confirmed) — permanently deletes the preset. confirmed=true is required; without it the tool returns a prompt and does not delete. Confirm with the user first.
-- get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?, limit?, offset?) — returns paginated performance history per day (max_reps is the highest rep count of any set that day, not the reps at max_weight)
+- get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?, limit?, offset?) — returns paginated performance history per day. ${EXERCISE_PROGRESS_FIELDS}
 - rate_workout(entry_id, scope?:session|exercise, difficulty?:too_easy|just_right|too_hard, pain?, pain_note?) — records how a logged workout felt; entry_id is any exercise entry ID from list_exercise_diary (scope=session rates its whole workout, scope=exercise just that exercise). Only the fields given change: omitted fields keep what is already recorded (difficulty=null clears it, pain=false clears pain and its note). Adaptive suggestions learn from it: pain makes that exercise lighter next time, never heavier. Only workouts logged as sessions (presets / live workouts) can be rated.
 - get_workout_coaching(exercise_id?|exercise_name?|preset_id?|preset_name?) — how the next session's suggestions will adapt to recent feedback for one exercise or every exercise in a preset, with the reason for each (lighter after pain, hold after "too hard", a step up after "too easy" twice, variation hints). Changes are suggestions the user can decline in the app.
 - suggest_alternatives(exercise_id?|exercise_name?, alternative_mode?:similar|different_equipment, equipment?, avoid_muscles?, limit?) — ranked substitutes that train the same primary muscles, with the reason for each. Use for "what can I do instead of X", a busy machine, missing equipment (equipment = comma-separated list of what they have), or an injury (avoid_muscles, or alternative_mode=different_equipment). Results marked "Free Exercise DB" are not in the user's library yet; they can add one from exercise search in the app.
@@ -1155,13 +1277,17 @@ For personal records, stalled lifts and sessions per week, use sparky_get_exerci
                 (e: DiaryEntryItem) => {
                   let text = `**${e.name}**`;
                   const sets: ExerciseSetInput[] = e.sets ?? [];
-                  if (sets.length > 0) text += ` — ${sets.length} sets`;
-                  if (e.duration_minutes)
-                    text += ` | ${e.duration_minutes} min`;
-                  if (e.calories_burned) text += ` | ${e.calories_burned} kcal`;
-                  if (isSet(e.distance)) text += ` | ${e.distance} dist`;
-                  if (isSet(e.avg_heart_rate))
-                    text += ` | ${e.avg_heart_rate} bpm`;
+                  if (sets.length > 0)
+                    text += ` — ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`;
+                  const minutes = Math.round(Number(e.duration_minutes));
+                  if (minutes > 0) text += ` | ${minutes} min`;
+                  const kcal = Math.round(Number(e.calories_burned));
+                  if (kcal > 0) text += ` | ${kcal} kcal`;
+                  const dist = Number(e.distance);
+                  if (Number.isFinite(dist) && dist > 0)
+                    text += ` | ${Math.round(dist * 100) / 100} dist`;
+                  const hr = Math.round(Number(e.avg_heart_rate));
+                  if (Number.isFinite(hr) && hr > 0) text += ` | ${hr} bpm`;
                   if (isSet(e.steps)) text += ` | ${e.steps} steps`;
                   if (sets.length > 0) {
                     const setLine = sets
@@ -1622,8 +1748,21 @@ For personal records, stalled lifts and sessions per week, use sparky_get_exerci
               return formatList(
                 progress.data,
                 `Exercise Progress: ${args.exercise_name || args.exercise_id}`,
-                (p: ProgressDay) =>
-                  `**${p.entry_date}**: Max Weight: ${p.max_weight}kg | Max Reps: ${p.max_reps} | Volume: ${p.total_volume}kg`,
+                (p: ProgressDay) => {
+                  let text = `**${p.entry_date}**: Max Weight: ${p.max_weight}kg | Max Reps: ${p.max_reps} | Volume: ${p.total_volume}kg`;
+                  if (p.top_set) {
+                    text += ` | Top set: ${
+                      p.top_set.weight
+                        ? `${p.top_set.weight}kg×${p.top_set.reps}`
+                        : `${p.top_set.reps} reps`
+                    }`;
+                    if (isSet(p.top_set.rpe)) text += ` @RPE ${p.top_set.rpe}`;
+                  }
+                  if (isSet(p.e1rm)) text += ` | e1RM: ${p.e1rm}kg`;
+                  text += ` | Working: ${p.working_sets} ${p.working_sets === 1 ? 'set' : 'sets'}, ${p.working_volume}kg`;
+                  if (p.notes) text += ` | Notes: ${p.notes}`;
+                  return text;
+                },
                 {
                   total_count: progress.total_count,
                   has_more: progress.has_more,
@@ -2081,8 +2220,7 @@ For personal records, stalled lifts and sessions per week, use sparky_get_exerci
     }),
 
     sparky_get_exercise_progress: tool({
-      description:
-        'Returns paginated performance history for an exercise, one row per day. max_reps is the highest rep count of any set that day, not the reps at max_weight.',
+      description: `Returns paginated performance history for an exercise, one row per day. ${EXERCISE_PROGRESS_FIELDS}`,
       inputSchema: exerciseProgressSchema,
       execute: async (rawArgs) => {
         const parsed = exerciseProgressSchema.safeParse(

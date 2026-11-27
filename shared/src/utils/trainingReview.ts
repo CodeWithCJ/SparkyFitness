@@ -112,15 +112,34 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-/** Best estimated 1RM among an entry's loaded working sets, 0 when none. */
-function bestEstimatedOneRepMax(entry: ReviewEntry): number {
+/**
+ * Best Epley estimate among a day's non-warm-up sets of 1 to 12 reps, 0 when
+ * none qualifies. `loadOf` maps a set to the load it moved (default: its
+ * weight), so a caller can apply a bodyweight exercise's effective load.
+ */
+export function bestSetOneRepMaxKg(
+  sets: readonly ReviewSet[],
+  loadOf: (set: ReviewSet) => number = (set) => Number(set.weight) || 0
+): number {
   let best = 0;
-  for (const set of workingSets(entry)) {
+  for (const set of sets) {
+    if (isWarmupSetType(set.set_type)) continue;
     const reps = Number(set.reps) || 0;
     if (reps <= 0 || reps > MAX_REPS_FOR_ESTIMATE) continue;
-    best = Math.max(best, epleyOneRepMaxKg(set.weight, reps));
+    best = Math.max(best, epleyOneRepMaxKg(loadOf(set), reps));
   }
   return best;
+}
+
+/**
+ * The estimate training_review uses for one entry: best 1RM among its working
+ * sets, 0 for a non-strength entry (cardio, synced calories) or a bodyweight
+ * exercise.
+ */
+export function entryOneRepMaxKg(entry: ReviewEntry): number {
+  if (!isStrengthEntry(entry)) return 0;
+  if (entry.exercise_modality === 'bodyweight_reps') return 0;
+  return bestSetOneRepMaxKg(workingSets(entry));
 }
 
 /**
@@ -168,8 +187,7 @@ export function buildTrainingReview(
   for (const entry of strength) {
     const day = dayOf(entry);
     if (!day || day > today) continue;
-    if (entry.exercise_modality === 'bodyweight_reps') continue;
-    const estimate = bestEstimatedOneRepMax(entry);
+    const estimate = entryOneRepMaxKg(entry);
     if (estimate <= 0) continue;
     const key = entry.exercise_id ?? entry.exercise_name ?? '';
     if (!key) continue;
