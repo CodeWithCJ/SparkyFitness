@@ -23,6 +23,9 @@ export interface PresetChangesOffer {
   updating: boolean;
 }
 
+/** What the slider shows before the workout is rated. */
+const FIRST_EFFORT = 1;
+
 interface Props {
   sessionName: string;
   completedSetCount: number;
@@ -93,6 +96,8 @@ function FocusWorkoutSummary({
   const zoneColor = useHeartRateZoneColor(avgBpm);
   const [heartRateColor] = useCSSVariable(['--color-heart-rate']) as string[];
   // The slider moves freely while dragging; the rating is saved on release.
+  // An unrated workout shows the easiest end (the face and its word), which
+  // is only saved once the person lets go of the slider.
   const [draftEffort, setDraftEffort] = useState<number | null>(effort);
   const [seenEffort, setSeenEffort] = useState(effort);
   if (seenEffort !== effort) {
@@ -190,14 +195,11 @@ function FocusWorkoutSummary({
         </Text>
         <FocusEffortSlider
           metric="rpe"
-          value={draftEffort}
+          value={draftEffort ?? FIRST_EFFORT}
           onChange={setDraftEffort}
           onCommit={onRateEffort}
           valueTestID="focus-summary-effort"
           sliderTestID="focus-summary-effort-slider"
-          emptyHint={t('workoutComplete.focus.dragToRate', {
-            defaultValue: 'Drag to rate',
-          })}
         />
       </View>
 

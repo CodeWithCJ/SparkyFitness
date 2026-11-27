@@ -96,12 +96,18 @@ describe('FocusWorkoutSummary', () => {
     expect(onRateEffort).toHaveBeenCalledTimes(1);
   });
 
-  it('shows an empty track and a hint until it is rated', () => {
-    const { queryByTestId, getByText } = render(
-      <FocusWorkoutSummary {...base} effort={null} />
+  it('starts an unrated workout at 1 with its face and word, saving nothing', () => {
+    const onRateEffort = jest.fn();
+    const { getByTestId, getByText } = render(
+      <FocusWorkoutSummary
+        {...base}
+        effort={null}
+        onRateEffort={onRateEffort}
+      />
     );
-    expect(queryByTestId('focus-summary-effort')).toBeNull();
-    expect(getByText('Drag to rate')).toBeTruthy();
+    expect(getByTestId('focus-summary-effort').props.children).toBe(1);
+    expect(getByText('Easy')).toBeTruthy();
+    expect(onRateEffort).not.toHaveBeenCalled();
   });
 
   it('offers Update and Keep original when the workout changed', () => {
