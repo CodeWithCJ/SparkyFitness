@@ -1,10 +1,12 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { RefreshControl } from 'react-native';
+import { Platform, RefreshControl } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DiaryScreen from '../../src/screens/DiaryScreen';
 import type DateNavigatorComponent from '../../src/components/DateNavigator';
+import type FoodSummaryComponent from '../../src/components/FoodSummary';
+import type { CopyMealSheetRef } from '../../src/components/CopyMealSheet';
 import {
   useDailySummary,
   useCustomNutrients,
@@ -19,6 +21,7 @@ import { useSleepDay } from '../../src/hooks/useSleepDay';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
+import type { NativeHeaderNavigation } from '../../src/utils/nativeHeaderItems';
 import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 import type { DailySummary, MacroSummary } from '../../src/types/dailySummary';
 import type { FoodEntry } from '../../src/types/foodEntries';
@@ -26,6 +29,8 @@ import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
 type DateNavigatorProps = React.ComponentProps<typeof DateNavigatorComponent>;
+
+const mockPresentDiaryMove = jest.fn();
 
 const mockNavigation = {
   setOptions: jest.fn(),
@@ -130,8 +135,11 @@ jest.mock('../../src/hooks/useHeaderActionColors', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) =>
-      key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
+    t: (key: string, options?: { count?: number }) => {
+      if (key === 'diarySelection.count') return `${options?.count} selected`;
+      if (key === 'familyDiary.openFamilyDiaries') return 'Open family diaries';
+      return key;
+    },
     i18n: { language: 'en-US' },
   }),
 }));
@@ -230,8 +238,39 @@ jest.mock('../../src/components/StatusView', () => {
 });
 
 jest.mock('../../src/components/FoodSummary', () => {
+  const { Pressable, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      foodEntries,
+      getRowSelection,
+    }: React.ComponentProps<typeof FoodSummaryComponent>) => (
+      <View testID="food-summary">
+        {foodEntries.map((entry) => (
+          <Pressable
+            key={entry.id}
+            testID={`food-select-${entry.id}`}
+            onLongPress={getRowSelection?.(entry)?.onToggle}
+          />
+        ))}
+      </View>
+    ),
+  };
+});
+
+jest.mock('../../src/components/CopyMealSheet', () => {
+  const ReactModule = jest.requireActual<typeof React>('react');
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="food-summary" /> };
+  return {
+    __esModule: true,
+    default: ReactModule.forwardRef<CopyMealSheetRef>((_props, ref) => {
+      ReactModule.useImperativeHandle(ref, () => ({
+        present: mockPresentDiaryMove,
+        dismiss: jest.fn(),
+      }));
+      return <View testID="move-meal-sheet" />;
+    }),
+  };
 });
 
 jest.mock('../../src/components/ExerciseSummary', () => {
@@ -426,6 +465,92 @@ const renderScreen = () => {
     }
   );
 };
+
+describe('DiaryScreen selection on iOS', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    useDiaryDateStore.setState({
+      selectedDate: baseSummary.date,
+      lastKnownToday: getTodayDate(),
+    });
+    configureConnection(true);
+    configureFamilyUsers([]);
+    configureOnlineData();
+    mockUseDailySummary.mockReturnValue({
+      summary: { ...baseSummary, foodEntries: [buildFoodEntry('oats')] },
+      isLoading: false,
+      isError: false,
+      refetch: refetchSummary,
+    } as ReturnType<typeof useDailySummary>);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
+  });
+
+  test('uses the native header during selection, opens Move and restores the date controls on Cancel', () => {
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+    const view = renderScreen();
+
+    expect(mockSetNativeHeaderDatePickerOptions).toHaveBeenCalled();
+    mockSetNativeHeaderDatePickerOptions.mockClear();
+    fireEvent(view.getByTestId('food-select-oats'), 'longPress');
+
+    const setNativeOptions = jest.mocked(
+      mockNavigation.setOptions as unknown as NativeHeaderNavigation['setOptions']
+    );
+    const options = setNativeOptions.mock.lastCall?.[0];
+    expect(options?.title).toBe('1 selected');
+    expect(options?.headerLargeTitleEnabled).toBe(false);
+    expect(view.queryByText('1 selected')).toBeNull();
+
+    const right = options?.unstable_headerRightItems?.({});
+    expect(right).toEqual([
+      expect.objectContaining({
+        type: 'button',
+        accessibilityLabel: 'diarySelection.move',
+        disabled: false,
+      }),
+      expect.objectContaining({
+        type: 'button',
+        accessibilityLabel: 'common.delete',
+        disabled: false,
+      }),
+    ]);
+    const move = right?.[0];
+    if (move?.type !== 'button') throw new Error('Expected Move button');
+    act(() => move.onPress());
+    expect(mockPresentDiaryMove).toHaveBeenCalledWith(
+      baseSummary.date,
+      null,
+      'breakfast'
+    );
+
+    const cancel = options?.unstable_headerLeftItems?.({})[0];
+    if (cancel?.type !== 'button') throw new Error('Expected Cancel button');
+    expect(cancel.accessibilityLabel).toBe('common.cancel');
+    act(() => cancel.onPress());
+
+    const picker = mockSetNativeHeaderDatePickerOptions.mock.lastCall?.[1];
+    expect(picker?.headerPresentation).toMatchObject({
+      title: 'navigation.diary',
+      headerLargeTitleEnabled: true,
+    });
+  });
+
+  test('renders selection in the screen header when native tabs are off', () => {
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
+    const view = renderScreen();
+
+    fireEvent(view.getByTestId('food-select-oats'), 'longPress');
+    expect(view.getByText('1 selected')).toBeTruthy();
+    expect(view.queryByTestId('date-navigator')).toBeNull();
+    fireEvent.press(view.getByLabelText('common.cancel'));
+    expect(view.getByTestId('date-navigator')).toBeTruthy();
+  });
+});
 
 describe('DiaryScreen custom measurements of a feature turned off', () => {
   const flowEntry = {

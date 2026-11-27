@@ -4,6 +4,33 @@ import type {
   NativeStackNavigationOptions,
 } from '@react-navigation/native-stack';
 
+export type NativeHeaderNavigation = {
+  setOptions: (options: NativeStackNavigationOptions) => void;
+};
+
+export type NativeHeaderPresentation = Pick<
+  NativeStackNavigationOptions,
+  'title' | 'headerLargeTitleEnabled'
+>;
+
+export function setNativeHeaderItems(
+  navigation: NativeHeaderNavigation,
+  {
+    leftItems,
+    rightItems,
+    ...presentation
+  }: NativeHeaderPresentation & {
+    leftItems?: NativeStackHeaderItem[];
+    rightItems?: NativeStackHeaderItem[];
+  }
+) {
+  navigation.setOptions({
+    ...presentation,
+    unstable_headerLeftItems: leftItems ? () => leftItems : undefined,
+    unstable_headerRightItems: rightItems ? () => rightItems : undefined,
+  });
+}
+
 export function createIOSNativeHeaderOptions(
   actionTintColor: string,
   titleColor: string = actionTintColor

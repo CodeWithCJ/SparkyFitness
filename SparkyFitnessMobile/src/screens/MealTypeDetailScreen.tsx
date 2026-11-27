@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
@@ -17,7 +17,9 @@ import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
-import DiaryEntrySelectionBar from '../components/DiaryEntrySelectionBar';
+import DiaryEntrySelectionBar, {
+  createDiaryEntrySelectionHeader,
+} from '../components/DiaryEntrySelectionBar';
 import { useDiaryEntrySelection } from '../hooks/useDiaryEntrySelection';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
@@ -26,6 +28,7 @@ import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
@@ -47,6 +50,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
   const energyUnit = useEnergyUnit();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -106,7 +110,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   const diarySelection = useDiaryEntrySelection({
     date,
     entries,
-    enabled: Platform.OS === 'android' && isConnected,
+    enabled: isConnected,
     moveSheetRef,
   });
   const { cancelSelection } = diarySelection;
@@ -255,9 +259,21 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     );
   };
 
+  const { isSelecting } = diarySelection;
+  const selectionHeader = isSelecting
+    ? createDiaryEntrySelectionHeader(t, diarySelection)
+    : null;
   const header = useScreenHeader({
-    left: { kind: 'back' },
-    right: [
+    nativeTitle:
+      selectionHeader?.title ??
+      mealLabel ??
+      t('screens.meal', { defaultValue: 'Meal' }),
+    nativeOptions: {
+      headerBackVisible: !isSelecting,
+      gestureEnabled: !isSelecting,
+    },
+    left: selectionHeader?.left ?? { kind: 'back' },
+    right: selectionHeader?.right ?? [
       {
         kind: 'icon',
         sfSymbol: 'plus',
@@ -335,7 +351,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
 
   return (
     <View className="flex-1 bg-background">
-      {diarySelection.isSelecting ? (
+      {isSelecting && !usesNativeHeader ? (
         <DiaryEntrySelectionBar {...diarySelection} />
       ) : (
         header
@@ -352,13 +368,11 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
         isPending={isCopying}
         onCopy={(payload) => copyMeal(payload)}
       />
-      {Platform.OS === 'android' && (
-        <CopyMealSheet
-          ref={moveSheetRef}
-          isPending={diarySelection.isPending}
-          move={diarySelection.move}
-        />
-      )}
+      <CopyMealSheet
+        ref={moveSheetRef}
+        isPending={diarySelection.isPending}
+        move={diarySelection.move}
+      />
     </View>
   );
 };
