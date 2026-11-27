@@ -536,7 +536,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
         // one: it is always "current" while auto-calculation is on, so it must
         // not stop the wrist from starting a real fast.
         let confirmedWatchFast: WatchContextPayload['fast'] = null;
-        let fastKnown = true;
+        let deferAckUntilRefresh = false;
         if (!current || current.is_auto_calculated) {
           const startMs =
             payload.startedAt != null &&
@@ -577,7 +577,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 return;
               }
               confirmedWatchFast = toWatchFast(latest) ?? null;
-            } catch {
+            } catch (refreshError) {
               if (
                 !(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))
               ) {
@@ -585,7 +585,11 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 deferredEndsByOwnerRef.current.delete(resolvedOwner);
                 return;
               }
-              fastKnown = false;
+              addLog(
+                `[Watch] Replayed fast start refresh failed; deferring ack until retry: ${String(refreshError)}`,
+                'WARNING'
+              );
+              deferAckUntilRefresh = true;
               confirmedWatchFast = null;
             }
           } else {
@@ -609,18 +613,20 @@ export function useWatchFastingBridge(enabled: boolean): void {
         }
         refresh();
         if (payload.clientId) recordSettled(dedupeKey, true);
-        try {
-          await sendAckWithFast(
-            payload.clientId,
-            true,
-            fastKnown,
-            confirmedWatchFast
-          );
-        } catch (ackError) {
-          addLog(
-            `[Watch] Fast start ack failed after commit; settled for replay: ${String(ackError)}`,
-            'WARNING'
-          );
+        if (!deferAckUntilRefresh || !watch.sendFastAck) {
+          try {
+            await sendAckWithFast(
+              payload.clientId,
+              true,
+              !deferAckUntilRefresh,
+              confirmedWatchFast
+            );
+          } catch (ackError) {
+            addLog(
+              `[Watch] Fast start ack failed after commit; settled for replay: ${String(ackError)}`,
+              'WARNING'
+            );
+          }
         }
         await drainDeferredEnds(resolvedOwner);
       } catch (error) {

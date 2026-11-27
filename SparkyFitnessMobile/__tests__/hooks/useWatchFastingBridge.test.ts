@@ -2131,7 +2131,7 @@ describe('useWatchFastingBridge', () => {
     }
   });
 
-  it('settles ok with fastKnown=false and null fast when re-fetch after completed replay rejects on same server', async () => {
+  it('settles and defers ack when re-fetch after completed replay rejects on same server, then replays fresh state on retry', async () => {
     const mockSendFastAck = jest.fn();
     const watchMock = WatchConnectivity as unknown as {
       sendFastAck?: jest.Mock;
@@ -2146,7 +2146,8 @@ describe('useWatchFastingBridge', () => {
           start_time: '2026-11-25T06:00:00.000Z',
           is_auto_calculated: true,
         })
-        .mockRejectedValueOnce(new Error('network timeout'));
+        .mockRejectedValueOnce(new Error('network timeout'))
+        .mockResolvedValueOnce(null);
       (startFast as jest.Mock).mockResolvedValueOnce({
         id: 'fast-ended',
         client_id: uuidClientId,
@@ -2166,13 +2167,30 @@ describe('useWatchFastingBridge', () => {
       });
 
       await waitFor(() =>
+        expect(addLog).toHaveBeenCalledWith(
+          expect.stringContaining('Replayed fast start refresh failed'),
+          'WARNING'
+        )
+      );
+      expect(mockSendFastAck).not.toHaveBeenCalled();
+
+      // Retry hits the settled path (no second startFast) and acks with authoritative fastKnown=true.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: uuidClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() =>
         expect(mockSendFastAck).toHaveBeenCalledWith(
           uuidClientId,
           true,
-          false,
+          true,
           null
         )
       );
+      expect(startFast).toHaveBeenCalledTimes(1);
     } finally {
       delete watchMock.sendFastAck;
     }
