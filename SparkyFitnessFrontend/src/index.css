@@ -236,3 +236,14 @@
     min-width: 0;
   }
 }
+
+/* Recharts' default tooltip hardcodes light inline colors; follow the theme
+   so every chart that uses it stays readable in dark mode. */
+.recharts-default-tooltip {
+  background-color: hsl(var(--background)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground));
+}
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: hsl(var(--foreground));
+}
