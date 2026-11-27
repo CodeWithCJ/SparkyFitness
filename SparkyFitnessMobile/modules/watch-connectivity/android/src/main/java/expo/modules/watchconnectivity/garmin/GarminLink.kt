@@ -653,7 +653,8 @@ internal object GarminLink {
   }
 
   /**
-   * Part of signing out (`clearGarminAccount`, `clearServerCredentials`):
+   * Part of an account change (`clearGarminAccount`, `clearServerCredentials`,
+   * and an owner change in `setTelemetryOwner`):
    * forget the cached snapshot, answer waiting sends `failed` and empty every
    * connected watch. [onDone] runs on the main thread once that is queued.
    */

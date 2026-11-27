@@ -10,6 +10,7 @@ import { getSystemClient } from '../db/poolManager.js';
 import type { ImageDomain } from '../utils/imageDownloader.js';
 import { UPLOAD_STAGING_DIR, isSafePathSegment } from '../utils/uploadsPath.js';
 import { ValidationError } from '../utils/errors.js';
+import { getImageExtension } from './checkInPhotoUpload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,6 +105,60 @@ const imageUpload = multer({
   limits: { fileSize: MAX_IMAGE_BYTES, files: MAX_IMAGE_COUNT },
 });
 
+async function validateAndSanitizeStagedFiles(req: unknown): Promise<void> {
+  const staged = stagedFilesFrom(req);
+  const stagingDir = path.resolve(
+    stagingDirFor((req as UploadRequest)?.imageUploadId || '')
+  );
+  for (const file of staged) {
+    const safeFilename = path.basename(file.filename);
+    const resolvedPath = path.resolve(stagingDir, safeFilename);
+    if (
+      !resolvedPath.startsWith(stagingDir + path.sep) ||
+      !isSafePathSegment(safeFilename)
+    ) {
+      throw new ValidationError('Invalid uploaded file path.');
+    }
+    let handle;
+    const header = Buffer.alloc(16);
+    let bytesRead: number;
+    try {
+      handle = await fsp.open(resolvedPath, 'r');
+      const res = await handle.read(header, 0, 16, 0);
+      bytesRead = res.bytesRead;
+    } catch {
+      throw new ValidationError('Could not read uploaded image file.');
+    } finally {
+      await handle?.close();
+    }
+    const detectedExt = getImageExtension(header.subarray(0, bytesRead));
+    if (!detectedExt) {
+      throw new ValidationError(
+        'Invalid image content: file signature does not match an allowed format (JPEG, PNG, GIF, WebP).'
+      );
+    }
+    // Normalize file extension to canonical format from verified magic bytes
+    const currentExt = path.extname(safeFilename).slice(1).toLowerCase();
+    if (
+      currentExt !== detectedExt &&
+      !(detectedExt === 'jpg' && currentExt === 'jpeg')
+    ) {
+      const base = path.basename(safeFilename, path.extname(safeFilename));
+      const newFilename = `${base}.${detectedExt}`;
+      if (!isSafePathSegment(newFilename)) {
+        throw new ValidationError('Invalid destination file name.');
+      }
+      const newPath = path.resolve(stagingDir, newFilename);
+      if (!newPath.startsWith(stagingDir + path.sep)) {
+        throw new ValidationError('Invalid destination path.');
+      }
+      await fsp.rename(resolvedPath, newPath);
+      file.filename = newFilename;
+      file.path = newPath;
+    }
+  }
+}
+
 /**
  * Wraps a multer middleware so the per-request staging directory is always
  * removed, including when multer itself rejects the upload (size limit,
@@ -129,12 +184,17 @@ function withStagingCleanup(
     res.on?.('finish', () => {
       void cleanupStagedImages(req);
     });
-    middleware(req, res, (err?: unknown) => {
+    middleware(req, res, async (err?: unknown) => {
       if (err) {
         void cleanupStagedImages(req).finally(() => next(err));
         return;
       }
-      next();
+      try {
+        await validateAndSanitizeStagedFiles(req);
+        next();
+      } catch (validationErr) {
+        void cleanupStagedImages(req).finally(() => next(validationErr));
+      }
     });
   };
 }
@@ -485,6 +545,7 @@ export {
   cleanupStagedImages,
   removeOrphanedImages,
   removeEntityImageDir,
+  validateAndSanitizeStagedFiles,
   MAX_IMAGE_BYTES,
   MAX_IMAGE_COUNT,
 };

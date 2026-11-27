@@ -231,6 +231,9 @@ Written only by the server (owner pool) after `services/challengeService.ts` has
 | Table | Purpose |
 |-------|---------|
 | `sparky_chat_history` | AI Assistant chat messages and history |
+| `coach_profile` | AI coaches: shared "About me", check-in times, daily message limit, pause |
+| `user_coaches` | AI coaches a person switched on or created, with rule changes and settings |
+| `coach_nudges` | Messages AI coaches sent, why, and whether they were read |
 | `food_assistant_preferences` | Explicit lasting food preferences, independently editable and forgettable |
 | `food_assistant_tasks` | Versioned food tasks, recoverable recipe ingredients and source evidence |
 | `food_assistant_operations` | Idempotent task operations and before/after checkpoints |

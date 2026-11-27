@@ -5,6 +5,7 @@ import googleHealthService from '../services/googleHealthService.js';
 import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import requireSelfActor from '../middleware/requireSelfMiddleware.js';
 import {
   CallbackBodySchema,
   SyncBodySchema,
@@ -74,7 +75,11 @@ router.get(
 router.post(
   '/callback',
   authMiddleware.authenticate,
-  checkPermissionMiddleware('diary'),
+  // Linking a provider is self-only: writing the OAuth tokens/identity onto the
+  // owner's row from a switched/delegated context would let a delegate attach
+  // their own provider account to the owner. See the matching Oura/Fitbit/Strava
+  // callbacks for the same pattern.
+  requireSelfActor,
   async (req, res, next) => {
     try {
       const bodyResult = CallbackBodySchema.safeParse(req.body);

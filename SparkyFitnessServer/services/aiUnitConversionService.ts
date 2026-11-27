@@ -1,4 +1,3 @@
-import chatRepository from '../models/chatRepository.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
@@ -6,9 +5,8 @@ import {
   dispatchAiRequest,
   type DispatchErrorCategory,
   type JsonSchemaNode,
-  type ProviderConfig,
 } from '../ai/providerDispatch.js';
-import { resolveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
+import { resolveTextAiProvider } from '../ai/resolveTextAiProvider.js';
 import {
   aiProviderRawResponseSchema,
   isAiConvertibleUnit,
@@ -159,30 +157,17 @@ export async function estimateUnitConversion(
   }
 
   // 3. Resolve provider.
-  const setting = await chatRepository.getActiveAiServiceSetting(userId);
-  if (!setting) {
+  const resolved = await resolveTextAiProvider(userId, actorIsAdmin);
+  if (!resolved) {
     throw new NoAiServiceError();
   }
-  const aiService = await chatRepository.getAiServiceSettingForBackend(
-    setting.id,
-    userId
-  );
-  if (!aiService) {
-    throw new NoAiServiceError();
-  }
-
-  const provider: ProviderConfig = {
-    service_type: aiService.service_type,
-    api_key: aiService.api_key ?? undefined,
-    model_name: aiService.model_name ?? undefined,
-    custom_url: aiService.custom_url ?? undefined,
-  };
+  const { provider, networkPolicy } = resolved;
 
   // 4. Build prompt + dispatch. The helper owns the api-key/custom-url checks,
   // per-provider structured-output strategy, and JSON parsing.
   const result = await dispatchAiRequest({
     provider,
-    networkPolicy: await resolveAiNetworkPolicy(aiService, actorIsAdmin),
+    networkPolicy,
     prompt: buildPrompt({
       foodName: params.foodName,
       brand: params.brand,

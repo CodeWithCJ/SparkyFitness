@@ -8,32 +8,27 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Scaffold
-import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.foundation.LocalAmbientModeManager
+import androidx.wear.compose.foundation.pager.HorizontalPager
+import androidx.wear.compose.foundation.pager.PagerDefaults
+import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.foundation.rememberAmbientModeManager
+import androidx.wear.compose.material3.AnimatedPage
+import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.HorizontalPagerScaffold
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.PagerScaffoldDefaults
 
 class MainActivity : ComponentActivity() {
   private lateinit var sessionManager: WearSessionManager
@@ -57,23 +52,26 @@ class MainActivity : ComponentActivity() {
     handleNavigationIntent(intent)
 
     setContent {
-      MaterialTheme {
-        val workoutPhase by sessionManager.workoutStore.phase.collectAsState()
-        val runPhase by sessionManager.runStore.phase.collectAsState()
-        val recordingState by sessionManager.recordingStore.state.collectAsState()
-        val keepScreenOn = workoutPhase != WorkoutSessionStore.Phase.IDLE ||
-          runPhase != WatchRunStore.RunPhase.IDLE ||
-          recordingState != null
+      val ambientModeManager = rememberAmbientModeManager()
+      CompositionLocalProvider(LocalAmbientModeManager provides ambientModeManager) {
+        SparkyWearTheme {
+          val workoutPhase by sessionManager.workoutStore.phase.collectAsState()
+          val runPhase by sessionManager.runStore.phase.collectAsState()
+          val recordingState by sessionManager.recordingStore.state.collectAsState()
+          val keepScreenOn = workoutPhase != WorkoutSessionStore.Phase.IDLE ||
+            runPhase != WatchRunStore.RunPhase.IDLE ||
+            recordingState != null
 
-        LaunchedEffect(keepScreenOn) {
-          if (keepScreenOn) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-          } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+          LaunchedEffect(keepScreenOn) {
+            if (keepScreenOn) {
+              window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+              window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
           }
-        }
 
-        SparkyWearRoot(sessionManager = sessionManager)
+          SparkyWearRoot(sessionManager = sessionManager)
+        }
       }
     }
   }
@@ -151,7 +149,10 @@ class MainActivity : ComponentActivity() {
   }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Root Wear OS Material 3 Expressive container: single [AppScaffold] hosting either
+ * the modal [SleepDetailPage] or the [HorizontalPagerScaffold] deck of enabled watch pages.
+ */
 @Composable
 fun SparkyWearRoot(sessionManager: WearSessionManager) {
   val enabledPages by sessionManager.checkInStore.enabledPages.collectAsState()
@@ -178,65 +179,51 @@ fun SparkyWearRoot(sessionManager: WearSessionManager) {
     sessionManager.consumeRequestedPage()
   }
 
-  Scaffold(
-    timeText = { TimeText() }
+  AppScaffold(
+    modifier = Modifier
+      .fillMaxSize()
+      .background(Color.Black)
   ) {
     if (showSleepDetail) {
       SleepDetailPage(
         store = sessionManager.checkInStore,
         onDismiss = { sessionManager.dismissSleepDetail() }
       )
-      return@Scaffold
-    }
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(Color.Black)
-    ) {
-      HorizontalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize()
-      ) { pageIdx ->
-        val isCurrentPage = pagerState.currentPage == pageIdx && !pagerState.isScrollInProgress
-        when (pages.getOrElse(pageIdx) { WatchPage.GOALS }) {
-          WatchPage.GOALS -> GoalsSummaryPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.WATER -> WaterPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.MEDICATIONS -> MedicationListPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.ENTRY -> WeightEntryPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.TREND -> TrendChartPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.WORKOUT -> WorkoutContainerPage(
-            checkInStore = sessionManager.checkInStore,
-            workoutStore = sessionManager.workoutStore,
-            recordingStore = sessionManager.recordingStore,
-            runStore = sessionManager.runStore,
-            isCurrentPage = isCurrentPage
-          )
-          WatchPage.NOW_PLAYING -> NowPlayingPage(
-            store = sessionManager.mediaStore,
-            isCurrentPage = isCurrentPage
-          )
-          WatchPage.FASTING -> FastingPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-          WatchPage.STEPS -> StepsPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
-        }
-      }
-
-      if (pages.size > 1) {
-        Row(
-          modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .padding(bottom = 4.dp),
-          horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          pages.forEachIndexed { idx, _ ->
-            val selected = pagerState.currentPage == idx
-            Box(
-              modifier = Modifier
-                .size(if (selected) 6.dp else 4.dp)
-                .clip(CircleShape)
-                .background(if (selected) SparkyColors.Green else Color.White.copy(alpha = 0.28f))
-            )
+    } else {
+      HorizontalPagerScaffold(pagerState = pagerState) {
+        HorizontalPager(
+          state = pagerState,
+          modifier = Modifier.fillMaxSize(),
+          flingBehavior = PagerDefaults.snapFlingBehavior(
+            state = pagerState,
+            maxFlingPages = 1,
+            snapPositionalThreshold = PagerScaffoldDefaults.HighSnapPositionalThreshold,
+            snapAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
+          ),
+          rotaryScrollableBehavior = null
+        ) { pageIdx ->
+          AnimatedPage(pageIndex = pageIdx, pagerState = pagerState) {
+            val isCurrentPage = pagerState.currentPage == pageIdx && !pagerState.isScrollInProgress
+            when (pages.getOrElse(pageIdx) { WatchPage.GOALS }) {
+              WatchPage.GOALS -> GoalsSummaryPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.WATER -> WaterPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.MEDICATIONS -> MedicationListPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.ENTRY -> WeightEntryPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.TREND -> TrendChartPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.WORKOUT -> WorkoutContainerPage(
+                checkInStore = sessionManager.checkInStore,
+                workoutStore = sessionManager.workoutStore,
+                recordingStore = sessionManager.recordingStore,
+                runStore = sessionManager.runStore,
+                isCurrentPage = isCurrentPage
+              )
+              WatchPage.NOW_PLAYING -> NowPlayingPage(
+                store = sessionManager.mediaStore,
+                isCurrentPage = isCurrentPage
+              )
+              WatchPage.FASTING -> FastingPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+              WatchPage.STEPS -> StepsPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
+            }
           }
         }
       }

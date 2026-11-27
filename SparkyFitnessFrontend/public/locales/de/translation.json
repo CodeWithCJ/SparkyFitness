@@ -15,7 +15,7 @@
     "symptoms": "Symptome",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
     "labs": "Laborergebnisse",
-    "challenges": "Challenges"
+    "challenges": "Herausforderungen"
   },
   "settings": {
     "profileInformation": {
@@ -1617,7 +1617,7 @@
     "foodProviders": {
       "common": {
         "getApiKey": "API-Schlüssel abrufen",
-        "terms": "AGB"
+        "terms": "AGBs"
       },
       "cooktool": {
         "help": "Der kostenlose Tarif umfasst 1.000 Abfragen pro Tag. Akzeptiere die CookTool-Bedingungen mit deinem eigenen Schlüssel. Abfragen werden 24 Stunden zwischengespeichert.",
@@ -2911,7 +2911,7 @@
       "none": "keine"
     },
     "challenges": {
-      "title": "Challenges",
+      "title": "Herausforderungen",
       "label": "Challenges und Gruppen-Bestenlisten auf diesem Server erlauben",
       "help": "Nutzer können Challenges starten, andere per Code einladen und gegenseitig Punkte sehen – niemals jedoch Tagebücher. Ist die Funktion aus, werden Challenges ausgeblendet und die Wertung pausiert; es wird nichts gelöscht."
     }
@@ -11235,7 +11235,7 @@
     "cooldown": "Cooldown"
   },
   "challenges": {
-    "title": "Challenges",
+    "title": "Herausforderungen",
     "dates": "{{start}} bis {{end}}",
     "datesOpen": "Ab {{start}}",
     "state": {

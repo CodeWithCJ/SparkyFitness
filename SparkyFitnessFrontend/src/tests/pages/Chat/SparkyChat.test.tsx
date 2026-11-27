@@ -21,6 +21,10 @@ jest.mock('@/hooks/AI/useSparkyChat', () => ({
 jest.mock('@/utils/chatConversationId', () => ({
   rotateChatConversationId: jest.fn(),
 }));
+jest.mock('@/hooks/Coaches/useCoaches', () => ({
+  useCoachesAvailable: () => false,
+  useCoachSettings: () => ({ data: undefined }),
+}));
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'me' } }),
 }));

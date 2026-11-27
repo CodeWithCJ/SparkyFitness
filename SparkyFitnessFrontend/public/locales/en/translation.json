@@ -3229,9 +3229,6 @@
       "openFoodFactsPasswordOptional": "Open Food Facts Password (Optional)",
       "leaveBlankToKeepExisting2": "•••••••• (leave blank to keep existing)",
       "appURL": "App URL",
-      "eGHttpsNorishYour": "e.g., https://norish.your-domain.com",
-      "eGHttpYourTandoor": "e.g., http://your-tandoor-instance.com",
-      "eGHttpYourMealie": "e.g., http://your-mealie-instance.com",
       "apiKey": "API Key",
       "enterNorishAPIKey": "Enter Norish API Key",
       "enterTandoorAPIKey": "Enter Tandoor API Key",
@@ -3485,7 +3482,6 @@
     },
     "providerSpecificFields": {
       "appURL": "App URL",
-      "eGHttpYourInstance": "e.g., http://your-{{provider_type}}-instance.com",
       "clientID": "Client ID",
       "yazioEmailUsername": "YAZIO Email / Username",
       "appID": "App ID",
@@ -3661,6 +3657,9 @@
       },
       "labResults": {
         "description": "Record blood tests and follow each marker over time."
+      },
+      "aiCoaches": {
+        "description": "AI coaches that watch your food, training and sleep and send a short message when something is worth saying. Set them up in Settings → Wellness → Coaches."
       }
     }
   },
@@ -11618,6 +11617,380 @@
       "lift": "lifts",
       "distance": "distance",
       "pace": "pace"
+    }
+  },
+  "coaches": {
+    "saved": "Saved.",
+    "saveFailed": "Could not save your coach settings.",
+    "previewFailed": "Could not check this coach.",
+    "because": "Because: {{reason}}",
+    "rulesToggle": "When it speaks up",
+    "settings": {
+      "title": "Coaches",
+      "description": "AI coaches that look at your data and speak up when it matters",
+      "off": "Coaches are off. Turn them on to get short, timely messages from coaches that look at your food, training and sleep.",
+      "turnOn": "Turn on Coaches",
+      "loadError": "Could not load your coaches.",
+      "weekday": "Runs on",
+      "focusHabit": "Habit to focus on",
+      "noHabit": "None yet"
+    },
+    "aboutMe": {
+      "title": "About me",
+      "description": "Your coaches and Sparky chat use this. You can change or clear it any time.",
+      "diet": "Diet",
+      "tone": "Tone",
+      "notSet": "Not set",
+      "foodsAvoid": "Foods to avoid",
+      "foodsPrefer": "Foods I like",
+      "notes": "Anything else coaches should know",
+      "allergies": "Allergies",
+      "noAllergies": "None saved.",
+      "allergiesHint": "Managed in Settings → Nutrition & Diet → Allergen preferences.",
+      "clear": "Clear all",
+      "clearTitle": "Clear About me?",
+      "clearDescription": "Your diet, tone, foods and notes are removed for every coach and for Sparky chat. Allergies are not affected."
+    },
+    "diets": {
+      "omnivore": "No restrictions",
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "pescatarian": "Pescatarian",
+      "keto": "Keto",
+      "halal": "Halal",
+      "kosher": "Kosher",
+      "other": "Other"
+    },
+    "tones": {
+      "friendly": "Friendly and short",
+      "direct": "Direct",
+      "encouraging": "Encouraging",
+      "neutral": "Neutral"
+    },
+    "schedule": {
+      "title": "When coaches check in",
+      "description": "Coaches only look at your data at these times, in your own time zone, and only speak when something is worth saying.",
+      "checkInTime": "Check-in time",
+      "removeTime": "Remove this time",
+      "addTime": "Add a time",
+      "maxMessages": "At most this many messages a day",
+      "maxMessagesTooltip": "Caps total messages across all active coaches each day to prevent notification spam and reduce AI usage."
+    },
+    "pause": {
+      "title": "Pause coaches",
+      "description": "Sick, travelling or injured? Coaches stay quiet until the date you choose.",
+      "until": "Paused until {{date}}.",
+      "untilLabel": "Until",
+      "reason": "Reason",
+      "pause": "Pause",
+      "resume": "Resume now",
+      "reasons": {
+        "sick": "Sick",
+        "travel": "Travelling",
+        "injury": "Injured",
+        "other": "Other"
+      }
+    },
+    "list": {
+      "title": "Your coaches",
+      "cost": "Coaches use your AI provider only when a rule matches. Without one, you get a short fixed message instead.",
+      "create": "Create your own coach",
+      "limit": "You have reached the limit of {{count}} coaches of your own.",
+      "aiDecides": "The AI decides when it speaks.",
+      "customRules": "{{count}} rules"
+    },
+    "preview": {
+      "button": "Would it speak right now?",
+      "tooltip": "Simulates this coach against today’s logged food and exercise. Shows if any rule triggers right now, at zero AI token cost.",
+      "yes": "Yes, it would speak:",
+      "no": "No. Nothing matches right now, so it would stay quiet.",
+      "today": "Preview today",
+      "aiDecides": "The AI decides at each check-in, so there is nothing to check here."
+    },
+    "thread": {
+      "sparky": "Sparky",
+      "label": "Chat with",
+      "unread": "{{count}} unread",
+      "readOnly": "Add an AI provider in Settings to reply to your coaches.",
+      "otherUnread": "Unread messages"
+    },
+    "names": {
+      "recovery": "Recovery",
+      "consistency": "Consistency",
+      "nutrition": "Nutrition",
+      "sleep_recovery": "Sleep & recovery",
+      "custom": "Coach",
+      "daily_outlook": "Daily outlook",
+      "weekly_review": "Weekly review",
+      "training": "Training",
+      "habits": "Habits"
+    },
+    "descriptions": {
+      "recovery": "Watches training and food together, so you eat enough protein and carbs after hard sessions.",
+      "consistency": "Notices logging gaps and streaks, and helps you restart gently.",
+      "nutrition": "Looks at today's protein, fibre, calories and water against your goals.",
+      "sleep_recovery": "Compares last night's sleep with your usual and your recent training.",
+      "daily_outlook": "Each morning: push, normal or take it easy today, from your sleep and recent training.",
+      "weekly_review": "Once a week: how the week went and, if your weight trend says so, a new calorie target to apply.",
+      "training": "Looks at your lifts, and offers plan changes when weights could step up or ease off.",
+      "habits": "Helps with one small habit at a time, with a gentle evening check."
+    },
+    "when": {
+      "morning": "Morning",
+      "evening": "Evening",
+      "any": "Any check-in",
+      "first_morning": "First morning check-in",
+      "weekday": "Once a week",
+      "after_workout": "After a workout"
+    },
+    "units": {
+      "percent": "%",
+      "hours": "h",
+      "minutes": "min",
+      "days": "days",
+      "ratio": "",
+      "direction": "",
+      "count": "",
+      "flag": "",
+      "phase": ""
+    },
+    "directions": {
+      "toward": "toward your goal",
+      "away": "away from your goal",
+      "flat": "steady",
+      "fertile": "fertile",
+      "ovulation": "ovulation",
+      "menstrual": "menstrual",
+      "follicular": "follicular",
+      "luteal": "luteal"
+    },
+    "ops": {
+      "lt": "is below",
+      "lte": "is at most",
+      "gt": "is above",
+      "gte": "is at least",
+      "eq": "is"
+    },
+    "signals": {
+      "protein_pct_of_goal": "Protein (% of goal)",
+      "carbs_pct_of_goal": "Carbs (% of goal)",
+      "fiber_pct_of_goal": "Fibre (% of goal)",
+      "calories_pct_of_goal": "Calories (% of goal)",
+      "water_pct_of_goal": "Water (% of goal)",
+      "hours_since_strength": "Hours since a strength workout",
+      "hours_since_hard_cardio": "Hours since hard cardio",
+      "sleep_minutes_vs_avg": "Sleep against your usual",
+      "training_load_ratio": "Training load vs your 4-week average",
+      "weight_trend_direction": "Weight trend",
+      "days_since_last_log": "Days since you last logged",
+      "logging_streak_days": "Logging streak",
+      "new_prs_since_last_checkin": "New personal records",
+      "protein_goal_hit_streak_days": "Days in a row your protein goal was met",
+      "calorie_goal_hit_streak_days": "Days in a row you were on your calorie goal",
+      "stalled_lifts": "Lifts that stopped progressing",
+      "mood_checkin_today": "Mood check-in today (1 = yes)",
+      "focus_habit_done_today": "Focus habit done today (1 = yes)",
+      "focus_habit_streak_days": "Focus habit streak",
+      "cycle_phase": "Cycle phase",
+      "workout_is_strength": "Workout is strength (1 = yes)",
+      "workout_is_cardio": "Workout is cardio (1 = yes)",
+      "workout_duration_min": "Workout length",
+      "workout_hard": "Workout was hard (1 = yes)",
+      "workout_new_pr": "Workout set a record (1 = yes)"
+    },
+    "rules": {
+      "recovery": {
+        "protein_after_strength": "Protein is low after a strength workout",
+        "carbs_after_hard_cardio": "Carbs are low after hard cardio",
+        "after_strength_session": "After a hard strength workout",
+        "new_pr": "You set a record"
+      },
+      "consistency": {
+        "logging_gap": "You haven't logged for a while",
+        "nothing_logged_today": "Nothing logged today",
+        "streak_7": "A week-long logging streak",
+        "streak_30": "A month-long logging streak",
+        "energy_question": "Ask how my energy is"
+      },
+      "nutrition": {
+        "fiber_low": "Fibre is low",
+        "protein_low": "Protein is low",
+        "water_low": "Water is low",
+        "protein_streak": "Protein goal met several days in a row"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "Short sleep before a heavy week",
+        "short_sleep": "Much shorter sleep than usual"
+      },
+      "daily_outlook": {
+        "outlook": "Morning outlook"
+      },
+      "weekly_review": {
+        "weekly": "Weekly review"
+      },
+      "training": {
+        "weekly_plan_review": "Weekly plan review",
+        "stall": "A lift has stopped progressing",
+        "after_workout_review": "After a workout"
+      },
+      "habits": {
+        "not_done_evening": "Habit not done yet today",
+        "streak_win": "Habit streak"
+      }
+    },
+    "templates": {
+      "recovery": {
+        "protein_after_strength": "You're at {{protein_pct_of_goal}}% of your protein goal after a strength workout {{hours_since_strength}} hours ago. A protein-rich meal would help you recover.",
+        "carbs_after_hard_cardio": "You're at {{carbs_pct_of_goal}}% of your carb goal after hard cardio. Some carbs would help you refuel.",
+        "after_strength_session": "Nice session ({{workout_minutes}} min). A protein-rich meal in the next few hours will help you recover.",
+        "new_pr": "You set a new personal record. Well done."
+      },
+      "consistency": {
+        "logging_gap": "It's been {{days_since_last_log}} days since you logged. No catch-up needed: logging your next meal gets you back on track.",
+        "nothing_logged_today": "Nothing logged yet today. Logging your next meal is enough to get going.",
+        "streak_7": "You have logged {{logging_streak_days}} days in a row. Nice consistency.",
+        "streak_30": "{{logging_streak_days}} days of logging in a row. That is a real habit."
+      },
+      "nutrition": {
+        "fiber_low": "Fibre is at {{fiber_pct_of_goal}}% of your goal. Vegetables, fruit, legumes or oats would help.",
+        "protein_low": "Protein is at {{protein_pct_of_goal}}% of your goal today. Consider a protein-rich meal.",
+        "water_low": "Water is at {{water_pct_of_goal}}% of your goal. A glass or two would help.",
+        "protein_streak": "You have met your protein goal {{protein_goal_hit_streak_days}} days in a row."
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "You slept less than usual and your training load is high. Consider an easier session today.",
+        "short_sleep": "You slept much less than usual. Go easy today and protect tonight's sleep."
+      },
+      "daily_outlook": {
+        "outlook": {
+          "push": "Good day to push: your recent training load is light and you are rested.",
+          "normal": "A normal training day: sleep and training load look steady.",
+          "easy": "Take it easy today: short sleep or a heavy training week suggests recovering."
+        }
+      },
+      "weekly_review": {
+        "weekly": "Your week: you followed your target on about {{followed_target_percent}}% of it over {{days_logged}} logged days."
+      },
+      "training": {
+        "weekly_plan_review": "A weekly look at your training plan.",
+        "stall": "{{stalled_lifts}} of your lifts have stopped progressing.",
+        "after_workout_review": "Good work on that session ({{workout_minutes}} min)."
+      },
+      "habits": {
+        "streak_win": "{{focus_habit_streak_days}} days in a row on your focus habit. Keep it going."
+      },
+      "custom": {}
+    },
+    "answerFailed": "Could not save your answer.",
+    "kind": {
+      "win": "Win",
+      "outlook": "Outlook"
+    },
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "editor": {
+      "created": "Coach created.",
+      "deleted": "Coach deleted.",
+      "newTitle": "Create your own coach",
+      "editTitle": "Edit coach",
+      "description": "Choose what it talks about, what it may look at, and when it speaks up.",
+      "name": "Name",
+      "instructions": "How it should talk to me",
+      "access": "What it may look at",
+      "when": "When it should speak up",
+      "modeRules": "Only when these rules match",
+      "modeRulesHint": "No AI is used until a rule matches.",
+      "modeAi": "Let the AI decide",
+      "modeAiHint": "One AI call at each check-in (up to {{count}} a day) to decide whether to speak.",
+      "modeAiNeedsProvider": "Needs an AI provider. Add one in Settings first.",
+      "aiRule": "What should it watch for?",
+      "aiRulePlaceholder": "Tell me if anything looks off for my half marathon on 14 March.",
+      "addRule": "Add a rule",
+      "removeRule": "Remove this rule",
+      "addCondition": "and another condition",
+      "removeCondition": "Remove this condition",
+      "whenLabel": "When",
+      "signalLabel": "Number to watch",
+      "valueLabel": "Value",
+      "opLabel": "Comparison",
+      "deleteTitle": "Delete this coach?",
+      "deleteBody": "Its settings are removed. Messages it already sent stay in your chat."
+    },
+    "suggestion": {
+      "goalDayProtein": "Raise today's protein goal to {{to}} g (from {{from}} g)? Tomorrow goes back to your usual.",
+      "calorieTarget": "New daily calorie target from today: {{to}} {{unit}} (now {{from}}).",
+      "planChanges": "Changes to your workout plan: {{up}} step-ups, {{down}} lighter days.",
+      "apply": "Apply",
+      "dismiss": "No thanks",
+      "applyFailed": "Could not apply this. It may already be handled or no longer apply.",
+      "status": {
+        "applied": "Applied.",
+        "dismissed": "Not applied.",
+        "expired": "This was for another day."
+      }
+    },
+    "feedback": {
+      "helpful": "This helped",
+      "notHelpful": "This did not help"
+    },
+    "knowledge": {
+      "title": "What my coaches know",
+      "nothing": "Nothing saved in About me yet.",
+      "avoids": "Avoids: {{foods}}",
+      "likes": "Likes: {{foods}}",
+      "allergies": "Allergies: {{list}}",
+      "noCoaches": "No coach is switched on.",
+      "muted": "Stopped mentioning: {{rule}}",
+      "unmute": "Turn back on"
+    },
+    "questions": {
+      "answer": "Your answer",
+      "low": "Low",
+      "high": "High",
+      "yes": "Yes",
+      "notYetButton": "Not yet",
+      "markedDone": "Marked done.",
+      "notYet": "Noted. Not yet today.",
+      "saved": "Saved to your check-in.",
+      "energy": {
+        "ask": "How is your energy today?"
+      },
+      "mood": {
+        "ask": "How is your mood today?"
+      },
+      "focus": {
+        "ask": "How is your focus today?"
+      },
+      "habit_done": {
+        "ask": "Did you do your focus habit today?"
+      }
+    },
+    "checkInNow": {
+      "title": "Check in now",
+      "tooltip": "Forces coaches to inspect your current live diary and evaluate rules right now, instead of waiting for your next scheduled check-in.",
+      "button": "Check in now",
+      "resetToday": "Reset today's count",
+      "resetFailed": "Could not reset today count.",
+      "openChat": "Open chat",
+      "failed": "Could not run a check-in.",
+      "last": "Last check-in: {{when}}.",
+      "never": "No check-in has run yet. They run at your check-in times.",
+      "where": "Messages appear in the Sparky chat button, under the coach that wrote them.",
+      "sent_one": "{{count}} new message. Open the chat to read it.",
+      "sent_other": "{{count}} new messages. Open the chat to read them.",
+      "reason": {
+        "paused": "Coaches are paused.",
+        "no_coaches": "No coach is switched on. Switch one on in the list below.",
+        "limit_reached": "Today's message limit is already reached.",
+        "nothing_to_say": "Nothing to say right now: no rule matches today's data, or the coaches already said it today."
+      }
     }
   }
 }

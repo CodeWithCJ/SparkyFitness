@@ -346,3 +346,22 @@ export const resolveSettingsFoodProviderValue = (
   );
   return stored?.id ?? foodProviderOptions[0]?.id ?? '';
 };
+
+/**
+ * Example base URL for self-hosted data provider inputs.
+ * Uses RFC 2606 reserved domains (example.com) to avoid real domain squatting or phishing risks.
+ */
+export const getProviderBaseUrlExample = (providerType?: string): string => {
+  switch (providerType) {
+    case 'norish':
+      return 'https://norish.example.com';
+    case 'tandoor':
+      return 'http://tandoor.example.com';
+    case 'mealie':
+      return 'http://mealie.example.com';
+    default:
+      return providerType
+        ? `http://${providerType}.example.com`
+        : 'http://mealie.example.com';
+  }
+};

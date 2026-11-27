@@ -33,6 +33,7 @@ describe('toWatchFast', () => {
 
   it('says "not fasting" during an auto-calculated eating window, but keeps a calculated fast', () => {
     const base = {
+      id: 'auto-2026-10-03T08:00:00.000Z',
       start_time: '2026-10-03T08:00:00.000Z',
       target_end_time: '2026-10-03T16:00:00.000Z',
       fasting_type: '16:8',
@@ -41,6 +42,17 @@ describe('toWatchFast', () => {
     expect(
       toWatchFast({ ...base, is_eating_window: true } as never)
     ).toBeNull();
-    expect(toWatchFast(base as never)).toMatchObject({ label: '16:8' });
+    const calculated = toWatchFast(base as never);
+    expect(calculated).toMatchObject({ label: '16:8' });
+    expect(calculated?.id).toBeUndefined();
+
+    expect(
+      toWatchFast({
+        id: 'fast-manual-1',
+        start_time: '2026-10-03T08:00:00.000Z',
+        target_end_time: '2026-10-04T00:00:00.000Z',
+        fasting_type: '16:8',
+      } as never)
+    ).toMatchObject({ id: 'fast-manual-1', label: '16:8' });
   });
 });

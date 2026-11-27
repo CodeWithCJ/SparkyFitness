@@ -1,4 +1,5 @@
 import * as TaskManager from 'expo-task-manager';
+import { notifyNewCoachMessages } from './coachNotificationService';
 import * as BackgroundTask from 'expo-background-task';
 import type { FeatureChoicesResponse } from '@workspace/shared';
 import { registerAllOutboxHandlers } from '../offline/handlers';
@@ -409,6 +410,18 @@ const runBackgroundSync = async (
         const message = error instanceof Error ? error.message : String(error);
         await addLog(
           `[Background Sync] Medication reminder reconciliation failed: ${message}`,
+          'ERROR'
+        );
+      }
+
+      // AI coaches (#2013): a message a coach wrote since the last run shows
+      // as a local notification. Its own failures never reach the sync above.
+      try {
+        await notifyNewCoachMessages();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[Background Sync] Coach notifications failed: ${message}`,
           'ERROR'
         );
       }

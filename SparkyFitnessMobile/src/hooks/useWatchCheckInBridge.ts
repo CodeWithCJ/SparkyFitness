@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WatchConnectivity, {
+  type WatchBodyFatPoint,
   type WatchCheckInPayload,
   type WatchContextPayload,
   type WatchContainerPayload,
@@ -18,19 +19,32 @@ import WatchConnectivity, {
   type WatchSleepSnapshotPayload,
   type WatchWaterIntakePayload,
   type WatchWaterDeletePayload,
+  type WatchWaterTapCancelPayload,
   type WatchWaterLogPayload,
   type WatchMedicationTakenPayload,
+  type WatchServerSyncedPayload,
 } from '../../modules/watch-connectivity';
+import { ApiError } from '../services/api/errors';
 import {
   upsertCheckIn,
   fetchMeasurementsRange,
   fetchWaterContainers,
+  fetchWaterIntakeLive,
   fetchWaterIntakeLog,
+  fetchWaterIntakeLogLive,
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
 import { logDrinkOrQueue } from '../offline/logDrink';
+import {
+  cancelQueuedWaterDrink,
+  getQueuedWaterDrinkEntryDate,
+  getQueuedWaterDrinkStatus,
+} from '../offline/waterHandOver';
 import { accountGeneration } from '../offline/accountGeneration';
-import { subscribeAccountChanged } from '../offline/events';
+import {
+  subscribeAccountChanged,
+  subscribeUploadsConfirmed,
+} from '../offline/events';
 import {
   listMedications,
   listEntries,
@@ -39,13 +53,20 @@ import {
   updateEntry,
 } from '../services/api/medicationsApi';
 import {
+  glucoseContextQueryKeyRoot,
   medicationsListQueryKey,
+  medicationsRootQueryKey,
   medicationEntriesQueryKey,
   measurementsQueryKey,
   measurementsRangeQueryKey,
   dailySummaryQueryKey,
+  dailySummaryRootQueryKey,
   waterContainersQueryKey,
   waterIntakeLogQueryKey,
+  waterIntakeLogRootQueryKey,
+  waterIntakeRangeRootQueryKey,
+  fastingCurrentQueryKey,
+  fastingRootQueryKey,
 } from './queryKeys';
 import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
@@ -86,6 +107,7 @@ import { useWorkoutPresets } from './useWorkoutPresets';
 import { getActiveServerConfigId } from '../services/storage';
 import {
   isPayloadForActiveServer,
+  resolveWatchServerConfig,
   syncWatchServerCredentials,
 } from '../services/watchServerCredentials';
 import { useActiveWorkoutPlans } from './useActiveWorkoutPlan';
@@ -172,15 +194,20 @@ export function hasWatchTransport(): boolean {
   return WatchConnectivity.isSupported() || isGarminWatchEnabled();
 }
 
-/** Runs one send, logging a failure instead of passing it on. */
+/**
+ * Runs one send, logging a failure instead of passing it on. Answers whether
+ * it went through.
+ */
 async function sendLoggingFailure(
   send: () => Promise<void> | undefined,
   failure: string
-): Promise<void> {
+): Promise<boolean> {
   try {
     await send();
+    return true;
   } catch (error) {
     addLog(`${failure}: ${String(error)}`, 'WARNING');
+    return false;
   }
 }
 
@@ -200,19 +227,22 @@ async function sendLoggingFailure(
  * `garminEpoch` is `garminAccountEpoch()` from when the push started
  * building, so the sync drops a snapshot built before an account clear. Null
  * (no Garmin sync then) publishes nothing to Garmin.
+ *
+ * Answers whether the context reached the Apple Watch / Wear OS transport:
+ * false when that send failed or there is none.
  */
 export async function sendContextToWatches(
   context: WatchContextPayload,
   garminEpoch: number | null
-): Promise<void> {
+): Promise<boolean> {
   const watch = WatchConnectivity;
-  if (!watch) return;
+  if (!watch) return false;
   const contextSent = watch.isSupported()
     ? sendLoggingFailure(
         () => watch.updateContext(context),
         'Watch context push failed'
       )
-    : undefined;
+    : Promise.resolve(false);
   const garmin = getGarminSync();
   if (garmin && garminEpoch !== null) {
     void sendLoggingFailure(
@@ -220,7 +250,7 @@ export async function sendContextToWatches(
       'Garmin snapshot push failed'
     );
   }
-  await contextSent;
+  return contextSent;
 }
 
 /**
@@ -327,8 +357,176 @@ function goalProgress(consumed: number, goal: number): number {
 /** Step goal sent to the watch when the user has not set one. */
 const DEFAULT_WATCH_STEP_GOAL = 10000;
 
+/**
+ * True only when the server explicitly rejected a request with a permanent 4xx
+ * validation/client error (excluding 408 timeout and 429 rate-limit).
+ * Transient network/socket/background-freeze errors return false so the watch
+ * retains its optimistic check-off as QUEUED instead of reverting it.
+ */
+export function isPermanentWatchClientRejection(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  return (
+    error.statusCode >= 400 &&
+    error.statusCode < 500 &&
+    error.statusCode !== 408 &&
+    error.statusCode !== 429
+  );
+}
+
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
+
+/**
+ * Builds the 14-day weight/body-fat history and resolves the latest independent
+ * weight and body-fat seeds so a weigh-in without impedance never hides an
+ * earlier smart-scale body-fat reading.
+ */
+export function resolveWatchBodyMetrics(
+  byDay: ReadonlyMap<
+    string,
+    {
+      weight?: number | null;
+      bodyFat?: number | null;
+      steps?: number | null;
+    }
+  >,
+  today: string,
+  historyDays: number = HISTORY_DAYS
+): {
+  history: WatchHistoryPoint[];
+  bodyFatHistory: WatchBodyFatPoint[];
+  todayWeightKg: number | null;
+  todayBodyFatPercentage: number | null;
+  lastWeightKg: number | null;
+  lastBodyFatPercentage: number | null;
+  lastBodyFatDate: string | null;
+  lastEntryDate: string | null;
+} {
+  const history: WatchHistoryPoint[] = [];
+  const bodyFatHistory: WatchBodyFatPoint[] = [];
+  let latestPriorBodyFat: number | null = null;
+  let latestPriorBodyFatDay: string | null = null;
+  for (let i = 0; i < historyDays; i++) {
+    const day = addDays(today, -(historyDays - 1 - i));
+    const row = byDay.get(day);
+    const validBf =
+      row?.bodyFat != null && Number.isFinite(row.bodyFat) && row.bodyFat > 0
+        ? row.bodyFat
+        : null;
+    if (validBf != null) {
+      bodyFatHistory.push({
+        day,
+        bodyFatPercentage: validBf,
+      });
+    }
+    if (day !== today && validBf != null) {
+      latestPriorBodyFat = validBf;
+      latestPriorBodyFatDay = day;
+    }
+    if (row?.weight != null && row.weight > 0) {
+      history.push({
+        day,
+        weightKg: row.weight,
+        bodyFatPercentage: validBf,
+      });
+    }
+  }
+
+  const todayRow = byDay.get(today);
+  const todayWeightKg =
+    todayRow?.weight != null && todayRow.weight > 0 ? todayRow.weight : null;
+  const todayBodyFatPercentage =
+    todayRow?.bodyFat != null &&
+    Number.isFinite(todayRow.bodyFat) &&
+    todayRow.bodyFat > 0
+      ? todayRow.bodyFat
+      : null;
+
+  const lastWithWeight =
+    [...history].reverse().find((point) => point.day !== today) ??
+    [...history].reverse()[0];
+
+  const lastBodyFatPercentage = latestPriorBodyFat ?? todayBodyFatPercentage;
+  const lastBodyFatDate =
+    latestPriorBodyFatDay ?? (todayBodyFatPercentage != null ? today : null);
+
+  return {
+    history,
+    bodyFatHistory,
+    todayWeightKg,
+    todayBodyFatPercentage,
+    lastWeightKg: lastWithWeight?.weightKg ?? null,
+    lastBodyFatPercentage,
+    lastBodyFatDate,
+    lastEntryDate: lastWithWeight?.day ?? null,
+  };
+}
+
+/**
+ * Merges ordinary phone-write acks and qualifying direct Watch -> Server acks
+ * into the watch context's bounded 20-item `ackedClientIds` window while
+ * reserving capacity for ordinary phone-write acks (10 ordinary + 10 direct,
+ * redistributing unused slots from either side) so a burst of 20 direct acks
+ * can never displace ordinary phone-write acks.
+ */
+export function mergeWatchAckedClientIds(
+  ordinaryAcked: readonly string[],
+  directAcked: readonly string[],
+  limit = 20,
+  reservedOrdinary = 10,
+  publishedDirectIds?: ReadonlySet<string>
+): string[] {
+  const ordinaryUnique: string[] = [];
+  const ordinarySet = new Set<string>();
+  for (let i = ordinaryAcked.length - 1; i >= 0; i -= 1) {
+    const id = ordinaryAcked[i];
+    if (!id || ordinarySet.has(id)) continue;
+    ordinarySet.add(id);
+    ordinaryUnique.unshift(id);
+  }
+  const directUnique: string[] = [];
+  const directSet = new Set<string>();
+  for (let i = directAcked.length - 1; i >= 0; i -= 1) {
+    const id = directAcked[i];
+    if (!id || ordinarySet.has(id) || directSet.has(id)) continue;
+    directSet.add(id);
+    directUnique.unshift(id);
+  }
+  const guaranteedOrdinary = Math.min(ordinaryUnique.length, reservedOrdinary);
+  const directTake = Math.min(
+    directUnique.length,
+    Math.max(0, limit - guaranteedOrdinary)
+  );
+  const ordinaryTake = Math.min(
+    ordinaryUnique.length,
+    Math.max(0, limit - directTake)
+  );
+  const keptOrdinary =
+    ordinaryTake > 0 ? ordinaryUnique.slice(-ordinaryTake) : [];
+  let keptDirect: string[] = [];
+  if (directTake > 0) {
+    if (!publishedDirectIds) {
+      keptDirect = directUnique.slice(-directTake);
+    } else {
+      const unpublishedDirect = directUnique.filter(
+        (id) => !publishedDirectIds.has(id)
+      );
+      if (unpublishedDirect.length >= directTake) {
+        keptDirect = unpublishedDirect.slice(0, directTake);
+      } else {
+        const publishedDirect = directUnique.filter((id) =>
+          publishedDirectIds.has(id)
+        );
+        const publishedTake = directTake - unpublishedDirect.length;
+        keptDirect = [
+          ...(publishedTake > 0 ? publishedDirect.slice(-publishedTake) : []),
+          ...unpublishedDirect,
+        ];
+      }
+    }
+  }
+  return [...keptOrdinary, ...keptDirect];
+}
 
 /**
  * Every day-scoped figure, blanked.
@@ -403,13 +601,88 @@ const ACK_STATE_STORAGE_KEY = 'sparky.watch.ackState.v1';
  */
 const STORED_HANDLED_ID_LIMIT = 200;
 
+type DirectAckDomain = 'water' | 'fasting' | 'medications' | 'checkIn';
+
+/** Persisted direct Watch -> Server ack with full provenance (always freshness-gated). */
+type StoredDirectAck = {
+  clientId: string;
+  ownerId: string;
+  domain: DirectAckDomain;
+  day: string;
+};
+
 /** Ids the watch may still ask about after a restart. */
 type StoredAckState = {
   handledClientIds?: string[];
   handledWaterClientIds?: string[];
+  /** Ordinary phone-write acks only (immediately replayable across restarts). */
   ackedClientIds?: string[];
   failedClientIds?: string[];
+  /** Direct Watch -> Server acks retained with provenance across restarts. */
+  directAcks?: StoredDirectAck[];
+  /** Legacy key read on hydration for backwards compatibility. */
+  pendingDirectAcks?: StoredDirectAck[];
+  /** Persisted cancelled water taps so late DataItems are dropped across restarts. */
+  cancelledWaterTaps?: { ownerId: string; clientId: string }[];
+  /** Persisted created water log entry ids for compensating cancellation deletes. */
+  createdWaterEntries?: {
+    ownerId: string;
+    clientId: string;
+    entryId: string;
+  }[];
+  /** Persisted in-flight/unknown-outcome water taps keyed by owner + clientId. */
+  uncertainWaterWrites?: {
+    ownerId: string;
+    clientId: string;
+    entryDate: string;
+  }[];
 };
+
+type DirectAckEntry = StoredDirectAck & {
+  dailySummaryUpdatedAt: number;
+  waterLogUpdatedAt: number;
+  fastUpdatedAt: number;
+  medicationsUpdatedAt: number;
+  measurementsUpdatedAt: number;
+  minFlushVersion: number;
+  /**
+   * True for entries restored from disk after a restart: must observe a fresh
+   * qualifying query load in the current session before publishing in context.
+   */
+  requiresCurrentSessionFetch: boolean;
+  publishedInCurrentSession: boolean;
+};
+
+function isDirectAckDomain(value: unknown): value is DirectAckDomain {
+  return (
+    value === 'water' ||
+    value === 'fasting' ||
+    value === 'medications' ||
+    value === 'checkIn'
+  );
+}
+
+const QUEUED_WATER_OUTBOX_PREFIX = '__queued__:';
+const COMMITTED_WATER_NO_ROW_ID = '__committed_no_row_id__';
+
+function extractCreatedWaterEntryId(response: unknown): string | null {
+  if (!response || typeof response !== 'object') return null;
+  const rec = response as Record<string, unknown>;
+  for (const key of ['log_entry_id', 'water_intake_entry_id', 'entry_id']) {
+    const val = rec[key];
+    if (typeof val === 'string' && val.trim().length > 0) {
+      return val.trim();
+    }
+  }
+  const nested = rec.entry;
+  if (nested && typeof nested === 'object') {
+    const nestedId = (nested as Record<string, unknown>).id;
+    if (typeof nestedId === 'string' && nestedId.trim().length > 0) {
+      return nestedId.trim();
+    }
+  }
+  return null;
+}
 
 /**
  * Bridges Apple Watch and Wear OS check-ins to the SparkyFitness server.
@@ -428,10 +701,25 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // on `enabled`: answering a Garmin watch needs no server.
   const garminLinked = useGarminWatchSync();
 
-  // Acks are relayed inside the application context (which is latest-value-only
-  // and survives the watch app being asleep), so they must accumulate across
-  // pushes rather than being sent once and forgotten.
+  // Ordinary phone-write acks relayed inside the application context (which is
+  // latest-value-only and survives the watch app being asleep). Direct watch
+  // acks are kept separately in `directAcksRef` with full provenance so they
+  // are never downgraded into unvalidated replayable acks.
   const ackedClientIdsRef = useRef<string[]>([]);
+  // Direct Watch -> Server acks with provenance (`ownerId`, `domain`, `day`),
+  // persisted separately and always freshness-gated before publication.
+  const directAcksRef = useRef(new Map<string, DirectAckEntry>());
+  const nextDirectAckFlushVersionRef = useRef(0);
+  // Bounded owner-scoped cancellation tracking for pending Wear OS water taps
+  // undone on the wrist before phone confirmation arrives.
+  const cancelledWaterTapIdsRef = useRef(new Map<string, Set<string>>());
+  const createdWaterEntryIdByTapRef = useRef(
+    new Map<string, Map<string, string>>()
+  );
+  const uncertainWaterWritesRef = useRef(
+    new Map<string, Map<string, string>>()
+  );
+  const waterRefreshSeqRef = useRef(new Map<string, number>());
   // Increments on every `pushContext` call, so each one can tell whether it is
   // still the newest by the time it has something to send.
   const pushGenerationRef = useRef(0);
@@ -493,7 +781,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // queries this hook has mounted, as it lives outside the screens. The
   // account-changed event renders it again, so they read the new account
   // and the watch is not left with the previous account's feature choices.
-  useSyncExternalStore(subscribeAccountChanged, accountGeneration);
+  const currentAccountGeneration = useSyncExternalStore(
+    subscribeAccountChanged,
+    accountGeneration
+  );
+  const previousAccountGenerationRef = useRef(currentAccountGeneration);
   // Settings → Features (#3487): a page of a feature that is off leaves the
   // watch too. Undefined while the choices are not known, and then the
   // context leaves both keys out so the watch keeps what it last had.
@@ -590,6 +882,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const { presets } = useWorkoutPresets({ enabled });
   const fastQuery = useCurrentFast({ enabled });
   const fast = fastQuery.data;
+  const fastRenderedUpdatedAt = fastQuery.dataUpdatedAt ?? 0;
   const watchFast = useMemo(() => toWatchFast(fast), [fast]);
   const startableWorkouts = useMemo(
     () => startableWorkoutsForWatch(presets),
@@ -610,6 +903,14 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // today's numbers, by its own reckoning, and every staleness guard it owns
   // passed on data from the day before.
   const [summaryDate, setSummaryDate] = useState(getTodayDate);
+  const summaryDateRef = useRef(summaryDate);
+  useEffect(() => {
+    summaryDateRef.current = summaryDate;
+  }, [summaryDate]);
+  // Bumped after a direct watch water sync finishes refetching active water
+  // queries so a post-render pushContext advertises the direct clientId
+  // alongside the freshly committed water snapshot.
+  const [directAckFlushVersion, setDirectAckFlushVersion] = useState(0);
 
   /**
    * Rolls this hook onto the current day if the clock has moved past it.
@@ -630,10 +931,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // have selected — this hook seeds the watch, which only ever cares about
   // today. Same underlying query the Dashboard uses, so this rides its cache
   // rather than adding a second fetch when both are mounted.
-  const { summary: dailySummary } = useDailySummary({
-    date: summaryDate,
-    enabled,
-  });
+  const { summary: dailySummary, dataUpdatedAt: dailySummaryHookUpdatedAt } =
+    useDailySummary({
+      date: summaryDate,
+      enabled,
+    });
+  const dailySummaryRenderedUpdatedAt = dailySummaryHookUpdatedAt ?? 0;
 
   // What the diary's plan banner offers today, so the watch's workout page can
   // put it first. Same query and completion rule as that banner.
@@ -742,11 +1045,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // Today's individual logged drinks, for the watch's water log view. Keyed
   // on today's date and invalidated by every tap/delete below, so it tracks
   // the same truth the totals do.
-  const { data: waterLogEntries } = useQuery({
-    queryKey: waterIntakeLogQueryKey(summaryDate),
-    queryFn: () => fetchWaterIntakeLog(summaryDate),
-    enabled,
-  });
+  const { data: waterLogEntries, dataUpdatedAt: waterLogHookUpdatedAt } =
+    useQuery({
+      queryKey: waterIntakeLogQueryKey(summaryDate),
+      queryFn: () => fetchWaterIntakeLog(summaryDate),
+      enabled,
+    });
+  const waterLogRenderedUpdatedAt = waterLogHookUpdatedAt ?? 0;
 
   const timeFormat = preferences?.time_format ?? null;
 
@@ -759,7 +1064,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     queryFn: () => listMedications({ activeOnly: true }),
     enabled: enabled && !medicationsOff,
   });
-  const { data: medicationEntries } = useQuery({
+  const {
+    data: medicationEntries,
+    dataUpdatedAt: medicationEntriesHookUpdatedAt,
+  } = useQuery({
     queryKey: medicationEntriesQueryKey({
       fromDate: summaryDate,
       toDate: summaryDate,
@@ -767,6 +1075,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     queryFn: () => listEntries({ fromDate: summaryDate, toDate: summaryDate }),
     enabled: enabled && !medicationsOff,
   });
+  const medicationEntriesRenderedUpdatedAt =
+    medicationEntriesHookUpdatedAt ?? 0;
   // Null until both queries have answered: an empty list is a real "nothing
   // scheduled today" and must not be mistaken for "not loaded yet". Null
   // while Medications is off too, whatever is still cached.
@@ -835,6 +1145,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             name: container.name,
             servingVolumeMl,
             unit: watchContainerDisplayUnit(container, waterDisplayUnit),
+            isPrimary: Boolean(container.is_primary),
+            isQuickAdd: Boolean(container.is_quick_add),
           },
         ];
       }),
@@ -1013,6 +1325,108 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     ]
   );
 
+  /**
+   * Writes the ack bookkeeping to disk, and is awaited by every caller.
+   *
+   * Only outcomes we actually know are stored. `handledWaterClientIdsRef` also
+   * holds reservations for writes still in flight, and those are filtered out
+   * here rather than merely not being persisted at their own call site — a
+   * concurrent tap completing would otherwise snapshot someone else's
+   * reservation onto disk. A reservation outlives the attempt that made it, so
+   * restoring one would leave an id reserved, in neither the acked nor the
+   * failed list, with nothing alive to resolve it: every resend suppressed and
+   * the tap `.queued` until midnight.
+   *
+   * Awaited rather than fired and forgotten because ordering still matters for
+   * what does get stored: an ack the watch has been told about but that isn't
+   * on disk is an ack that vanishes if the app restarts before the watch
+   * applies it.
+   *
+   * A failure is logged and swallowed rather than thrown. The in-memory sets are
+   * already updated, so dedupe still holds for this session; only the
+   * across-restart guarantee is lost. Refusing to log the wearer's water because
+   * AsyncStorage hiccuped would trade a rare duplicate for a certain lost drink,
+   * which is the worse of the two.
+   */
+  const persistAckState = useCallback(async (): Promise<void> => {
+    const acked = new Set(ackedClientIdsRef.current);
+    const directAcks: StoredDirectAck[] = [...directAcksRef.current.values()]
+      .slice(-20)
+      .map(({ clientId, ownerId, domain, day }) => ({
+        clientId,
+        ownerId,
+        domain,
+        day,
+      }));
+    const cancelledWaterTaps: { ownerId: string; clientId: string }[] = [];
+    for (const [ownerId, ids] of cancelledWaterTapIdsRef.current.entries()) {
+      for (const clientId of ids) {
+        cancelledWaterTaps.push({ ownerId, clientId });
+      }
+    }
+    const trimmedCancelledWaterTaps = cancelledWaterTaps.slice(-100);
+    const createdWaterEntries: {
+      ownerId: string;
+      clientId: string;
+      entryId: string;
+    }[] = [];
+    for (const [
+      ownerId,
+      entries,
+    ] of createdWaterEntryIdByTapRef.current.entries()) {
+      for (const [clientId, entryId] of entries.entries()) {
+        createdWaterEntries.push({ ownerId, clientId, entryId });
+      }
+    }
+    const trimmedCreatedWaterEntries = createdWaterEntries.slice(-100);
+    const uncertainWaterWrites: {
+      ownerId: string;
+      clientId: string;
+      entryDate: string;
+    }[] = [];
+    for (const [
+      ownerId,
+      entries,
+    ] of uncertainWaterWritesRef.current.entries()) {
+      for (const [clientId, entryDate] of entries.entries()) {
+        uncertainWaterWrites.push({ ownerId, clientId, entryDate });
+      }
+    }
+    const trimmedUncertainWaterWrites = uncertainWaterWrites.slice(-100);
+    const stored: StoredAckState = {
+      // Check-in ids are only ever added after a successful upsert, so unlike
+      // the water set they hold no reservations. Restoring them stops a resent
+      // check-in from re-running the upsert after a restart and overwriting a
+      // newer weight the wearer has since entered on the phone.
+      handledClientIds: [...handledClientIdsRef.current]
+        .filter((id) => acked.has(id))
+        .slice(-STORED_HANDLED_ID_LIMIT),
+      handledWaterClientIds: [...handledWaterClientIdsRef.current]
+        .filter((id) => acked.has(id))
+        .slice(-STORED_HANDLED_ID_LIMIT),
+      ackedClientIds: ackedClientIdsRef.current,
+      failedClientIds: failedClientIdsRef.current,
+      ...(directAcks.length > 0 ? { directAcks } : {}),
+      ...(trimmedCancelledWaterTaps.length > 0
+        ? { cancelledWaterTaps: trimmedCancelledWaterTaps }
+        : {}),
+      ...(trimmedCreatedWaterEntries.length > 0
+        ? { createdWaterEntries: trimmedCreatedWaterEntries }
+        : {}),
+      ...(trimmedUncertainWaterWrites.length > 0
+        ? { uncertainWaterWrites: trimmedUncertainWaterWrites }
+        : {}),
+    };
+    try {
+      await AsyncStorage.setItem(ACK_STATE_STORAGE_KEY, JSON.stringify(stored));
+    } catch (error) {
+      void addLog(
+        `Watch ack state failed to persist: ${String(error)}`,
+        'WARNING'
+      );
+    }
+  }, []);
+
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
     // Claimed before the first await, checked again before publishing: this
@@ -1033,11 +1447,91 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     // and signing in again to the same server keeps the active-config check
     // below passing.
     const garminEpoch = garminAccountEpoch();
+    // Snapshot ack lists before any await so an older in-flight push built with
+    // pre-refetch totals can never pick up a newly recorded direct ack; direct
+    // acks are only mixed in below if this rendered snapshot qualifies for the
+    // active owner and meets each entry's freshness gate.
+    const ackedClientIdsSnapshot = ackedClientIdsRef.current.slice(-20);
+    const directAcksSnapshot = [...directAcksRef.current.values()];
+    const failedClientIdsSnapshot = failedClientIdsRef.current.slice(-20);
     try {
       const workoutServerId = await syncWatchServerCredentials();
       const today = getTodayDate();
       const startDate = addDays(today, -(HISTORY_DAYS - 1));
       const range = await fetchMeasurementsRange(startDate, today);
+      const rangeFetchedAt = Date.now();
+      const resolvedPushOwner = workoutServerId ?? '';
+      const qualifiedDirectEntries = directAcksSnapshot.filter((entry) => {
+        if (entry.ownerId !== '' && entry.ownerId !== resolvedPushOwner) {
+          return false;
+        }
+        if (directAckFlushVersion < entry.minFlushVersion) {
+          return false;
+        }
+        switch (entry.domain) {
+          case 'water': {
+            if (summaryDate !== today || summaryDate !== entry.day) {
+              return false;
+            }
+            if (entry.requiresCurrentSessionFetch) {
+              return (
+                dailySummary !== undefined &&
+                dailySummaryRenderedUpdatedAt > 0 &&
+                waterLogEntries !== undefined &&
+                waterLogRenderedUpdatedAt > 0
+              );
+            }
+            return (
+              dailySummaryRenderedUpdatedAt >= entry.dailySummaryUpdatedAt &&
+              waterLogRenderedUpdatedAt >= entry.waterLogUpdatedAt
+            );
+          }
+          case 'fasting': {
+            if (watchFast === undefined) {
+              return false;
+            }
+            if (entry.requiresCurrentSessionFetch) {
+              return fastRenderedUpdatedAt > 0;
+            }
+            return fastRenderedUpdatedAt >= entry.fastUpdatedAt;
+          }
+          case 'medications': {
+            if (
+              summaryDate !== today ||
+              summaryDate !== entry.day ||
+              medicationsOff ||
+              watchMedications === null
+            ) {
+              return false;
+            }
+            if (entry.requiresCurrentSessionFetch) {
+              return medicationEntriesRenderedUpdatedAt > 0;
+            }
+            return (
+              medicationEntriesRenderedUpdatedAt >= entry.medicationsUpdatedAt
+            );
+          }
+          case 'checkIn': {
+            if (entry.requiresCurrentSessionFetch) {
+              return rangeFetchedAt > 0;
+            }
+            return rangeFetchedAt >= entry.measurementsUpdatedAt;
+          }
+        }
+      });
+      const publishedDirectIds = new Set<string>();
+      for (const entry of qualifiedDirectEntries) {
+        if (entry.publishedInCurrentSession) {
+          publishedDirectIds.add(entry.clientId);
+        }
+      }
+      const ackedClientIdsForContext = mergeWatchAckedClientIds(
+        ackedClientIdsSnapshot,
+        qualifiedDirectEntries.map((entry) => entry.clientId),
+        20,
+        10,
+        publishedDirectIds
+      );
 
       // The API returns DESC by updated_at, so the first row seen for a date is
       // the most recent one for that date.
@@ -1058,26 +1552,18 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         });
       }
 
-      const history: WatchHistoryPoint[] = [];
-      for (let i = 0; i < HISTORY_DAYS; i++) {
-        const day = addDays(today, -(HISTORY_DAYS - 1 - i));
-        const row = byDay.get(day);
-        if (row?.weight != null && row.weight > 0) {
-          history.push({
-            day,
-            weightKg: row.weight,
-            bodyFatPercentage: row.bodyFat ?? null,
-          });
-        }
-      }
+      const {
+        history,
+        bodyFatHistory,
+        todayWeightKg,
+        todayBodyFatPercentage,
+        lastWeightKg,
+        lastBodyFatPercentage,
+        lastBodyFatDate,
+        lastEntryDate,
+      } = resolveWatchBodyMetrics(byDay, today, HISTORY_DAYS);
 
       const todayRow = byDay.get(today);
-      // Most recent day that actually has a weight — the crown's anchor. Falls
-      // back through history so a skipped morning doesn't leave the watch
-      // unseeded.
-      const lastWithWeight =
-        [...history].reverse().find((point) => point.day !== today) ??
-        [...history].reverse()[0];
 
       // The one check that stops a stale payload from impersonating a fresh
       // one. `today` is read at call time; every figure below was read when
@@ -1100,14 +1586,16 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         // WatchConnectivity silently declines to redeliver.
         pushedAt: Date.now(),
         today,
-        todayWeightKg: todayRow?.weight ?? null,
-        todayBodyFatPercentage: todayRow?.bodyFat ?? null,
-        lastWeightKg: lastWithWeight?.weightKg ?? null,
-        lastBodyFatPercentage: lastWithWeight?.bodyFatPercentage ?? null,
-        lastEntryDate: lastWithWeight?.day ?? null,
+        todayWeightKg,
+        todayBodyFatPercentage,
+        lastWeightKg,
+        lastBodyFatPercentage,
+        lastBodyFatDate,
+        lastEntryDate,
         history,
-        ackedClientIds: ackedClientIdsRef.current.slice(-20),
-        failedClientIds: failedClientIdsRef.current.slice(-20),
+        bodyFatHistory,
+        ackedClientIds: ackedClientIdsForContext,
+        failedClientIds: failedClientIdsSnapshot,
         weightUnit,
         distanceUnit,
         energyUnit,
@@ -1117,6 +1605,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         // what lets a phone-free morning still draw a tap against a scale.
         waterGoalMl,
         waterDisplayUnit,
+        ...(timeFormat ? { timeFormat } : {}),
         hapticsEnabled,
         restAlertsEnabled,
         doubleTapEnabled: watchDoubleTapEnabled,
@@ -1179,8 +1668,40 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // already sent, or is about to, from fresher state than this one holds.
       if (generation !== pushGenerationRef.current) return;
       if ((await getActiveServerConfigId()) !== workoutServerId) return;
+      if (generation !== pushGenerationRef.current) return;
 
-      await sendContextToWatches(context, garminEpoch);
+      const contextSent = await sendContextToWatches(context, garminEpoch);
+
+      // Mark qualified direct acks as published in this session while keeping
+      // their provenance in `directAcksRef` (never downgrading into plain
+      // `ackedClientIdsRef`) so restarts always re-validate freshness and
+      // account switches can always clear them cleanly.
+      // Only once the context carrying them reached the watch: after a failed
+      // send they wait for the next push, as they did when the send threw.
+      if (
+        contextSent &&
+        qualifiedDirectEntries.length > 0 &&
+        (await getActiveServerConfigId()) === workoutServerId
+      ) {
+        const includedAckedIds = new Set(ackedClientIdsForContext);
+        let stateChanged = false;
+        for (const entry of qualifiedDirectEntries) {
+          if (!includedAckedIds.has(entry.clientId)) continue;
+          const current = directAcksRef.current.get(entry.clientId);
+          if (current !== entry) continue;
+          if (
+            !current.publishedInCurrentSession ||
+            current.requiresCurrentSessionFetch
+          ) {
+            current.publishedInCurrentSession = true;
+            current.requiresCurrentSessionFetch = false;
+            stateChanged = true;
+          }
+        }
+        if (stateChanged) {
+          await persistAckState();
+        }
+      }
     } catch (error) {
       // A failed push is recoverable: the watch keeps its cached context and asks
       // again next time it becomes reachable.
@@ -1215,6 +1736,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     waterGoalMl,
     stepGoal,
     waterDisplayUnit,
+    timeFormat,
     watchPageOrder,
     watchHiddenPages,
     watchFeaturesOff,
@@ -1223,6 +1745,16 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     figuresForSummaryDate,
     watchContainers,
     watchFast,
+    watchMedications,
+    medicationsOff,
+    dailySummary,
+    waterLogEntries,
+    directAckFlushVersion,
+    dailySummaryRenderedUpdatedAt,
+    waterLogRenderedUpdatedAt,
+    fastRenderedUpdatedAt,
+    medicationEntriesRenderedUpdatedAt,
+    persistAckState,
   ]);
 
   /**
@@ -1246,55 +1778,6 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       }),
     [enabled]
   );
-
-  /**
-   * Writes the ack bookkeeping to disk, and is awaited by every caller.
-   *
-   * Only outcomes we actually know are stored. `handledWaterClientIdsRef` also
-   * holds reservations for writes still in flight, and those are filtered out
-   * here rather than merely not being persisted at their own call site — a
-   * concurrent tap completing would otherwise snapshot someone else's
-   * reservation onto disk. A reservation outlives the attempt that made it, so
-   * restoring one would leave an id reserved, in neither the acked nor the
-   * failed list, with nothing alive to resolve it: every resend suppressed and
-   * the tap `.queued` until midnight.
-   *
-   * Awaited rather than fired and forgotten because ordering still matters for
-   * what does get stored: an ack the watch has been told about but that isn't
-   * on disk is an ack that vanishes if the app restarts before the watch
-   * applies it.
-   *
-   * A failure is logged and swallowed rather than thrown. The in-memory sets are
-   * already updated, so dedupe still holds for this session; only the
-   * across-restart guarantee is lost. Refusing to log the wearer's water because
-   * AsyncStorage hiccuped would trade a rare duplicate for a certain lost drink,
-   * which is the worse of the two.
-   */
-  const persistAckState = useCallback(async (): Promise<void> => {
-    const acked = new Set(ackedClientIdsRef.current);
-    const stored: StoredAckState = {
-      // Check-in ids are only ever added after a successful upsert, so unlike
-      // the water set they hold no reservations. Restoring them stops a resent
-      // check-in from re-running the upsert after a restart and overwriting a
-      // newer weight the wearer has since entered on the phone.
-      handledClientIds: [...handledClientIdsRef.current]
-        .filter((id) => acked.has(id))
-        .slice(-STORED_HANDLED_ID_LIMIT),
-      handledWaterClientIds: [...handledWaterClientIdsRef.current]
-        .filter((id) => acked.has(id))
-        .slice(-STORED_HANDLED_ID_LIMIT),
-      ackedClientIds: ackedClientIdsRef.current,
-      failedClientIds: failedClientIdsRef.current,
-    };
-    try {
-      await AsyncStorage.setItem(ACK_STATE_STORAGE_KEY, JSON.stringify(stored));
-    } catch (error) {
-      void addLog(
-        `Watch ack state failed to persist: ${String(error)}`,
-        'WARNING'
-      );
-    }
-  }, []);
 
   const ensureAckStateHydrated = useCallback((): Promise<void> => {
     ackStateHydrationRef.current ??= (async () => {
@@ -1323,6 +1806,94 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             ...failedClientIdsRef.current,
           ]),
         ].slice(-20);
+        const today = getTodayDate();
+        const storedDirects = [
+          ...(stored.directAcks ?? []),
+          ...(stored.pendingDirectAcks ?? []),
+        ];
+        for (const rec of storedDirects) {
+          if (
+            !rec?.clientId ||
+            !isDirectAckDomain(rec.domain) ||
+            directAcksRef.current.has(rec.clientId)
+          ) {
+            continue;
+          }
+          if (
+            (rec.domain === 'water' || rec.domain === 'medications') &&
+            rec.day !== today
+          ) {
+            continue;
+          }
+          directAcksRef.current.set(rec.clientId, {
+            clientId: rec.clientId,
+            ownerId: rec.ownerId ?? '',
+            domain: rec.domain,
+            day: rec.day ?? today,
+            dailySummaryUpdatedAt: 0,
+            waterLogUpdatedAt: 0,
+            fastUpdatedAt: 0,
+            medicationsUpdatedAt: 0,
+            measurementsUpdatedAt: 0,
+            minFlushVersion: 0,
+            requiresCurrentSessionFetch: true,
+            publishedInCurrentSession: false,
+          });
+        }
+        for (const rec of stored.cancelledWaterTaps ?? []) {
+          const clientId = rec?.clientId?.trim() ?? '';
+          if (!clientId) continue;
+          const ownerId = rec.ownerId?.trim() ?? '';
+          let set = cancelledWaterTapIdsRef.current.get(ownerId);
+          if (!set) {
+            set = new Set<string>();
+            cancelledWaterTapIdsRef.current.set(ownerId, set);
+          }
+          set.add(clientId);
+          while (set.size > 100) {
+            const oldest = set.values().next().value;
+            if (oldest === undefined) break;
+            set.delete(oldest);
+          }
+        }
+        for (const rec of stored.createdWaterEntries ?? []) {
+          const clientId = rec?.clientId?.trim() ?? '';
+          const entryId = rec?.entryId?.trim() ?? '';
+          if (!clientId || !entryId) continue;
+          const ownerId = rec.ownerId?.trim() ?? '';
+          let map = createdWaterEntryIdByTapRef.current.get(ownerId);
+          if (!map) {
+            map = new Map<string, string>();
+            createdWaterEntryIdByTapRef.current.set(ownerId, map);
+          }
+          if (!map.has(clientId)) {
+            map.set(clientId, entryId);
+          }
+          while (map.size > 100) {
+            const oldest = map.keys().next().value;
+            if (oldest === undefined) break;
+            map.delete(oldest);
+          }
+        }
+        for (const rec of stored.uncertainWaterWrites ?? []) {
+          const clientId = rec?.clientId?.trim() ?? '';
+          const entryDate = rec?.entryDate?.trim() ?? '';
+          if (!clientId || !entryDate) continue;
+          const ownerId = rec.ownerId?.trim() ?? '';
+          let map = uncertainWaterWritesRef.current.get(ownerId);
+          if (!map) {
+            map = new Map<string, string>();
+            uncertainWaterWritesRef.current.set(ownerId, map);
+          }
+          if (!map.has(clientId)) {
+            map.set(clientId, entryDate);
+          }
+          while (map.size > 100) {
+            const oldest = map.keys().next().value;
+            if (oldest === undefined) break;
+            map.delete(oldest);
+          }
+        }
       } catch (error) {
         // A corrupt or unreadable store leaves the refs as they are: dedupe is
         // then only as good as this session, which is where it started.
@@ -1334,6 +1905,47 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     })();
     return ackStateHydrationRef.current;
   }, []);
+
+  useEffect(() => {
+    if (previousAccountGenerationRef.current === currentAccountGeneration) {
+      return;
+    }
+    previousAccountGenerationRef.current = currentAccountGeneration;
+    pushGenerationRef.current += 1;
+    directAcksRef.current.clear();
+    cancelledWaterTapIdsRef.current.clear();
+    createdWaterEntryIdByTapRef.current.clear();
+    uncertainWaterWritesRef.current.clear();
+    void ensureAckStateHydrated().then(async () => {
+      directAcksRef.current.clear();
+      cancelledWaterTapIdsRef.current.clear();
+      createdWaterEntryIdByTapRef.current.clear();
+      uncertainWaterWritesRef.current.clear();
+      await persistAckState();
+    });
+  }, [currentAccountGeneration, ensureAckStateHydrated, persistAckState]);
+
+  useEffect(() => {
+    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) {
+      return;
+    }
+    let active = true;
+    void ensureAckStateHydrated().then(() => {
+      if (
+        active &&
+        (directAcksRef.current.size > 0 ||
+          ackedClientIdsRef.current.length > 0) &&
+        AppState.currentState === 'active'
+      ) {
+        const nextFlush = nextDirectAckFlushVersionRef.current + 1;
+        nextDirectAckFlushVersionRef.current = nextFlush;
+        setDirectAckFlushVersion(nextFlush);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [enabled, ensureAckStateHydrated]);
 
   const handleCheckIn = useCallback(
     async (payload: WatchCheckInPayload): Promise<void> => {
@@ -1387,9 +1999,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await pushContextRef.current();
       } catch (error) {
         addLog(`Watch check-in failed to save: ${String(error)}`, 'ERROR');
-        // Report the failure so the watch shows a retry affordance rather than a
-        // false "saved".
-        await WatchConnectivity.sendAck(payload.clientId, false);
+        if (isPermanentWatchClientRejection(error)) {
+          await WatchConnectivity.sendAck(payload.clientId, false);
+        }
       }
     },
     [ensureAckStateHydrated, persistAckState]
@@ -1404,11 +2016,331 @@ export function useWatchCheckInBridge(enabled: boolean): void {
    * bump quietly settles back on its own short timeout — see
    * `WatchSessionManager.sendWaterTap`.
    */
+  const markWaterTapCancelled = useCallback(
+    (ownerKey: string, clientId: string) => {
+      if (!clientId) return;
+      let set = cancelledWaterTapIdsRef.current.get(ownerKey);
+      if (!set) {
+        set = new Set<string>();
+        cancelledWaterTapIdsRef.current.set(ownerKey, set);
+      }
+      set.delete(clientId);
+      set.add(clientId);
+      while (set.size > 100) {
+        const oldest = set.values().next().value;
+        if (oldest === undefined) break;
+        set.delete(oldest);
+      }
+    },
+    []
+  );
+
+  const isWaterTapCancelled = useCallback(
+    (ownerKey: string, clientId: string): boolean => {
+      if (!clientId) return false;
+      return (
+        cancelledWaterTapIdsRef.current.get(ownerKey)?.has(clientId) ?? false
+      );
+    },
+    []
+  );
+
+  const recordUncertainWaterWrite = useCallback(
+    (ownerKey: string, clientId: string, entryDate: string) => {
+      if (!clientId || !entryDate) return;
+      let map = uncertainWaterWritesRef.current.get(ownerKey);
+      if (!map) {
+        map = new Map<string, string>();
+        uncertainWaterWritesRef.current.set(ownerKey, map);
+      }
+      map.delete(clientId);
+      map.set(clientId, entryDate);
+      while (map.size > 100) {
+        const oldest = map.keys().next().value;
+        if (oldest === undefined) break;
+        map.delete(oldest);
+      }
+    },
+    []
+  );
+
+  const peekUncertainWaterWriteDate = useCallback(
+    (ownerKey: string, clientId: string): string | undefined => {
+      if (!clientId) return undefined;
+      return uncertainWaterWritesRef.current.get(ownerKey)?.get(clientId);
+    },
+    []
+  );
+
+  const consumeUncertainWaterWrite = useCallback(
+    (ownerKey: string, clientId: string): string | undefined => {
+      if (!clientId) return undefined;
+      const map = uncertainWaterWritesRef.current.get(ownerKey);
+      if (!map) return undefined;
+      const val = map.get(clientId);
+      if (val !== undefined) {
+        map.delete(clientId);
+      }
+      return val;
+    },
+    []
+  );
+
+  const recordCreatedWaterEntryId = useCallback(
+    (ownerKey: string, clientId: string, entryId: string) => {
+      if (!clientId || !entryId) return;
+      let map = createdWaterEntryIdByTapRef.current.get(ownerKey);
+      if (!map) {
+        map = new Map<string, string>();
+        createdWaterEntryIdByTapRef.current.set(ownerKey, map);
+      }
+      map.delete(clientId);
+      map.set(clientId, entryId);
+      while (map.size > 100) {
+        const oldest = map.keys().next().value;
+        if (oldest === undefined) break;
+        map.delete(oldest);
+      }
+    },
+    []
+  );
+
+  const peekCreatedWaterEntryId = useCallback(
+    (ownerKey: string, clientId: string): string | undefined => {
+      if (!clientId) return undefined;
+      return createdWaterEntryIdByTapRef.current.get(ownerKey)?.get(clientId);
+    },
+    []
+  );
+
+  const consumeCreatedWaterEntryId = useCallback(
+    (ownerKey: string, clientId: string): string | undefined => {
+      if (!clientId) return undefined;
+      const map = createdWaterEntryIdByTapRef.current.get(ownerKey);
+      if (!map) return undefined;
+      const entryId = map.get(clientId);
+      if (entryId !== undefined) {
+        map.delete(clientId);
+      }
+      return entryId;
+    },
+    []
+  );
+
+  const advanceWaterRefreshSeq = useCallback(
+    (ownerKey: string, day: string) => {
+      if (!day) return;
+      const seqKey = `${ownerKey}::${day}`;
+      waterRefreshSeqRef.current.set(
+        seqKey,
+        (waterRefreshSeqRef.current.get(seqKey) ?? 0) + 1
+      );
+    },
+    []
+  );
+
+  const reconcileCancelledQueuedWaterTap = useCallback(
+    async (
+      ownerKey: string,
+      clientId: string,
+      entryDate: string,
+      replayKey: string
+    ): Promise<'settled' | 'pending'> => {
+      if (!WatchConnectivity) return 'pending';
+      if (
+        !(await isPayloadForActiveServer({ ownerId: ownerKey || undefined }))
+      ) {
+        return 'pending';
+      }
+      let resolvedEntryDate = entryDate;
+      if (!resolvedEntryDate) {
+        const lookedUpDate = await getQueuedWaterDrinkEntryDate(
+          replayKey,
+          ownerKey || undefined
+        );
+        if (lookedUpDate === 'unreadable') {
+          return 'pending';
+        }
+        resolvedEntryDate = lookedUpDate || '';
+      }
+      if (!entryDate && resolvedEntryDate) {
+        recordCreatedWaterEntryId(
+          ownerKey,
+          clientId,
+          `${QUEUED_WATER_OUTBOX_PREFIX}${resolvedEntryDate}|${replayKey}`
+        );
+        await persistAckState();
+      }
+      const cancelResult = await cancelQueuedWaterDrink(
+        replayKey,
+        ownerKey || undefined
+      );
+      if (cancelResult === 'unreadable') {
+        return 'pending';
+      }
+      let cancelAckOutcome: boolean | null = null;
+      if (cancelResult === 'cancelled') {
+        consumeCreatedWaterEntryId(ownerKey, clientId);
+        cancelAckOutcome = true;
+      } else {
+        if (cancelResult === 'uploading') {
+          const outboxStatus = await getQueuedWaterDrinkStatus(
+            replayKey,
+            ownerKey || undefined
+          );
+          if (outboxStatus === 'unreadable' || outboxStatus === 'active') {
+            return 'pending';
+          }
+          if (outboxStatus === 'failed') {
+            consumeCreatedWaterEntryId(ownerKey, clientId);
+            cancelAckOutcome = false;
+          }
+        }
+        if (cancelAckOutcome === null) {
+          if (!resolvedEntryDate) {
+            return 'pending';
+          }
+          const targetServerConfig = await resolveWatchServerConfig(
+            ownerKey || undefined
+          );
+          if (!targetServerConfig) {
+            return 'pending';
+          }
+          let matchingEntryId: string | undefined;
+          try {
+            const logRows = await fetchWaterIntakeLogLive(
+              resolvedEntryDate,
+              targetServerConfig
+            );
+            const matched = logRows.find((entry) => {
+              const rowClientId = (entry as { client_id?: unknown }).client_id;
+              return (
+                typeof rowClientId === 'string' &&
+                (rowClientId.trim() === replayKey ||
+                  rowClientId.trim() === clientId)
+              );
+            });
+            if (matched?.id) {
+              matchingEntryId = matched.id;
+            }
+          } catch (error) {
+            addLog(
+              `Watch queued water tap cancellation lookup failed: ${String(error)}`,
+              'WARNING'
+            );
+            return 'pending';
+          }
+          cancelAckOutcome = true;
+          if (matchingEntryId) {
+            try {
+              await deleteWaterIntakeLogEntry(
+                matchingEntryId,
+                targetServerConfig
+              );
+              advanceWaterRefreshSeq(ownerKey, resolvedEntryDate);
+            } catch (error) {
+              if (error instanceof ApiError && error.statusCode === 404) {
+                advanceWaterRefreshSeq(ownerKey, resolvedEntryDate);
+                cancelAckOutcome = true;
+              } else if (isPermanentWatchClientRejection(error)) {
+                cancelAckOutcome = false;
+              } else {
+                addLog(
+                  `Watch queued water tap cancellation delete failed: ${String(error)}`,
+                  'WARNING'
+                );
+                return 'pending';
+              }
+            }
+          }
+          consumeCreatedWaterEntryId(ownerKey, clientId);
+        }
+      }
+      handledWaterClientIdsRef.current.delete(clientId);
+      ackedClientIdsRef.current = ackedClientIdsRef.current.filter(
+        (id) => id !== clientId
+      );
+      await persistAckState();
+      const invalidateDay = resolvedEntryDate || getTodayDate();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dailySummaryQueryKey(invalidateDay),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: waterIntakeLogQueryKey(invalidateDay),
+        }),
+        invalidateIntakeKinetics(queryClient, invalidateDay),
+      ]);
+      await WatchConnectivity.sendAck(clientId, cancelAckOutcome);
+      await pushContextRef.current();
+      return 'settled';
+    },
+    [
+      advanceWaterRefreshSeq,
+      consumeCreatedWaterEntryId,
+      persistAckState,
+      recordCreatedWaterEntryId,
+    ]
+  );
+
+  const reconcilePendingCancelledQueuedTaps =
+    useCallback(async (): Promise<void> => {
+      await ensureAckStateHydrated();
+      const candidates: {
+        ownerKey: string;
+        clientId: string;
+        entryDate: string;
+        replayKey: string;
+      }[] = [];
+      for (const [
+        ownerKey,
+        entries,
+      ] of createdWaterEntryIdByTapRef.current.entries()) {
+        for (const [clientId, recorded] of entries.entries()) {
+          if (!isWaterTapCancelled(ownerKey, clientId)) continue;
+          if (!recorded.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) continue;
+          const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+          const sepIdx = rawQueued.indexOf('|');
+          const entryDate = sepIdx > 0 ? rawQueued.slice(0, sepIdx) : '';
+          const replayKey =
+            sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+          candidates.push({ ownerKey, clientId, entryDate, replayKey });
+        }
+      }
+      for (const c of candidates) {
+        try {
+          await reconcileCancelledQueuedWaterTap(
+            c.ownerKey,
+            c.clientId,
+            c.entryDate,
+            c.replayKey
+          );
+        } catch (error) {
+          addLog(
+            `Watch queued water tap reconciliation failed for ${c.clientId}: ${String(error)}`,
+            'WARNING'
+          );
+        }
+      }
+    }, [
+      ensureAckStateHydrated,
+      isWaterTapCancelled,
+      reconcileCancelledQueuedWaterTap,
+    ]);
+
   const handleWaterTap = useCallback(
     async (payload: WatchWaterIntakePayload): Promise<void> => {
       if (!WatchConnectivity) return;
       if (!(await isPayloadForActiveServer(payload))) return;
       await ensureAckStateHydrated();
+      const ownerKey =
+        payload.ownerId?.trim() ||
+        (await getActiveServerConfigId())?.trim() ||
+        '';
+      if (payload.clientId && isWaterTapCancelled(ownerKey, payload.clientId)) {
+        await WatchConnectivity.sendAck(payload.clientId, true);
+        return;
+      }
       if (
         payload.clientId &&
         handledWaterClientIdsRef.current.has(payload.clientId)
@@ -1453,6 +2385,22 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         handledWaterClientIdsRef.current.add(payload.clientId);
 
       try {
+        const tapGeneration = accountGeneration();
+        if (payload.clientId && payload.entryDate) {
+          recordUncertainWaterWrite(
+            ownerKey,
+            payload.clientId,
+            payload.entryDate
+          );
+          await persistAckState();
+          if (
+            accountGeneration() !== tapGeneration ||
+            !(await isPayloadForActiveServer(payload))
+          ) {
+            handledWaterClientIdsRef.current.delete(payload.clientId);
+            return;
+          }
+        }
         // One tap = one full serving of that container, same as the phone's
         // own + button. With the server away the drink is kept on the phone
         // and uploads later, so the watch is told it is safe either way.
@@ -1461,7 +2409,117 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           payload.containerId,
           payload.clientId
         );
+        if (payload.clientId) {
+          consumeUncertainWaterWrite(ownerKey, payload.clientId);
+        }
         const response = result.queued ? null : result.response;
+
+        let createdEntryId = extractCreatedWaterEntryId(response);
+        if (!result.queued && !createdEntryId && payload.clientId) {
+          try {
+            const refreshedLog = await fetchWaterIntakeLog(payload.entryDate);
+            const matched = refreshedLog.find((entry) => {
+              const rowClientId = (entry as { client_id?: unknown }).client_id;
+              return (
+                typeof rowClientId === 'string' &&
+                rowClientId.trim() === payload.clientId
+              );
+            });
+            if (matched?.id) {
+              createdEntryId = matched.id;
+            }
+          } catch {
+            // Only authoritative client_id matches are accepted; never guess rows.
+          }
+        }
+        if (payload.clientId) {
+          if (result.queued) {
+            const replayKey = result.replayKey || payload.clientId;
+            recordCreatedWaterEntryId(
+              ownerKey,
+              payload.clientId,
+              `${QUEUED_WATER_OUTBOX_PREFIX}${payload.entryDate}|${replayKey}`
+            );
+          } else {
+            recordCreatedWaterEntryId(
+              ownerKey,
+              payload.clientId,
+              createdEntryId ?? COMMITTED_WATER_NO_ROW_ID
+            );
+          }
+        }
+
+        if (
+          payload.clientId &&
+          isWaterTapCancelled(ownerKey, payload.clientId)
+        ) {
+          handledWaterClientIdsRef.current.delete(payload.clientId);
+          const recorded = peekCreatedWaterEntryId(ownerKey, payload.clientId);
+          let cancelAckOutcome: boolean | null = null;
+          if (recorded?.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) {
+            const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+            const sepIdx = rawQueued.indexOf('|');
+            const queuedDate =
+              sepIdx > 0 ? rawQueued.slice(0, sepIdx) : payload.entryDate;
+            const replayKey =
+              sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+            await persistAckState();
+            await reconcileCancelledQueuedWaterTap(
+              ownerKey,
+              payload.clientId,
+              queuedDate,
+              replayKey
+            );
+            return;
+          } else if (recorded === COMMITTED_WATER_NO_ROW_ID || !recorded) {
+            consumeCreatedWaterEntryId(ownerKey, payload.clientId);
+            cancelAckOutcome = false;
+          } else {
+            const targetServerConfig = await resolveWatchServerConfig(
+              ownerKey || undefined
+            );
+            if (!targetServerConfig) {
+              await persistAckState();
+              return;
+            }
+            try {
+              await deleteWaterIntakeLogEntry(recorded, targetServerConfig);
+              consumeCreatedWaterEntryId(ownerKey, payload.clientId);
+              cancelAckOutcome = true;
+            } catch (deleteError) {
+              if (
+                deleteError instanceof ApiError &&
+                deleteError.statusCode === 404
+              ) {
+                consumeCreatedWaterEntryId(ownerKey, payload.clientId);
+                cancelAckOutcome = true;
+              } else if (isPermanentWatchClientRejection(deleteError)) {
+                consumeCreatedWaterEntryId(ownerKey, payload.clientId);
+                cancelAckOutcome = false;
+              } else {
+                addLog(
+                  `Compensating watch water delete failed: ${String(deleteError)}`,
+                  'WARNING'
+                );
+              }
+            }
+          }
+          await persistAckState();
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: dailySummaryQueryKey(payload.entryDate),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: waterIntakeLogQueryKey(payload.entryDate),
+            }),
+            invalidateIntakeKinetics(queryClient, payload.entryDate),
+          ]);
+          if (cancelAckOutcome !== null) {
+            await WatchConnectivity.sendAck(payload.clientId, cancelAckOutcome);
+          }
+          await pushContextRef.current();
+          return;
+        }
 
         if (response && typeof response.water_ml === 'number') {
           queryClient.setQueryData<DailySummaryRawData>(
@@ -1511,25 +2569,212 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         );
         await pushContextRef.current();
       } catch (error) {
-        // Released again, so the id isn't spent on a write that never landed:
-        // a redelivery of the queued transfer, or the watch's own retry of a
-        // failed tap, can still get through under the same id.
         if (payload.clientId) {
           handledWaterClientIdsRef.current.delete(payload.clientId);
-          failedClientIdsRef.current = [
-            ...failedClientIdsRef.current,
-            payload.clientId,
-          ].slice(-20);
-          await persistAckState();
-          await WatchConnectivity.sendAck(payload.clientId, false);
+          if (isPermanentWatchClientRejection(error)) {
+            consumeUncertainWaterWrite(ownerKey, payload.clientId);
+            failedClientIdsRef.current = [
+              ...failedClientIdsRef.current,
+              payload.clientId,
+            ].slice(-20);
+            await persistAckState();
+            await WatchConnectivity.sendAck(payload.clientId, false);
+            await pushContextRef.current();
+          }
         }
         addLog(`Watch water tap failed to save: ${String(error)}`, 'ERROR');
-        // So the failure still reaches a watch that wasn't reachable for the
-        // ack above.
-        await pushContextRef.current();
       }
     },
-    [ensureAckStateHydrated, persistAckState]
+    [
+      consumeCreatedWaterEntryId,
+      consumeUncertainWaterWrite,
+      ensureAckStateHydrated,
+      isWaterTapCancelled,
+      peekCreatedWaterEntryId,
+      persistAckState,
+      reconcileCancelledQueuedWaterTap,
+      recordCreatedWaterEntryId,
+      recordUncertainWaterWrite,
+    ]
+  );
+
+  const handleWaterTapCancel = useCallback(
+    async (payload: WatchWaterTapCancelPayload): Promise<void> => {
+      if (!WatchConnectivity) return;
+      if (!(await isPayloadForActiveServer(payload))) return;
+      const clientId = payload.clientId?.trim() ?? '';
+      if (!clientId) return;
+      await ensureAckStateHydrated();
+      const ownerKey =
+        payload.ownerId?.trim() ||
+        (await getActiveServerConfigId())?.trim() ||
+        '';
+      markWaterTapCancelled(ownerKey, clientId);
+      await persistAckState();
+      const recorded = peekCreatedWaterEntryId(ownerKey, clientId);
+      if (recorded !== undefined) {
+        if (recorded.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) {
+          const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+          const sepIdx = rawQueued.indexOf('|');
+          const queuedDate = sepIdx > 0 ? rawQueued.slice(0, sepIdx) : '';
+          const replayKey =
+            sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+          try {
+            await reconcileCancelledQueuedWaterTap(
+              ownerKey,
+              clientId,
+              queuedDate,
+              replayKey
+            );
+          } catch (error) {
+            addLog(
+              `Watch queued water tap cancellation failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
+          return;
+        }
+        let cancelAckOutcome: boolean;
+        if (recorded === COMMITTED_WATER_NO_ROW_ID) {
+          consumeCreatedWaterEntryId(ownerKey, clientId);
+          cancelAckOutcome = false;
+        } else {
+          const targetServerConfig = await resolveWatchServerConfig(
+            ownerKey || undefined
+          );
+          if (!targetServerConfig) {
+            return;
+          }
+          try {
+            await deleteWaterIntakeLogEntry(recorded, targetServerConfig);
+            consumeCreatedWaterEntryId(ownerKey, clientId);
+            cancelAckOutcome = true;
+          } catch (error) {
+            if (error instanceof ApiError && error.statusCode === 404) {
+              consumeCreatedWaterEntryId(ownerKey, clientId);
+              cancelAckOutcome = true;
+            } else if (isPermanentWatchClientRejection(error)) {
+              consumeCreatedWaterEntryId(ownerKey, clientId);
+              cancelAckOutcome = false;
+            } else {
+              addLog(
+                `Watch water tap cancellation delete failed: ${String(error)}`,
+                'WARNING'
+              );
+              return;
+            }
+          }
+        }
+        handledWaterClientIdsRef.current.delete(clientId);
+        ackedClientIdsRef.current = ackedClientIdsRef.current.filter(
+          (id) => id !== clientId
+        );
+        await persistAckState();
+        const today = getTodayDate();
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: dailySummaryQueryKey(today),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: waterIntakeLogQueryKey(today),
+          }),
+          invalidateIntakeKinetics(queryClient, today),
+        ]);
+        await WatchConnectivity.sendAck(clientId, cancelAckOutcome);
+        await pushContextRef.current();
+        return;
+      }
+      // If `handleWaterTap` is currently in flight for this clientId, let it
+      // observe `isWaterTapCancelled` on completion and send the truthful ack.
+      if (handledWaterClientIdsRef.current.has(clientId)) {
+        return;
+      }
+      const uncertainEntryDate = peekUncertainWaterWriteDate(
+        ownerKey,
+        clientId
+      );
+      if (uncertainEntryDate) {
+        const targetServerConfig = await resolveWatchServerConfig(
+          ownerKey || undefined
+        );
+        if (!targetServerConfig) {
+          return;
+        }
+        let matchingEntryId: string | undefined;
+        try {
+          const logRows = await fetchWaterIntakeLogLive(
+            uncertainEntryDate,
+            targetServerConfig
+          );
+          const matched = logRows.find((entry) => {
+            const rowClientId = (entry as { client_id?: unknown }).client_id;
+            return (
+              typeof rowClientId === 'string' && rowClientId.trim() === clientId
+            );
+          });
+          if (matched?.id) {
+            matchingEntryId = matched.id;
+          }
+        } catch (error) {
+          addLog(
+            `Watch water tap cancellation lookup failed: ${String(error)}`,
+            'WARNING'
+          );
+          return;
+        }
+        let cancelAckOutcome = true;
+        if (matchingEntryId) {
+          try {
+            await deleteWaterIntakeLogEntry(
+              matchingEntryId,
+              targetServerConfig
+            );
+          } catch (error) {
+            if (error instanceof ApiError && error.statusCode === 404) {
+              cancelAckOutcome = true;
+            } else if (isPermanentWatchClientRejection(error)) {
+              cancelAckOutcome = false;
+            } else {
+              addLog(
+                `Watch water tap cancellation delete failed: ${String(error)}`,
+                'WARNING'
+              );
+              return;
+            }
+          }
+        }
+        consumeUncertainWaterWrite(ownerKey, clientId);
+        handledWaterClientIdsRef.current.delete(clientId);
+        ackedClientIdsRef.current = ackedClientIdsRef.current.filter(
+          (id) => id !== clientId
+        );
+        await persistAckState();
+        const today = getTodayDate();
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: dailySummaryQueryKey(today),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: waterIntakeLogQueryKey(today),
+          }),
+          invalidateIntakeKinetics(queryClient, today),
+        ]);
+        await WatchConnectivity.sendAck(clientId, cancelAckOutcome);
+        await pushContextRef.current();
+        return;
+      }
+      await WatchConnectivity.sendAck(clientId, true);
+    },
+    [
+      consumeCreatedWaterEntryId,
+      consumeUncertainWaterWrite,
+      ensureAckStateHydrated,
+      markWaterTapCancelled,
+      peekCreatedWaterEntryId,
+      peekUncertainWaterWriteDate,
+      persistAckState,
+      reconcileCancelledQueuedWaterTap,
+    ]
   );
 
   /**
@@ -1565,8 +2810,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       const today = getTodayDate();
       try {
         // The server decrements the day's total as part of this, so there's
-        // no separate total adjustment to make here.
-        await deleteWaterIntakeLogEntry(payload.entryId);
+        // no separate total adjustment to make here. A 404 means the row was
+        // already removed (for example on a direct-DELETE retry), which settles
+        // through the same success ack and cache-refresh path.
+        try {
+          await deleteWaterIntakeLogEntry(payload.entryId);
+        } catch (deleteError) {
+          if (
+            !(deleteError instanceof ApiError) ||
+            deleteError.statusCode !== 404
+          ) {
+            throw deleteError;
+          }
+        }
 
         ackedClientIdsRef.current = [
           ...ackedClientIdsRef.current,
@@ -1595,21 +2851,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');
         await pushContextRef.current();
       } catch (error) {
-        // Released, so a resend can try again under the same id.
         if (payload.clientId) {
           handledWaterClientIdsRef.current.delete(payload.clientId);
-          failedClientIdsRef.current = [
-            ...failedClientIdsRef.current,
-            payload.clientId,
-          ].slice(-20);
-          await persistAckState();
-          await WatchConnectivity.sendAck(payload.clientId, false);
+          if (isPermanentWatchClientRejection(error)) {
+            failedClientIdsRef.current = [
+              ...failedClientIdsRef.current,
+              payload.clientId,
+            ].slice(-20);
+            await persistAckState();
+            await WatchConnectivity.sendAck(payload.clientId, false);
+            await pushContextRef.current();
+          }
         }
         addLog(`Watch water delete failed: ${String(error)}`, 'ERROR');
-        // Re-push so the watch's optimistically-removed row comes back rather
-        // than staying gone on a screen that now disagrees with the server,
-        // and so the failure reaches a watch that wasn't reachable above.
-        await pushContextRef.current();
       }
     },
     [ensureAckStateHydrated, persistAckState]
@@ -1702,18 +2956,20 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       } catch (error) {
         if (payload.clientId) {
           handledMedicationClientIdsRef.current.delete(payload.clientId);
-          failedClientIdsRef.current = [
-            ...failedClientIdsRef.current,
-            payload.clientId,
-          ].slice(-20);
-          await persistAckState();
-          await WatchConnectivity.sendAck(payload.clientId, false);
+          if (isPermanentWatchClientRejection(error)) {
+            failedClientIdsRef.current = [
+              ...failedClientIdsRef.current,
+              payload.clientId,
+            ].slice(-20);
+            await persistAckState();
+            await WatchConnectivity.sendAck(payload.clientId, false);
+            await pushContextRef.current();
+          }
         }
         addLog(
           `Watch medication dose failed to save: ${String(error)}`,
           'ERROR'
         );
-        await pushContextRef.current();
       }
     },
     [ensureAckStateHydrated, persistAckState]
@@ -1743,22 +2999,477 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // touching `.current` on the way through render is exactly what
   // `react-hooks/refs` forbids. The one-render lag that introduces is harmless
   // here — these events arrive from the native side long after mount.
+  const handleWatchServerSynced = useCallback(
+    async (payload: WatchServerSyncedPayload): Promise<void> => {
+      if (!(await isPayloadForActiveServer(payload))) return;
+      const expectedOwnerId =
+        payload.ownerId?.trim() ||
+        (await getActiveServerConfigId()) ||
+        undefined;
+      const directClientId = payload.clientId?.trim() ?? '';
+      const today = getTodayDate();
+      const areWaterQueriesFresh = (dates: string[]): boolean =>
+        dates.every((d) => {
+          const queries = [
+            ...queryClient.getQueryCache().findAll({
+              queryKey: dailySummaryQueryKey(d),
+              type: 'active',
+            }),
+            ...queryClient.getQueryCache().findAll({
+              queryKey: waterIntakeLogQueryKey(d),
+              type: 'active',
+            }),
+          ];
+          return queries.every(
+            (q) =>
+              !q.state.isInvalidated &&
+              q.state.status === 'success' &&
+              q.state.fetchStatus !== 'paused'
+          );
+        });
+      const areFastingQueriesFresh = (): boolean => {
+        const queries = queryClient.getQueryCache().findAll({
+          queryKey: fastingCurrentQueryKey,
+          type: 'active',
+        });
+        return queries.every(
+          (q) =>
+            !q.state.isInvalidated &&
+            q.state.status === 'success' &&
+            q.state.fetchStatus !== 'paused'
+        );
+      };
+      const areMedicationQueriesFresh = (dates: string[]): boolean =>
+        dates.every((d) => {
+          const queries = queryClient.getQueryCache().findAll({
+            queryKey: medicationEntriesQueryKey({ fromDate: d, toDate: d }),
+            type: 'active',
+          });
+          return queries.every(
+            (q) =>
+              !q.state.isInvalidated &&
+              q.state.status === 'success' &&
+              q.state.fetchStatus !== 'paused'
+          );
+        });
+      const areCheckInQueriesFresh = (
+        dates: string[],
+        rangeStart: string
+      ): boolean => {
+        const queries = [
+          ...dates.flatMap((d) =>
+            queryClient.getQueryCache().findAll({
+              queryKey: measurementsQueryKey(d),
+              type: 'active',
+            })
+          ),
+          ...queryClient.getQueryCache().findAll({
+            queryKey: measurementsRangeQueryKey(rangeStart, today),
+            type: 'active',
+          }),
+        ];
+        return queries.every(
+          (q) =>
+            !q.state.isInvalidated &&
+            q.state.status === 'success' &&
+            q.state.fetchStatus !== 'paused'
+        );
+      };
+      const maxActiveUpdatedAt = (queryKey: readonly unknown[]): number => {
+        const queries = queryClient
+          .getQueryCache()
+          .findAll({ queryKey, type: 'active' });
+        let latest = 0;
+        for (const q of queries) {
+          if (q.state.dataUpdatedAt > latest) {
+            latest = q.state.dataUpdatedAt;
+          }
+        }
+        return latest;
+      };
+      const recordDirectAck = async (
+        entry: Omit<
+          DirectAckEntry,
+          | 'minFlushVersion'
+          | 'requiresCurrentSessionFetch'
+          | 'publishedInCurrentSession'
+        >
+      ): Promise<boolean> => {
+        await ensureAckStateHydrated();
+        if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
+          return false;
+        }
+        const requiredFlushVersion = nextDirectAckFlushVersionRef.current + 1;
+        nextDirectAckFlushVersionRef.current = requiredFlushVersion;
+        // Hold direct acks in directAcksRef with full provenance (never
+        // downgrading into plain ackedClientIdsRef) until a fresh rendered
+        // snapshot for this owner/day publishes them.
+        directAcksRef.current.delete(entry.clientId);
+        directAcksRef.current.set(entry.clientId, {
+          ...entry,
+          minFlushVersion: requiredFlushVersion,
+          requiresCurrentSessionFetch: false,
+          publishedInCurrentSession: false,
+        });
+        while (directAcksRef.current.size > 20) {
+          const oldest = directAcksRef.current.keys().next().value;
+          if (oldest === undefined) break;
+          directAcksRef.current.delete(oldest);
+        }
+        failedClientIdsRef.current = failedClientIdsRef.current.filter(
+          (id) => id !== entry.clientId
+        );
+        await persistAckState();
+        if (AppState.currentState === 'active') {
+          pushGenerationRef.current += 1;
+          setDirectAckFlushVersion(requiredFlushVersion);
+        }
+        return true;
+      };
+      switch (payload.domain) {
+        case 'medications': {
+          const dates =
+            payload.entryDate && payload.entryDate !== today
+              ? [payload.entryDate, today]
+              : [today];
+          const targetEntryKeys = new Set(
+            dates.map((d) =>
+              JSON.stringify(
+                medicationEntriesQueryKey({ fromDate: d, toDate: d })
+              )
+            )
+          );
+          let medRefetchSucceeded = false;
+          try {
+            await Promise.all([
+              ...dates.map((d) =>
+                queryClient.invalidateQueries(
+                  {
+                    queryKey: medicationEntriesQueryKey({
+                      fromDate: d,
+                      toDate: d,
+                    }),
+                  },
+                  { throwOnError: true }
+                )
+              ),
+              queryClient.invalidateQueries({
+                queryKey: glucoseContextQueryKeyRoot,
+              }),
+              queryClient.invalidateQueries({
+                queryKey: medicationsRootQueryKey,
+              }),
+              queryClient.invalidateQueries({
+                queryKey: dailySummaryRootQueryKey,
+              }),
+              queryClient.invalidateQueries({
+                queryKey: medicationEntriesQueryKey(),
+                predicate: (q) =>
+                  !targetEntryKeys.has(JSON.stringify(q.queryKey)),
+              }),
+            ]);
+            medRefetchSucceeded = areMedicationQueriesFresh(dates);
+          } catch (error) {
+            addLog(
+              `Watch direct medications refetch failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
+          if (
+            directClientId &&
+            medRefetchSucceeded &&
+            summaryDateRef.current === today
+          ) {
+            const medWatermark = maxActiveUpdatedAt(
+              medicationEntriesQueryKey({ fromDate: today, toDate: today })
+            );
+            const recorded = await recordDirectAck({
+              clientId: directClientId,
+              ownerId: expectedOwnerId ?? '',
+              domain: 'medications',
+              day: payload.entryDate ?? today,
+              dailySummaryUpdatedAt: 0,
+              waterLogUpdatedAt: 0,
+              fastUpdatedAt: 0,
+              medicationsUpdatedAt: medWatermark,
+              measurementsUpdatedAt: 0,
+            });
+            if (recorded) return;
+          }
+          break;
+        }
+        case 'water': {
+          const waterDates = payload.entryDate
+            ? payload.entryDate === today
+              ? [payload.entryDate]
+              : [payload.entryDate, today]
+            : [today];
+          let waterRefetchSucceeded = false;
+          try {
+            if (payload.entryDate) {
+              await Promise.all([
+                ...waterDates.map((d) =>
+                  queryClient.invalidateQueries(
+                    { queryKey: dailySummaryQueryKey(d) },
+                    { throwOnError: true }
+                  )
+                ),
+                ...waterDates.map((d) =>
+                  queryClient.invalidateQueries(
+                    { queryKey: waterIntakeLogQueryKey(d) },
+                    { throwOnError: true }
+                  )
+                ),
+                queryClient.invalidateQueries({
+                  queryKey: waterIntakeRangeRootQueryKey,
+                  predicate: (query) => {
+                    const [, startDate, endDate] = query.queryKey;
+                    if (
+                      typeof startDate !== 'string' ||
+                      typeof endDate !== 'string'
+                    ) {
+                      return true;
+                    }
+                    return (
+                      startDate <= payload.entryDate! &&
+                      payload.entryDate! <= endDate
+                    );
+                  },
+                }),
+                invalidateIntakeKinetics(queryClient, payload.entryDate),
+              ]);
+            } else {
+              await Promise.all([
+                queryClient.invalidateQueries(
+                  { queryKey: dailySummaryRootQueryKey },
+                  { throwOnError: true }
+                ),
+                queryClient.invalidateQueries(
+                  { queryKey: waterIntakeLogRootQueryKey },
+                  { throwOnError: true }
+                ),
+                queryClient.invalidateQueries({
+                  queryKey: waterIntakeRangeRootQueryKey,
+                }),
+                invalidateIntakeKinetics(queryClient),
+              ]);
+            }
+            if (directClientId) {
+              const generationBeforeLiveFetch = accountGeneration();
+              const liveOwnerKey = expectedOwnerId ?? '';
+              const requestSeqByDay = new Map<string, number>();
+              for (const d of waterDates) {
+                const seqKey = `${liveOwnerKey}::${d}`;
+                const nextSeq =
+                  (waterRefreshSeqRef.current.get(seqKey) ?? 0) + 1;
+                waterRefreshSeqRef.current.set(seqKey, nextSeq);
+                requestSeqByDay.set(d, nextSeq);
+              }
+              const liveServerConfig =
+                await resolveWatchServerConfig(expectedOwnerId);
+              if (!liveServerConfig) {
+                throw new Error(
+                  'Server config unavailable for live water verification'
+                );
+              }
+              const liveWaterSnapshots = await Promise.all(
+                waterDates.map(async (d) => {
+                  const [log, total] = await Promise.all([
+                    fetchWaterIntakeLogLive(d, liveServerConfig),
+                    fetchWaterIntakeLive(d, liveServerConfig),
+                  ]);
+                  return { day: d, log, total };
+                })
+              );
+              if (
+                accountGeneration() !== generationBeforeLiveFetch ||
+                !(await isPayloadForActiveServer({
+                  ownerId: expectedOwnerId,
+                })) ||
+                accountGeneration() !== generationBeforeLiveFetch
+              ) {
+                return;
+              }
+              for (const { day, log, total } of liveWaterSnapshots) {
+                if (
+                  waterRefreshSeqRef.current.get(`${liveOwnerKey}::${day}`) !==
+                  requestSeqByDay.get(day)
+                ) {
+                  continue;
+                }
+                queryClient.setQueryData(waterIntakeLogQueryKey(day), log);
+                if (total && typeof total.water_ml === 'number') {
+                  queryClient.setQueryData<DailySummaryRawData>(
+                    dailySummaryQueryKey(day),
+                    (old) => {
+                      if (!old) return old;
+                      return {
+                        ...old,
+                        waterIntake: {
+                          ...old.waterIntake,
+                          water_ml: total.water_ml,
+                        },
+                      };
+                    }
+                  );
+                }
+              }
+            }
+            waterRefetchSucceeded = areWaterQueriesFresh(waterDates);
+          } catch (error) {
+            addLog(
+              `Watch direct water refetch failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
+          if (
+            directClientId &&
+            waterRefetchSucceeded &&
+            summaryDateRef.current === today
+          ) {
+            const summaryWatermark = maxActiveUpdatedAt(
+              dailySummaryQueryKey(today)
+            );
+            const waterLogWatermark = maxActiveUpdatedAt(
+              waterIntakeLogQueryKey(today)
+            );
+            const recorded = await recordDirectAck({
+              clientId: directClientId,
+              ownerId: expectedOwnerId ?? '',
+              domain: 'water',
+              day: today,
+              dailySummaryUpdatedAt: summaryWatermark,
+              waterLogUpdatedAt: waterLogWatermark,
+              fastUpdatedAt: 0,
+              medicationsUpdatedAt: 0,
+              measurementsUpdatedAt: 0,
+            });
+            if (recorded) return;
+          }
+          break;
+        }
+        case 'checkIn': {
+          const dates =
+            payload.entryDate && payload.entryDate !== today
+              ? [payload.entryDate, today]
+              : [today];
+          const rangeStart = addDays(today, -(HISTORY_DAYS - 1));
+          let checkInRefetchSucceeded = false;
+          try {
+            await Promise.all([
+              ...dates.map((d) =>
+                queryClient.invalidateQueries(
+                  { queryKey: measurementsQueryKey(d) },
+                  { throwOnError: true }
+                )
+              ),
+              queryClient.invalidateQueries(
+                { queryKey: measurementsRangeQueryKey(rangeStart, today) },
+                { throwOnError: true }
+              ),
+            ]);
+            refreshHealthSyncCache(queryClient);
+            checkInRefetchSucceeded = areCheckInQueriesFresh(dates, rangeStart);
+          } catch (error) {
+            addLog(
+              `Watch direct check-in refetch failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
+          if (directClientId && checkInRefetchSucceeded) {
+            const measurementsWatermark = Math.max(
+              Date.now(),
+              maxActiveUpdatedAt(measurementsRangeQueryKey(rangeStart, today))
+            );
+            const recorded = await recordDirectAck({
+              clientId: directClientId,
+              ownerId: expectedOwnerId ?? '',
+              domain: 'checkIn',
+              day: payload.entryDate ?? today,
+              dailySummaryUpdatedAt: 0,
+              waterLogUpdatedAt: 0,
+              fastUpdatedAt: 0,
+              medicationsUpdatedAt: 0,
+              measurementsUpdatedAt: measurementsWatermark,
+            });
+            if (recorded) return;
+          }
+          break;
+        }
+        case 'fasting': {
+          let fastingRefetchSucceeded = false;
+          try {
+            await Promise.all([
+              queryClient.invalidateQueries(
+                { queryKey: fastingRootQueryKey },
+                { throwOnError: true }
+              ),
+              queryClient.invalidateQueries({
+                queryKey: dailySummaryQueryKey(today),
+              }),
+            ]);
+            fastingRefetchSucceeded = areFastingQueriesFresh();
+          } catch (error) {
+            addLog(
+              `Watch direct fasting refetch failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
+          if (directClientId && fastingRefetchSucceeded) {
+            const fastWatermark = maxActiveUpdatedAt(fastingCurrentQueryKey);
+            const recorded = await recordDirectAck({
+              clientId: directClientId,
+              ownerId: expectedOwnerId ?? '',
+              domain: 'fasting',
+              day: today,
+              dailySummaryUpdatedAt: 0,
+              waterLogUpdatedAt: 0,
+              fastUpdatedAt: fastWatermark,
+              medicationsUpdatedAt: 0,
+              measurementsUpdatedAt: 0,
+            });
+            if (recorded) return;
+          }
+          break;
+        }
+        default:
+          await queryClient.invalidateQueries({
+            queryKey: dailySummaryQueryKey(today),
+          });
+          break;
+      }
+      if (
+        AppState.currentState === 'active' &&
+        (await isPayloadForActiveServer({ ownerId: expectedOwnerId }))
+      ) {
+        await pushContextRef.current();
+      }
+    },
+    [ensureAckStateHydrated, persistAckState]
+  );
+
   const handlersRef = useRef({
     handleCheckIn,
     handleWaterTap,
     handleWaterDelete,
+    handleWaterTapCancel,
     handleMedicationTaken,
+    handleWatchServerSynced,
     pushContext,
     catchUpToToday,
+    reconcilePendingCancelledQueuedTaps,
   });
   useEffect(() => {
     handlersRef.current = {
       handleCheckIn,
       handleWaterTap,
       handleWaterDelete,
+      handleWaterTapCancel,
       handleMedicationTaken,
+      handleWatchServerSynced,
       pushContext,
       catchUpToToday,
+      reconcilePendingCancelledQueuedTaps,
     };
   });
 
@@ -1793,6 +3504,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         onEvent(handlersRef.current.handleWaterDelete)(payload);
       }
     );
+    const waterTapCancelSub = WatchConnectivity.addListener(
+      'onWaterTapCancel',
+      (payload) => {
+        onEvent(handlersRef.current.handleWaterTapCancel)(payload);
+      }
+    );
     const medicationTakenSub = WatchConnectivity.addListener(
       'onMedicationTaken',
       (payload) => {
@@ -1815,22 +3532,39 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       }
     );
 
+    const serverSyncedSub = WatchConnectivity.addListener(
+      'onWatchServerSynced',
+      (payload) => {
+        onEvent(handlersRef.current.handleWatchServerSynced)(payload);
+      }
+    );
+
     // Coming back to the foreground is the other way a new day first shows up
     // — the app can sit resident for days without re-rendering this hook.
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       handlersRef.current.catchUpToToday();
+      setDirectAckFlushVersion((v) =>
+        Math.max(v, nextDirectAckFlushVersionRef.current)
+      );
+      void handlersRef.current.reconcilePendingCancelledQueuedTaps();
       void handlersRef.current.pushContext();
+    });
+    const uploadsConfirmedUnsub = subscribeUploadsConfirmed(() => {
+      void handlersRef.current.reconcilePendingCancelledQueuedTaps();
     });
 
     return () => {
       checkInSub.remove();
       waterIntakeSub.remove();
       waterDeleteSub.remove();
+      waterTapCancelSub.remove();
       medicationTakenSub.remove();
       contextRequestSub.remove();
       reachabilitySub.remove();
+      serverSyncedSub.remove();
       appStateSub.remove();
+      uploadsConfirmedUnsub();
     };
   }, [enabled, garminLinked]);
 

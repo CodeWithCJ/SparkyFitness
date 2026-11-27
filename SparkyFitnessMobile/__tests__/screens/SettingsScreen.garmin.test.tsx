@@ -34,6 +34,9 @@ jest.mock('@react-navigation/native', () => {
   return { ...actual, useFocusEffect: (callback: () => void) => callback() };
 });
 
+jest.mock('../../src/hooks/useCoaches', () => ({
+  useCoachesAvailable: () => false,
+}));
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useServerConfigs: jest.fn(),

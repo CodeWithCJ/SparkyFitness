@@ -171,6 +171,22 @@ function runPreflightChecks() {
       );
     }
   }
+
+  // F20: Warn when SSO/OIDC is enabled via environment while public signup is open
+  const hasOidcEnv = Boolean(
+    process.env.SPARKY_FITNESS_OIDC_CLIENT_ID ||
+    process.env.SPARKY_FITNESS_OIDC_ISSUER_URL ||
+    process.env.SPARKY_FITNESS_OIDC_ISSUER
+  );
+  const signupOpen = process.env.SPARKY_FITNESS_DISABLE_SIGNUP !== 'true';
+  if (hasOidcEnv && signupOpen) {
+    log(
+      'warn',
+      '[SECURITY WARN] SSO/OIDC is enabled while public signup is open (SPARKY_FITNESS_DISABLE_SIGNUP is not true). ' +
+        'Without local email verification, an attacker could pre-register an account with a victim email and capture their SSO identity upon first login. ' +
+        'It is strongly recommended to set SPARKY_FITNESS_DISABLE_SIGNUP=true when SSO is configured.'
+    );
+  }
   // The application database role is provisioned by the server itself, so both
   // of these are soft requirements: when absent we pick a default name and mint
   // a password, and `applyMigrations` creates or updates the role to match.

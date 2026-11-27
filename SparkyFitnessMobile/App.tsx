@@ -140,6 +140,7 @@ import {
   SafeAllergenSettings,
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
+  SafeCoachSettings,
   SafeWatchSettings,
   SafeGarminSettings,
   SafeWatchComplications,
@@ -224,6 +225,7 @@ import ActiveWorkoutBar, {
   notifyActiveWorkoutBarSwipeProgress,
 } from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
+import { ReadableWidthLayout } from './src/components/ReadableWidthLayout';
 import PendingPresetUpdatePrompt from './src/components/PendingPresetUpdatePrompt';
 import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateStore';
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
@@ -589,8 +591,12 @@ function AppContent() {
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <HorizontalInsetsFrame>
         <Stack.Navigator
-          screenLayout={usesLiquidGlassNavigation
-            ? ({ children, route }) => (
+          screenLayout={({ children, route }) => {
+            // Centres the screen in a readable column on wide windows (iPad).
+            const content = (
+              <ReadableWidthLayout routeName={route.name}>{children}</ReadableWidthLayout>
+            );
+            return usesLiquidGlassNavigation ? (
               <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
                 {/* View-level safe area: keeps pushed screens clear of the
                     vertical bar iPhone Duo presents on one side. Not for
@@ -598,15 +604,15 @@ function AppContent() {
                     system stops presenting its bar vertically; each tab's
                     own stack insets its screens instead. */}
                 {route.name === 'Tabs' ? (
-                  children
+                  content
                 ) : (
                   <SafeAreaView edges={['left', 'right']} style={{ flex: 1 }}>
-                    {children}
+                    {content}
                   </SafeAreaView>
                 )}
               </ActiveWorkoutTransitionScreenLayout>
-            )
-            : undefined}
+            ) : content;
+          }}
           screenListeners={usesLiquidGlassNavigation
             ? {
               transitionStart: (event) => {
@@ -1343,6 +1349,11 @@ function AppContent() {
             name="DashboardSettings"
             component={SafeDashboardSettings}
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="CoachSettings"
+            component={SafeCoachSettings}
+            options={createStackScreenOptions(t('coaches.settings.title', { defaultValue: 'Coaches' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="HealthTrendsSettings"

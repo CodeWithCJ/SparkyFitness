@@ -22,36 +22,47 @@ const checkPermissionMiddleware = (permissionType: any) => {
 
     // Every user this request could act on: the validated active context
     // (req.userId, which authMiddleware/onBehalfOfMiddleware already vetted the
-    // switch for) plus any user named in a client-supplied query/body param.
+    // switch for) plus any user named in a client-supplied query/body/route param.
     // The caller must be authorized for ALL of them, not just one — a
     // client-supplied target that happens to be self must not stand in for the
     // active context the handler actually operates on.
+    //
+    // Route params like :id on entity routes (/entries/:id) represent resource
+    // IDs rather than user IDs, so individual handlers verify entity ownership;
+    // user-scoping route params (such as :familyUserId) are extracted here.
     const candidateTargets = [
       ...new Set(
         [
           ...extractStrings(req.userId),
-          ...extractStrings(req.query.userId),
-          ...extractStrings(req.query.targetUserId),
+          ...extractStrings(req.query?.userId),
+          ...extractStrings(req.query?.targetUserId),
+          ...extractStrings(req.query?.familyUserId),
+          ...extractStrings(req.params?.familyUserId),
           ...extractStrings(req.body?.user_id),
           ...extractStrings(req.body?.targetUserId),
+          ...extractStrings(req.body?.familyUserId),
         ].filter((id) => id.length > 0 && id !== 'undefined')
       ),
     ];
 
     try {
       let resolvedPermission = permissionType;
+      const urlPath = req.originalUrl
+        ? req.originalUrl.split('?')[0]
+        : req.path || '';
       if (permissionType === 'diary') {
         if (req.method === 'GET') {
           resolvedPermission = 'diary_read';
         }
       } else if (permissionType === 'checkin') {
-        if (req.originalUrl && req.originalUrl.includes('/water-intake')) {
+        // Inspect the route pathname rather than originalUrl with query string,
+        // so query text like ?x=/water-intake cannot select the weaker water tier.
+        if (urlPath.includes('/water-intake')) {
           resolvedPermission = 'water';
         } else if (
           req.method === 'GET' &&
-          req.originalUrl &&
-          !req.originalUrl.includes('/check-in-photos') &&
-          !req.originalUrl.includes('/photos')
+          !urlPath.includes('/check-in-photos') &&
+          !urlPath.includes('/photos')
         ) {
           resolvedPermission = 'checkin_read';
         }

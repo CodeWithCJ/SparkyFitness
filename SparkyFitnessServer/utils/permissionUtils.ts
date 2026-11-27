@@ -1,46 +1,27 @@
-import { getClient, getSystemClient } from '../db/poolManager.js';
-import { log } from '../config/logging.js';
+import { getClient } from '../db/poolManager.js';
+/**
+ * Whether `authenticatedUserId` may use `permissionType` on `targetUserId`'s
+ * data: always for their own data, otherwise only through an active Family
+ * Access grant. A matching email address never stands in for a grant: emails
+ * are stored case-sensitively, so `Victim@x.com` and `victim@x.com` can be two
+ * different accounts, and treating them as one person let either act as the
+ * other without being granted anything.
+ *
+ * `targetUserId` is often a raw query parameter, which Express can hand over
+ * as an array or an object (`?userId[]=a&userId[]=b`); anything but a single
+ * id string is refused rather than passed into the query.
+ */
 async function canAccessUserData(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  permissionType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  options: { allowSameEmail?: boolean } = {}
-) {
+  targetUserId: unknown,
+  permissionType: string,
+  authenticatedUserId: string
+): Promise<boolean> {
+  if (typeof targetUserId !== 'string' || targetUserId === '') {
+    return false;
+  }
   // If accessing own data, always allow
   if (targetUserId === authenticatedUserId) {
     return true;
-  }
-  // Check if target and authenticated user are effectively the same (same
-  // email). A caller reading another person's data passes `allowSameEmail:
-  // false` to rely on a family grant alone: emails are only case-insensitively
-  // unique by convention, so a look-alike address must not stand in for the
-  // owner.
-  if (options.allowSameEmail !== false) {
-    const systemClient = await getSystemClient();
-    try {
-      const emailCheckResult = await systemClient.query(
-        `SELECT 
-        (SELECT email FROM "user" WHERE id = $1) as target_email,
-        (SELECT email FROM "user" WHERE id = $2) as auth_email`,
-        [targetUserId, authenticatedUserId]
-      );
-      const emails = emailCheckResult.rows[0];
-      if (
-        emails &&
-        emails.target_email &&
-        emails.auth_email &&
-        emails.target_email.toLowerCase() === emails.auth_email.toLowerCase()
-      ) {
-        return true;
-      }
-    } catch (error) {
-      log('error', 'Error checking same-email permission:', error);
-    } finally {
-      systemClient.release();
-    }
   }
   // Check if authenticated user has family access with the required permission
   const client = await getClient(authenticatedUserId); // User-specific operation
@@ -121,7 +102,7 @@ async function canAccessUserData(
       `,
       [authenticatedUserId, targetUserId, permissionType]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   } finally {
     client.release();
   }

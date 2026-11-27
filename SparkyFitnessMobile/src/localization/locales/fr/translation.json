@@ -4129,6 +4129,11 @@
       "rangeLabel": "PLAGE",
       "loadFailed": "Échec du chargement des données de fréquence cardiaque",
       "empty": "Aucune donnée de fréquence cardiaque sur cette période"
+    },
+    "mood": {
+      "title": "Humeur",
+      "loadFailed": "Échec du chargement de l'humeur",
+      "empty": "Aucune humeur enregistrée sur cette période"
     }
   },
   "ranges": {
@@ -4618,7 +4623,21 @@
     "duplicate": "Dupliquer l'exercice",
     "viewImages": "Voir les images en plein écran",
     "duplicateName": "{{name}} (copie)",
-    "caloriesPerHourWithUnit": "{{unit}} / heure"
+    "caloriesPerHourWithUnit": "{{unit}} / heure",
+    "progress": {
+      "title": "Progression",
+      "weeks": "Semaines",
+      "months": "Mois",
+      "years": "Années",
+      "estimated1RM": "1RM estimé",
+      "heaviest": "Charge max",
+      "volume": "Volume",
+      "volumeUnit": "{{unit}} × rép",
+      "weekOf": "Semaine du {{date}}",
+      "loadFailed": "Impossible de charger la progression",
+      "empty": "Rien d'enregistré sur cette période",
+      "footnote": "Meilleure valeur par période. Point = nouveau record."
+    }
   },
   "workoutComplete": {
     "title": "Séance terminée",
@@ -5730,7 +5749,8 @@
   "foodSummary": {
     "tapToAddFood": "Touchez pour ajouter un aliment",
     "caloriesShort": "kcal",
-    "nutritionBreakdown": "Détail nutritionnel : {{label}}"
+    "nutritionBreakdown": "Détail nutritionnel : {{label}}",
+    "fromTime": "à partir de {{time}}"
   },
   "foodRow": {
     "unknownFood": "Aliment inconnu",
@@ -6766,7 +6786,7 @@
     "cm": "{{value}} cm",
     "mmolL": "{{value}} mmol/L",
     "ms": "{{value}} ms",
-    "vo2": "{{value}} ml/min/kg",
+    "vo2": "{{value}} ml/kg/min",
     "minutes": "{{count}} min",
     "meters": "{{value}} m",
     "watts": "{{value}} W",
@@ -7514,7 +7534,37 @@
     "mediaAccessDisclosureBody": "Android exige l'accès aux notifications pour lire le titre et l'artiste en cours de lecture pour votre montre Wear OS. SparkyFitness lit uniquement les sessions multimédia actives et ignore vos messages et autres notifications.",
     "mediaAccessOpenSettings": "Ouvrir les paramètres",
     "mediaAccessOpenErrorTitle": "Impossible d'ouvrir les paramètres",
-    "mediaAccessOpenErrorBody": "Ouvrez Paramètres Android → Notifications → Lecture, réponse et contrôle des notifications, puis activez SparkyFitness Media Controls."
+    "mediaAccessOpenErrorBody": "Ouvrez Paramètres Android → Notifications → Lecture, réponse et contrôle des notifications, puis activez SparkyFitness Media Controls.",
+    "complicationsTitle": "Complications",
+    "complicationsRow": "Vos complications",
+    "complicationsSubtitle": "Créez les vôtres pour le cadran, et importez-les ou exportez-les.",
+    "complications": {
+      "sources": {
+        "calories": "Calories",
+        "caloriesRemaining": "Calories restantes",
+        "caloriesBurned": "Calories brûlées",
+        "protein": "Protéines",
+        "carbs": "Glucides",
+        "fat": "Lipides",
+        "water": "Eau",
+        "steps": "Pas",
+        "fasting": "Jeûne",
+        "weight": "Poids",
+        "bodyFat": "Masse grasse",
+        "deepSleep": "Sommeil profond",
+        "exerciseCalories": "Calories d'exercice",
+        "exerciseMinutes": "Minutes d'exercice",
+        "hrv": "VFC nocturne",
+        "lightSleep": "Sommeil léger",
+        "remSleep": "Sommeil REM",
+        "restingHeartRate": "FC au repos",
+        "sleepDuration": "Temps de sommeil",
+        "sleepScore": "Score de sommeil",
+        "spo2": "Oxygène sanguin",
+        "timeInBed": "Temps au lit",
+        "workouts": "Séances du jour"
+      }
+    }
   },
   "aiSettings": {
     "server": {
@@ -11291,7 +11341,11 @@
       "description": "Enregistrez vos analyses de sang et suivez chaque marqueur dans le temps."
     },
     "someOff": "Certaines fonctionnalités sont désactivées",
-    "manage": "Gérer"
+    "manage": "Gérer",
+    "medications": {
+      "title": "Médicaments",
+      "description": "Suivi des médicaments, des compléments et des GLP-1. Désactivé, les rappels s'arrêtent et reprennent quand vous le réactivez ; les nutriments des compléments restent comptés dans vos totaux."
+    }
   },
   "challenges": {
     "card": {
@@ -11427,5 +11481,133 @@
     "success": "Copié depuis hier",
     "failed": "Échec de la copie depuis hier",
     "loadError": "Impossible de charger les repas d'hier."
+  },
+  "watchComplications": {
+    "deleteTitle": "Supprimer la complication",
+    "deleteMessage": "Supprimer « {{name}} » ? Un emplacement du cadran qui l'affiche deviendra vide.",
+    "exportFailed": "Impossible d'exporter vos complications",
+    "importTooLarge": "Ce fichier est trop volumineux",
+    "importFailed": "Impossible de lire ce fichier",
+    "importInvalid": "Ce n'est pas un fichier de complications",
+    "importInvalidSubtitle": "Choisissez un fichier exporté depuis l'écran Complications.",
+    "importTitle": "Importer des complications",
+    "importAdd": "Ajouter",
+    "importReplace": "Remplacer",
+    "resetTitle": "Revenir aux modèles de départ",
+    "resetMessage": "Remplacer vos complications par celles de départ ? Les vôtres seront perdues.",
+    "resetConfirm": "Réinitialiser",
+    "title": "Complications",
+    "add": "Ajouter une complication",
+    "menu": "Options de la complication",
+    "reload": "Recharger les complications",
+    "reloadHint": "Envoie vos complications à l'Apple Watch et les actualise.",
+    "reloaded": "Envoyé à votre montre",
+    "reloadedSubtitle": "Ouvrez l'app de la montre si le sélecteur affiche encore l'ancienne liste.",
+    "reloadFailed": "Impossible d'envoyer à votre montre",
+    "builtInTitle": "Complications intégrées",
+    "builtInHelp": "Fournies avec l'app. Modifiez leurs couleurs et leurs icônes.",
+    "changeBuiltIn": "Modifier {{name}}",
+    "builtInReset": "Rétablir l'apparence d'origine",
+    "builtInDailyEnergy": "Objectif énergétique du jour",
+    "builtInEnergyReset": "Rétablir les couleurs d'origine",
+    "builtIn": {
+      "calorieGoal": "Objectif calorique",
+      "proteinGoal": "Objectif protéines",
+      "carbsGoal": "Objectif glucides",
+      "fatGoal": "Objectif lipides",
+      "water": "Eau bue",
+      "fasting": "Jeûne",
+      "steps": "Pas"
+    },
+    "export": "Exporter",
+    "import": "Importer",
+    "reset": "Revenir aux modèles de départ",
+    "withGauge": "Jauge",
+    "editNamed": "Modifier {{name}}",
+    "moveUp": "Monter {{name}}",
+    "moveDown": "Descendre {{name}}",
+    "deleteNamed": "Supprimer {{name}}",
+    "intro": "Créez vos propres complications pour le cadran. Chacune affiche un chiffre de votre journée. Sur la montre, ajoutez la complication personnalisée à un emplacement et choisissez-en une.",
+    "starterNote": "Voici les complications de départ. Modifiez-en une ou ajoutez-en une, et la liste devient la vôtre.",
+    "emptyTitle": "Aucune complication",
+    "emptySubtitle": "Ajoutez-en une, par exemple les protéines restantes du jour, ou importez un fichier.",
+    "nameRequired": "Donnez-lui un nom",
+    "nameRequiredSubtitle": "C'est ce nom que vous choisirez sur le cadran.",
+    "saved": "Complication enregistrée",
+    "editTitle": "Modifier la complication",
+    "createTitle": "Ajouter une complication",
+    "previewNote": "Une journée type, dans chaque taille. Le cadran décide du rendu final.",
+    "preview": {
+      "left": "restant",
+      "leftUnit": "{{unit}} restants",
+      "ofGoal": "sur {{goal}}"
+    },
+    "name": "Nom",
+    "namePlaceholder": "ex. Protéines restantes",
+    "source": "Affiche",
+    "sourceHelp": "Les nutriments affichés sur la page Objectifs de la montre figurent aussi dans la liste.",
+    "format": "Afficher en",
+    "noGoalNote": "Sans objectif, elle ne peut afficher que sa valeur.",
+    "gauge": "Jauge",
+    "gaugeSubtitle": "Dessiner un anneau ou une barre selon la part de l'objectif atteinte.",
+    "color": "Couleur",
+    "icon": "Icône",
+    "formats": {
+      "value": "Valeur",
+      "percent": "Pourcentage",
+      "remaining": "Restant"
+    },
+    "colors": {
+      "calories": "Violet",
+      "protein": "Or",
+      "carbs": "Vert",
+      "fat": "Bleu ciel",
+      "water": "Cyan",
+      "steps": "Menthe",
+      "fasting": "Orange",
+      "weight": "Bleu canard",
+      "neutral": "Blanc",
+      "exercise": "Vert vif",
+      "heart": "Rose",
+      "sleep": "Indigo"
+    },
+    "icons": {
+      "flame": "Flamme",
+      "fish": "Poisson",
+      "leaf": "Feuille",
+      "drop": "Goutte",
+      "walk": "Marche",
+      "timer": "Minuteur",
+      "scale": "Balance",
+      "heart": "Cœur",
+      "bolt": "Éclair",
+      "fork": "Couverts",
+      "chart": "Histogramme",
+      "gauge": "Jauge",
+      "bed": "Lit",
+      "dumbbell": "Haltère",
+      "heartbeat": "Pouls",
+      "lungs": "Poumons",
+      "moon": "Lune"
+    },
+    "importDone_one": "{{count}} complication importée",
+    "importDone_many": "{{count}} complications importées",
+    "importDone_other": "{{count}} complications importées",
+    "importMessage_one": "{{count}} complication trouvée dans le fichier. L'ajouter à votre liste, ou remplacer votre liste par celle-ci ?",
+    "importMessage_many": "{{count}} complications trouvées dans le fichier. Les ajouter à votre liste, ou remplacer votre liste par celles-ci ?",
+    "importMessage_other": "{{count}} complications trouvées dans le fichier. Les ajouter à votre liste, ou remplacer votre liste par celles-ci ?",
+    "importSkipped_one": "{{count}} entrée n'a pas pu être utilisée.",
+    "importSkipped_many": "{{count}} entrées n'ont pas pu être utilisées.",
+    "importSkipped_other": "{{count}} entrées n'ont pas pu être utilisées.",
+    "addValue": "Ajouter une valeur",
+    "moreValues": "Plus de valeurs",
+    "moreValuesHelp": "Affichez jusqu'à trois valeurs ensemble : des anneaux dans les tailles circulaire et coin, une ligne chacune dans la taille rectangulaire.",
+    "remove": "Retirer",
+    "removeValue": "Retirer la valeur {{number}}",
+    "ringsNote": "Avec plusieurs valeurs, chaque valeur dotée d'un objectif a son propre anneau ou sa propre barre.",
+    "starters": {
+      "macros": "Macros"
+    },
+    "valueNumber": "Valeur {{number}}"
   }
 }

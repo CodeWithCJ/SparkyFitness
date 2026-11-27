@@ -182,7 +182,7 @@ describe('sendContextToWatches', () => {
   });
 
   test('sends the context and publishes its Garmin snapshot, with the account epoch, when both transports are there', async () => {
-    await sendContextToWatches(context, 2);
+    await expect(sendContextToWatches(context, 2)).resolves.toBe(true);
 
     expect(watch.updateContext).toHaveBeenCalledWith(context);
     expect(garmin.publish).toHaveBeenCalledWith(
@@ -210,7 +210,8 @@ describe('sendContextToWatches', () => {
   test('a failed Wear OS push still publishes the Garmin snapshot', async () => {
     watch.updateContext.mockRejectedValue(new Error('data layer down'));
 
-    await expect(sendContextToWatches(context, 0)).resolves.toBeUndefined();
+    // Answers that the context did not reach the watch.
+    await expect(sendContextToWatches(context, 0)).resolves.toBe(false);
 
     expect(garmin.publish).toHaveBeenCalledTimes(1);
     expect(addLog).toHaveBeenCalledWith(
@@ -234,7 +235,7 @@ describe('sendContextToWatches', () => {
   test('a failed Garmin publish does not affect the Wear OS push', async () => {
     garmin.publish.mockRejectedValue(new Error('no Garmin Connect'));
 
-    await expect(sendContextToWatches(context, 0)).resolves.toBeUndefined();
+    await expect(sendContextToWatches(context, 0)).resolves.toBe(true);
     await flush();
 
     expect(watch.updateContext).toHaveBeenCalledWith(context);
@@ -271,7 +272,7 @@ describe('sendContextToWatches', () => {
   test('with Garmin only, the Wear OS context is not sent', async () => {
     watch.isSupported.mockReturnValue(false);
 
-    await sendContextToWatches(context, 0);
+    await expect(sendContextToWatches(context, 0)).resolves.toBe(false);
 
     expect(watch.updateContext).not.toHaveBeenCalled();
     expect(garmin.publish).toHaveBeenCalledTimes(1);

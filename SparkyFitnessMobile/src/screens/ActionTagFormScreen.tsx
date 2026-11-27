@@ -175,6 +175,11 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     mealChoiceValue(presetItem?.meal)
   );
   const [askFirst, setAskFirst] = useState(false);
+  const [allowAmountAdjustment, setAllowAmountAdjustment] = useState(false);
+  const [allowCustomTimestamp, setAllowCustomTimestamp] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const [tapToLog, setTapToLog] = useState(false);
+  const [presetAmountsText, setPresetAmountsText] = useState('');
   const [busy, setBusy] = useState(false);
   // True while the phone is waiting to touch a tag (Android shows no sheet).
   const [waitingForTag, setWaitingForTag] = useState(false);
@@ -190,6 +195,14 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     setSeededId(existing.id);
     setLabel(existing.label);
     setAskFirst(existing.ask_before_running);
+    setAllowAmountAdjustment(Boolean(existing.allow_amount_adjustment));
+    setAllowCustomTimestamp(Boolean(existing.allow_custom_timestamp));
+    setTapToLog(Boolean(existing.tap_to_log));
+    setPresetAmountsText(
+      Array.isArray(existing.preset_amounts)
+        ? existing.preset_amounts.join('; ')
+        : ''
+    );
     const action = existing.action;
     switch (action.type) {
       case 'water':
@@ -427,6 +440,37 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
       showError(problem);
       return;
     }
+    const rawPresetParts = presetAmountsText
+      .split(/[;\r?\n]+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    let normalizedPresets: number[] | null = null;
+    if (rawPresetParts.length > 0) {
+      if (rawPresetParts.length > 8) {
+        showError(
+          t('actionTags.form.tooManyPresets', {
+            defaultValue: 'Enter up to 8 preset amounts',
+          })
+        );
+        return;
+      }
+      const parsedPresetAmounts: number[] = [];
+      for (const part of rawPresetParts) {
+        const num = parseDecimalInput(part);
+        if (!Number.isFinite(num) || num <= 0 || num > 10000) {
+          showError(
+            t('actionTags.form.invalidPresetAmount', {
+              defaultValue:
+                'Each preset amount must be a valid number greater than 0 and at most 10000',
+            })
+          );
+          return;
+        }
+        parsedPresetAmounts.push(num);
+      }
+      normalizedPresets = parsedPresetAmounts;
+    }
     const action = buildAction();
     if (!action) return;
     setBusy(true);
@@ -438,6 +482,11 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
             label: effectiveLabel.trim(),
             action,
             ask_before_running: askFirst,
+            allow_amount_adjustment: allowAmountAdjustment,
+            allow_custom_timestamp:
+              kind === 'water' ? false : allowCustomTimestamp,
+            tap_to_log: tapToLog,
+            preset_amounts: normalizedPresets,
           },
         });
       } else {
@@ -446,6 +495,11 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           label: effectiveLabel.trim(),
           action,
           ask_before_running: askFirst,
+          allow_amount_adjustment: allowAmountAdjustment,
+          allow_custom_timestamp:
+            kind === 'water' ? false : allowCustomTimestamp,
+          tap_to_log: tapToLog,
+          preset_amounts: normalizedPresets,
         };
         // Check against the server's own rules before writing, so a sticker is
         // never written for a tag the server would then refuse.
@@ -789,6 +843,104 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
               'Shows a Log or Cancel prompt on every tap instead of logging at once.',
           })}
         </Text>
+
+        <View className="flex-row justify-between items-center mt-6">
+          <Text className="text-sm text-text-primary flex-shrink pr-3">
+            {t('actionTags.form.allowAmountAdjustment', {
+              defaultValue:
+                'Allow amount/multiplier adjustment on confirmation',
+            })}
+          </Text>
+          <Switch
+            accessibilityLabel={t('actionTags.form.allowAmountAdjustment', {
+              defaultValue:
+                'Allow amount/multiplier adjustment on confirmation',
+            })}
+            value={allowAmountAdjustment}
+            onValueChange={setAllowAmountAdjustment}
+          />
+        </View>
+        <Text className="text-text-secondary text-sm mt-2">
+          {t('actionTags.form.allowAmountAdjustmentHint', {
+            defaultValue:
+              'Lets you pick a quick preset or custom amount in the confirmation prompt while keeping the default pre-selected.',
+          })}
+        </Text>
+
+        {kind !== 'water' ? (
+          <>
+            <View className="flex-row justify-between items-center mt-6">
+              <Text className="text-sm text-text-primary flex-shrink pr-3">
+                {t('actionTags.form.allowCustomTimestamp', {
+                  defaultValue: 'Allow custom timestamp on scan',
+                })}
+              </Text>
+              <Switch
+                accessibilityLabel={t('actionTags.form.allowCustomTimestamp', {
+                  defaultValue: 'Allow custom timestamp on scan',
+                })}
+                value={allowCustomTimestamp}
+                onValueChange={setAllowCustomTimestamp}
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('actionTags.form.allowCustomTimestampHint', {
+                defaultValue:
+                  'When off, logs immediately at the current time. When on, shows a time field during scan.',
+              })}
+            </Text>
+          </>
+        ) : null}
+
+        <View className="flex-row justify-between items-center mt-6">
+          <Text className="text-sm text-text-primary flex-shrink pr-3">
+            {t('actionTags.form.advancedMode', {
+              defaultValue: 'Advanced presets & ml mode',
+            })}
+          </Text>
+          <Switch
+            accessibilityLabel={t('actionTags.form.advancedMode', {
+              defaultValue: 'Advanced presets & ml mode',
+            })}
+            value={advancedExpanded}
+            onValueChange={(next) => {
+              setAdvancedExpanded(next);
+              if (!next) {
+                setTapToLog(false);
+              }
+            }}
+          />
+        </View>
+
+        {advancedExpanded ? (
+          <View className="mt-3">
+            <Text className="text-xs font-semibold text-text-secondary mb-1.5">
+              {t('actionTags.form.presetAmountsLabel', {
+                defaultValue: 'Preset amounts (ml for drinks, or item units)',
+              })}
+            </Text>
+            <FormInput
+              value={presetAmountsText}
+              onChangeText={setPresetAmountsText}
+              placeholder="250; 500; 750"
+              keyboardType="numbers-and-punctuation"
+            />
+            <View className="flex-row justify-between items-center mt-4">
+              <Text className="text-sm text-text-primary flex-shrink pr-3">
+                {t('actionTags.form.tapToLog', {
+                  defaultValue: 'Tap amount to log immediately',
+                })}
+              </Text>
+              <Switch
+                accessibilityLabel={t('actionTags.form.tapToLog', {
+                  defaultValue: 'Tap amount to log immediately',
+                })}
+                value={tapToLog}
+                onValueChange={setTapToLog}
+              />
+            </View>
+          </View>
+        ) : null}
 
         {needsWrite ? (
           <Text className="text-text-secondary text-sm mt-6">

@@ -43,17 +43,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.compose.ui.platform.LocalScrollCaptureInProgress
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
-import androidx.wear.compose.material.Chip
-import androidx.wear.compose.material.ChipDefaults
-import androidx.wear.compose.material.Icon as WearIcon
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.PositionIndicator
-import androidx.wear.compose.material.Scaffold
-import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.TimeText
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
+import androidx.wear.compose.material3.Icon as WearIcon
+import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.ListHeaderDefaults
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.ScrollIndicator
+import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.watchface.complications.data.ColorRamp
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
@@ -276,6 +282,7 @@ data class CustomComplicationRenderSpec(
   val validUntil: Instant?,
   val dailyRolloverAt: Instant? = null,
   val hasNonDailyItems: Boolean = false,
+  val supportsProgress: Boolean = false,
   val activeFastingStartedAtMs: Long? = null,
   val activeFastingTargetEndAtMs: Long? = null,
   val fastingLiveClock: FastingLiveClock? = null
@@ -969,6 +976,7 @@ object CustomComplicationEngine {
         validUntil = validUntil,
         dailyRolloverAt = if (preview) null else dailyRolloverAt,
         hasNonDailyItems = hasNonDailyItems,
+        supportsProgress = definitionSupportsProgress(definition),
         activeFastingStartedAtMs = if (preview) null else activeFastStart,
         activeFastingTargetEndAtMs = if (preview) null else activeFastTargetEnd,
         fastingLiveClock = liveClock
@@ -1012,6 +1020,7 @@ object CustomComplicationEngine {
       validUntil = validUntil,
       dailyRolloverAt = if (preview) null else dailyRolloverAt,
       hasNonDailyItems = hasNonDailyItems,
+      supportsProgress = definitionSupportsProgress(definition),
       activeFastingStartedAtMs = if (preview) null else activeFastStart,
       activeFastingTargetEndAtMs = if (preview) null else activeFastTargetEnd
     )
@@ -1298,6 +1307,7 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
     val checkInStore = session.checkInStore
     val customStore = session.customComplicationStore
     checkInStore.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
 
     val defs = customStore.definitions.value
     val assignedId = customStore.getAssignedDefinitionId(request.complicationInstanceId)
@@ -1505,123 +1515,77 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
     return ComplicationDataTimeline(currentData, emptyList())
   }
 
-  private fun buildFastingLiveTexts(
-    clock: FastingLiveClock,
-    nowMs: Long
-  ): Pair<ComplicationText?, ComplicationText?> {
-    return when (clock.format) {
-      "value" -> {
-        val shortLive = TimeDifferenceComplicationText.Builder(
-          TimeDifferenceStyle.SHORT_DUAL_UNIT,
-          CountUpTimeReference(Instant.ofEpochMilli(clock.startedAtMs))
-        )
-          .setDisplayAsNow(false)
-          .setMinimumTimeUnit(TimeUnit.MINUTES)
-          .build()
-        val longLive = if (clock.detailGoalSuffix != null) {
-          TimeDifferenceComplicationText.Builder(
-            TimeDifferenceStyle.SHORT_DUAL_UNIT,
-            CountUpTimeReference(Instant.ofEpochMilli(clock.startedAtMs))
-          )
-            .setText("^1 · ${clock.detailGoalSuffix}")
-            .setDisplayAsNow(false)
-            .setMinimumTimeUnit(TimeUnit.MINUTES)
-            .build()
-        } else {
-          shortLive
-        }
-        shortLive to longLive
-      }
-      "remaining" -> {
-        val targetMs = clock.targetEndAtMs?.takeIf { it > nowMs } ?: return null to null
-        val shortLive = TimeDifferenceComplicationText.Builder(
-          TimeDifferenceStyle.SHORT_DUAL_UNIT,
-          CountDownTimeReference(Instant.ofEpochMilli(targetMs))
-        )
-          .setDisplayAsNow(false)
-          .setMinimumTimeUnit(TimeUnit.MINUTES)
-          .build()
-        val longLive = TimeDifferenceComplicationText.Builder(
-          TimeDifferenceStyle.SHORT_DUAL_UNIT,
-          CountDownTimeReference(Instant.ofEpochMilli(targetMs))
-        )
-          .setText("^1 · ${getString(R.string.complication_unit_left)}")
-          .setDisplayAsNow(false)
-          .setMinimumTimeUnit(TimeUnit.MINUTES)
-          .build()
-        shortLive to longLive
-      }
-      else -> null to null
-    }
-  }
-
   private fun buildComplicationData(
     type: ComplicationType,
     spec: CustomComplicationRenderSpec,
     tap: PendingIntent?,
     nowMs: Long = System.currentTimeMillis()
   ): ComplicationData? {
-    val iconRes = CustomComplicationIcons.drawableFor(spec.iconKey)
-    val isGaugeSlot = type == ComplicationType.RANGED_VALUE || type == ComplicationType.GOAL_PROGRESS
-    val hasMultiRings = spec.rings.size > 1
-    val ringImage = if (hasMultiRings || (!isGaugeSlot && spec.rings.isNotEmpty())) {
-      CustomComplicationBitmaps.concentricRingsSmallImage(spec.rings)
-    } else {
-      null
-    }
-    val monoIcon = if (ringImage != null) null else ComplicationUpdater.monoIcon(this, iconRes)
-    val smallIcon = ringImage
-      ?: CustomComplicationBitmaps.tintedIconSmallImage(this, iconRes, spec.primaryColorArgb)
+    return buildComplicationDataForContext(this, type, spec, tap, nowMs)
+  }
 
-    val (liveShortText, liveLongText) = spec.fastingLiveClock?.let {
-      buildFastingLiveTexts(it, nowMs)
-    } ?: (null to null)
+  companion object {
+    private const val CUSTOM_TAP_REQUEST_CODE_BASE = 2000
 
-    val shortText = liveShortText ?: PlainComplicationText.Builder(spec.shortText).build()
-    val shortTitle = spec.shortTitle?.takeIf { it.isNotBlank() }?.let {
-      PlainComplicationText.Builder(it).build()
-    }
-    val longText = liveLongText ?: PlainComplicationText.Builder(spec.longText).build()
-    val longTitle = spec.longTitle?.takeIf { it.isNotBlank() }?.let {
-      PlainComplicationText.Builder(it).build()
-    }
-    val desc = if (liveLongText != null && type == ComplicationType.LONG_TEXT) {
-      liveLongText
-    } else if (liveShortText != null && type != ComplicationType.LONG_TEXT) {
-      liveShortText
-    } else {
-      PlainComplicationText.Builder(spec.contentDescription).build()
-    }
-    val timeRange = spec.validUntil?.let { TimeRange.before(it) }
-    val singleRamp = if (!hasMultiRings) ColorRamp(spec.rampColors, false) else null
+    internal fun resolveEffectiveProgress(spec: CustomComplicationRenderSpec): Float? =
+      spec.progress ?: if (spec.supportsProgress) 0f else null
 
-    return when (type) {
-      ComplicationType.RANGED_VALUE -> {
-        val progress = spec.progress ?: return NoDataComplicationData()
-        val valuePct = (progress * 100f).coerceIn(0f, 100f)
-        RangedValueComplicationData.Builder(
-          value = valuePct,
-          min = 0f,
-          max = 100f,
-          contentDescription = desc
-        ).apply {
-          setText(shortText)
-          if (shortTitle != null) setTitle(shortTitle)
-          if (monoIcon != null) setMonochromaticImage(monoIcon)
-          if (smallIcon != null) setSmallImage(smallIcon)
-          if (singleRamp != null) setColorRamp(singleRamp)
-          setTapAction(tap)
-          if (timeRange != null) setValidTimeRange(timeRange)
-        }.build()
+    internal fun resolveEffectiveRings(spec: CustomComplicationRenderSpec): List<RingLayerSpec> =
+      spec.rings.ifEmpty {
+        resolveEffectiveProgress(spec)?.let {
+          listOf(RingLayerSpec(it.coerceIn(0f, 1f), spec.primaryColorArgb))
+        }.orEmpty()
       }
 
-      ComplicationType.GOAL_PROGRESS -> {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-          val progress = spec.progress ?: return NoDataComplicationData()
-          val rawPct = max(0f, (spec.rawProgress ?: progress) * 100f)
-          GoalProgressComplicationData.Builder(
-            value = rawPct,
-            targetValue = 100f,
+    internal fun buildComplicationDataForContext(
+      context: Context,
+      type: ComplicationType,
+      spec: CustomComplicationRenderSpec,
+      tap: PendingIntent?,
+      nowMs: Long = System.currentTimeMillis()
+    ): ComplicationData? {
+      val iconRes = CustomComplicationIcons.drawableFor(spec.iconKey)
+      val isGaugeSlot = type == ComplicationType.RANGED_VALUE || type == ComplicationType.GOAL_PROGRESS
+      val hasMultiRings = spec.rings.size > 1
+      val ringImage = if (hasMultiRings || (!isGaugeSlot && spec.rings.isNotEmpty())) {
+        CustomComplicationBitmaps.concentricRingsSmallImage(spec.rings)
+      } else {
+        null
+      }
+      val monoIcon = if (ringImage != null) null else ComplicationUpdater.monoIcon(context, iconRes)
+      val smallIcon = ringImage
+        ?: CustomComplicationBitmaps.tintedIconSmallImage(context, iconRes, spec.primaryColorArgb)
+
+      val (liveShortText, liveLongText) = spec.fastingLiveClock?.let {
+        buildFastingLiveTexts(context, it, nowMs)
+      } ?: (null to null)
+
+      val shortText = liveShortText ?: PlainComplicationText.Builder(spec.shortText).build()
+      val shortTitle = spec.shortTitle?.takeIf { it.isNotBlank() }?.let {
+        PlainComplicationText.Builder(it).build()
+      }
+      val longText = liveLongText ?: PlainComplicationText.Builder(spec.longText).build()
+      val longTitle = spec.longTitle?.takeIf { it.isNotBlank() }?.let {
+        PlainComplicationText.Builder(it).build()
+      }
+      val desc = if (liveLongText != null && type == ComplicationType.LONG_TEXT) {
+        liveLongText
+      } else if (liveShortText != null && type != ComplicationType.LONG_TEXT) {
+        liveShortText
+      } else {
+        PlainComplicationText.Builder(spec.contentDescription).build()
+      }
+      val timeRange = spec.validUntil?.let { TimeRange.before(it) }
+      val singleRamp = if (!hasMultiRings) ColorRamp(spec.rampColors, false) else null
+
+      return when (type) {
+        ComplicationType.RANGED_VALUE -> {
+          val progress = resolveEffectiveProgress(spec) ?: return NoDataComplicationData()
+          val valuePct = (progress * 100f).coerceIn(0f, 100f)
+          RangedValueComplicationData.Builder(
+            value = valuePct,
+            min = 0f,
+            max = 100f,
             contentDescription = desc
           ).apply {
             setText(shortText)
@@ -1632,60 +1596,123 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
             setTapAction(tap)
             if (timeRange != null) setValidTimeRange(timeRange)
           }.build()
-        } else {
-          null
         }
-      }
 
-      ComplicationType.SHORT_TEXT -> {
-        ShortTextComplicationData.Builder(
-          text = shortText,
-          contentDescription = desc
-        ).apply {
-          if (shortTitle != null) setTitle(shortTitle)
-          if (monoIcon != null) setMonochromaticImage(monoIcon)
-          if (smallIcon != null) setSmallImage(smallIcon)
-          setTapAction(tap)
-          if (timeRange != null) setValidTimeRange(timeRange)
-        }.build()
-      }
-
-      ComplicationType.LONG_TEXT -> {
-        LongTextComplicationData.Builder(
-          text = longText,
-          contentDescription = desc
-        ).apply {
-          if (longTitle != null) setTitle(longTitle)
-          if (monoIcon != null) setMonochromaticImage(monoIcon)
-          if (smallIcon != null) setSmallImage(smallIcon)
-          setTapAction(tap)
-          if (timeRange != null) setValidTimeRange(timeRange)
-        }.build()
-      }
-
-      ComplicationType.SMALL_IMAGE -> {
-        val effectiveRings = spec.rings.ifEmpty {
-          spec.progress?.let {
-            listOf(RingLayerSpec(it.coerceIn(0f, 1f), spec.primaryColorArgb))
-          }.orEmpty()
+        ComplicationType.GOAL_PROGRESS -> {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val progress = resolveEffectiveProgress(spec) ?: return NoDataComplicationData()
+            val rawPct = max(0f, (spec.rawProgress ?: progress) * 100f)
+            GoalProgressComplicationData.Builder(
+              value = rawPct,
+              targetValue = 100f,
+              contentDescription = desc
+            ).apply {
+              setText(shortText)
+              if (shortTitle != null) setTitle(shortTitle)
+              if (monoIcon != null) setMonochromaticImage(monoIcon)
+              if (smallIcon != null) setSmallImage(smallIcon)
+              if (singleRamp != null) setColorRamp(singleRamp)
+              setTapAction(tap)
+              if (timeRange != null) setValidTimeRange(timeRange)
+            }.build()
+          } else {
+            null
+          }
         }
-        val img = CustomComplicationBitmaps.concentricRingsSmallImage(effectiveRings)
-          ?: return NoDataComplicationData()
-        SmallImageComplicationData.Builder(
-          smallImage = img,
-          contentDescription = desc
-        ).apply {
-          setTapAction(tap)
-          if (timeRange != null) setValidTimeRange(timeRange)
-        }.build()
-      }
 
-      else -> null
+        ComplicationType.SHORT_TEXT -> {
+          ShortTextComplicationData.Builder(
+            text = shortText,
+            contentDescription = desc
+          ).apply {
+            if (shortTitle != null) setTitle(shortTitle)
+            if (monoIcon != null) setMonochromaticImage(monoIcon)
+            if (smallIcon != null) setSmallImage(smallIcon)
+            setTapAction(tap)
+            if (timeRange != null) setValidTimeRange(timeRange)
+          }.build()
+        }
+
+        ComplicationType.LONG_TEXT -> {
+          LongTextComplicationData.Builder(
+            text = longText,
+            contentDescription = desc
+          ).apply {
+            if (longTitle != null) setTitle(longTitle)
+            if (monoIcon != null) setMonochromaticImage(monoIcon)
+            if (smallIcon != null) setSmallImage(smallIcon)
+            setTapAction(tap)
+            if (timeRange != null) setValidTimeRange(timeRange)
+          }.build()
+        }
+
+        ComplicationType.SMALL_IMAGE -> {
+          val effectiveRings = resolveEffectiveRings(spec)
+          val img = CustomComplicationBitmaps.concentricRingsSmallImage(effectiveRings)
+            ?: return NoDataComplicationData()
+          SmallImageComplicationData.Builder(
+            smallImage = img,
+            contentDescription = desc
+          ).apply {
+            setTapAction(tap)
+            if (timeRange != null) setValidTimeRange(timeRange)
+          }.build()
+        }
+
+        else -> null
+      }
     }
-  }
 
-  companion object {
-    private const val CUSTOM_TAP_REQUEST_CODE_BASE = 2000
+    private fun buildFastingLiveTexts(
+      context: Context,
+      clock: FastingLiveClock,
+      nowMs: Long
+    ): Pair<ComplicationText?, ComplicationText?> {
+      return when (clock.format) {
+        "value" -> {
+          val shortLive = TimeDifferenceComplicationText.Builder(
+            TimeDifferenceStyle.SHORT_DUAL_UNIT,
+            CountUpTimeReference(Instant.ofEpochMilli(clock.startedAtMs))
+          )
+            .setDisplayAsNow(false)
+            .setMinimumTimeUnit(TimeUnit.MINUTES)
+            .build()
+          val longLive = if (clock.detailGoalSuffix != null) {
+            TimeDifferenceComplicationText.Builder(
+              TimeDifferenceStyle.SHORT_DUAL_UNIT,
+              CountUpTimeReference(Instant.ofEpochMilli(clock.startedAtMs))
+            )
+              .setText("^1 · ${clock.detailGoalSuffix}")
+              .setDisplayAsNow(false)
+              .setMinimumTimeUnit(TimeUnit.MINUTES)
+              .build()
+          } else {
+            shortLive
+          }
+          shortLive to longLive
+        }
+        "remaining" -> {
+          val targetMs = clock.targetEndAtMs?.takeIf { it > nowMs } ?: return null to null
+          val shortLive = TimeDifferenceComplicationText.Builder(
+            TimeDifferenceStyle.SHORT_DUAL_UNIT,
+            CountDownTimeReference(Instant.ofEpochMilli(targetMs))
+          )
+            .setDisplayAsNow(false)
+            .setMinimumTimeUnit(TimeUnit.MINUTES)
+            .build()
+          val longLive = TimeDifferenceComplicationText.Builder(
+            TimeDifferenceStyle.SHORT_DUAL_UNIT,
+            CountDownTimeReference(Instant.ofEpochMilli(targetMs))
+          )
+            .setText("^1 · ${context.getString(R.string.complication_unit_left)}")
+            .setDisplayAsNow(false)
+            .setMinimumTimeUnit(TimeUnit.MINUTES)
+            .build()
+          shortLive to longLive
+        }
+        else -> null to null
+      }
+    }
   }
 }
 
@@ -1734,7 +1761,7 @@ class CustomComplicationConfigActivity : ComponentActivity() {
       .getAssignedDefinitionId(complicationInstanceId)
 
     setContent {
-      MaterialTheme {
+      SparkyWearTheme {
         CustomComplicationPickerScreen(
           session = session,
           selectedId = currentAssignedId,
@@ -1780,7 +1807,8 @@ private fun CustomComplicationPickerScreen(
   val effectiveWaterMl by session.checkInStore.effectiveWaterMl.collectAsState()
   val liveSteps by session.checkInStore.steps.collectAsState()
   val liveFast by session.checkInStore.fast.collectAsState()
-  val listState = rememberScalingLazyListState()
+  val listState = rememberTransformingLazyColumnState()
+  val transformationSpec = rememberTransformationSpec()
   val requiresProgressSlot = isGaugeSlot || isSmallImageSlot
 
   val orderedDefinitions = if (requiresProgressSlot) {
@@ -1814,46 +1842,57 @@ private fun CustomComplicationPickerScreen(
     }
   )
 
-  Scaffold(
-    timeText = { TimeText() },
-    positionIndicator = { PositionIndicator(scalingLazyListState = listState) }
-  ) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(Color.Black)
-    ) {
+  AppScaffold(modifier = Modifier.background(Color.Black)) {
+    ScreenScaffold(
+      scrollState = listState,
+      scrollIndicator = {
+        if (!LocalScrollCaptureInProgress.current) {
+          ScrollIndicator(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd)
+          )
+        }
+      }
+    ) { contentPadding ->
       if (orderedDefinitions.isEmpty()) {
         Box(
           modifier = Modifier
             .fillMaxSize()
+            .padding(contentPadding)
             .padding(horizontal = 20.dp),
           contentAlignment = Alignment.Center
         ) {
           Text(
             text = stringResource(R.string.complication_custom_picker_empty),
-            color = Color(0xFFB8B8C0),
-            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
           )
         }
       } else {
-        ScalingLazyColumn(
+        TransformingLazyColumn(
           state = listState,
-          contentPadding = PaddingValues(top = 28.dp, bottom = 36.dp, start = 10.dp, end = 10.dp),
+          contentPadding = contentPadding,
           modifier = Modifier.fillMaxSize()
         ) {
           item {
-            Text(
-              text = pickerTitle,
-              color = Color.White,
-              fontSize = 14.sp,
-              fontWeight = FontWeight.SemiBold,
-              textAlign = TextAlign.Center,
+            ListHeader(
               modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
-            )
+                .minimumVerticalContentPadding(
+                  ListHeaderDefaults.minimumTopListContentPadding,
+                  ListHeaderDefaults.minimumBottomListContentPadding
+                )
+                .transformedHeight(this, transformationSpec),
+              transformation = SurfaceTransformation(transformationSpec)
+            ) {
+              Text(
+                text = pickerTitle,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+              )
+            }
           }
           items(orderedDefinitions, key = { it.id }) { def ->
             val accentColor = Color(CustomComplicationPalette.colorArgb(def.color))
@@ -1872,26 +1911,30 @@ private fun CustomComplicationPickerScreen(
             } else {
               spec.longText.takeIf { it != ShownCustomValue.MISSING.text }
             }
-            val chipModifier = if (isSelected) {
-              Modifier
-                .fillMaxWidth()
-                .border(1.5.dp, accentColor, CircleShape)
-            } else {
-              Modifier.fillMaxWidth()
-            }
-            Chip(
-              modifier = chipModifier,
+            val buttonModifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec)
+              .let { base ->
+                if (isSelected) base.border(1.5.dp, accentColor, CircleShape) else base
+              }
+            Button(
+              modifier = buttonModifier,
+              transformation = SurfaceTransformation(transformationSpec),
               enabled = compatible,
               onClick = { onSelect(def) },
-              colors = ChipDefaults.secondaryChipColors(
-                backgroundColor = if (isSelected) Color(0xFF1F2A24) else Color(0xFF1C1C1E)
+              colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSelected) accentColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                secondaryContentColor = if (compatible) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                iconColor = accentColor
               ),
               icon = {
                 Box(
                   modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF121214)),
+                    .background(Color(0xFF101318)),
                   contentAlignment = Alignment.Center
                 ) {
                   WearIcon(
@@ -1907,8 +1950,7 @@ private fun CustomComplicationPickerScreen(
                   text = def.name,
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis,
-                  color = Color.White,
-                  fontWeight = FontWeight.Medium
+                  style = MaterialTheme.typography.labelLarge
                 )
               },
               secondaryLabel = subtitle?.let { text ->
@@ -1917,7 +1959,7 @@ private fun CustomComplicationPickerScreen(
                     text = text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (compatible) accentColor else Color(0xFF9A9AA2)
+                    style = MaterialTheme.typography.labelSmall
                   )
                 }
               }

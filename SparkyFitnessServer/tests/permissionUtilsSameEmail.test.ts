@@ -20,30 +20,29 @@ import { canAccessUserData } from '../utils/permissionUtils.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Two different accounts whose addresses differ only by letter case.
   mocks.systemQuery.mockResolvedValue({
     rows: [{ target_email: 'Owner@x.com', auth_email: 'owner@x.com' }],
   });
   mocks.familyQuery.mockResolvedValue({ rowCount: 0 });
 });
 
-describe('canAccessUserData same-email shortcut', () => {
-  it('still treats a matching email as the same person by default', async () => {
-    expect(await canAccessUserData('a', 'reports', 'b')).toBe(true);
+describe('canAccessUserData never treats a matching email as a grant', () => {
+  it('allows a user their own data without any lookup', async () => {
+    expect(await canAccessUserData('a', 'diary', 'a')).toBe(true);
     expect(mocks.familyQuery).not.toHaveBeenCalled();
   });
 
-  it('relies on a family grant alone when the caller opts out', async () => {
-    expect(
-      await canAccessUserData('a', 'reports', 'b', { allowSameEmail: false })
-    ).toBe(false);
+  it('refuses another account with a case-variant email and no grant', async () => {
+    for (const permission of ['reports', 'diary', 'checkin', 'symptoms']) {
+      expect(await canAccessUserData('a', permission, 'b')).toBe(false);
+    }
     expect(mocks.systemQuery).not.toHaveBeenCalled();
     expect(mocks.familyQuery).toHaveBeenCalled();
   });
 
-  it('lets a real grant through when the caller opts out', async () => {
+  it('lets a real family grant through', async () => {
     mocks.familyQuery.mockResolvedValue({ rowCount: 1 });
-    expect(
-      await canAccessUserData('a', 'reports', 'b', { allowSameEmail: false })
-    ).toBe(true);
+    expect(await canAccessUserData('a', 'reports', 'b')).toBe(true);
   });
 });

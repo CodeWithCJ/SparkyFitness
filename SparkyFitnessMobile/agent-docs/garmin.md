@@ -15,7 +15,7 @@ Until the watch app is on the Connect IQ Store, the whole feature is on only in 
 | Snapshot projection and sync (TS) | `src/utils/garminSnapshot.ts` (`buildGarminSnapshot`) and `src/services/garminSync.ts` (what each watch gets and when), driven from `useWatchCheckInBridge`                                 |
 | Settings → Garmin                 | `src/screens/GarminSettingsScreen.tsx` (route `GarminSettings`)                                                                                                                             |
 
-The watch never talks to the server. The phone app is the only gateway, as for Apple Watch and Wear OS.
+The watch never talks to the server; the phone app is its only gateway, as for the Apple Watch. (Wear OS can also call the server itself with credentials the phone hands it, `WearDirectApi.kt`; Garmin has no such path.)
 
 ## Identity
 

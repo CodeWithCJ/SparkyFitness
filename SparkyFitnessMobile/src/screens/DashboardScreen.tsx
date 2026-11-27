@@ -1,4 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useCoachUnread } from '../hooks/useCoaches';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,6 +22,7 @@ import {
   ScrollView,
   Text,
   View,
+  useWindowDimensions,
   type ScrollViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,6 +56,7 @@ import ChallengesCard from '../components/challenges/ChallengesCard';
 import { challengesQueryKeyRoot } from '../hooks/useChallenges';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
+import { DASHBOARD_TWO_COLUMN_MIN_WIDTH } from '../components/ReadableWidthLayout';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
@@ -126,6 +129,40 @@ type DashboardScreenProps = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+/**
+ * Lays the visible cards out in one column, or on a wide window (iPad) in two
+ * columns read left to right, top to bottom. Every card keeps one keyed
+ * wrapper under one parent in both modes, so rotating the window or a card
+ * appearing never remounts the others (which would reset their sheets and
+ * timers). Each row is as tall as its taller card.
+ */
+function renderDashboardCardColumns(
+  cards: React.ReactNode[],
+  twoColumns: boolean
+): React.ReactNode {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+      }}
+    >
+      {cards.map((card, index) =>
+        React.isValidElement(card) ? (
+          <View
+            key={card.key ?? index}
+            style={{ width: twoColumns ? '49%' : '100%' }}
+          >
+            {card}
+          </View>
+        ) : null
+      )}
+    </View>
+  );
+}
+
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl')
@@ -172,6 +209,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     [setSelectedDate]
   );
   const usesNativeTabs = useNativeIOSTabsActive();
+  const { width: windowWidth } = useWindowDimensions();
+  const twoColumnCards = windowWidth >= DASHBOARD_TWO_COLUMN_MIN_WIDTH;
   const insets = useSafeAreaInsets();
   // The system's own vertical bar, not just side insets: a notched iPhone in
   // landscape has insets and keeps horizontal bars.
@@ -440,6 +479,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isBloodAlcoholLoading,
   } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
+  // Unread coach messages (#2013) show on the Ask Sparky card, which opens on
+  // the coach with the newest one.
+  const { data: coachUnread } = useCoachUnread();
+  const coachUnreadTotal = coachUnread?.total ?? 0;
+  const newestCoachId = [...(coachUnread?.by_coach ?? [])].sort((a, b) =>
+    b.latest_at.localeCompare(a.latest_at)
+  )[0]?.coach_id;
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
   );
@@ -722,368 +768,408 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             to `selectedDate`. Visibility is a local app setting toggled from
             Dashboard Settings. */}
         <FastingGoalReconciler />
-        {orderedDashboardCards.map((cardKey) => {
-          switch (cardKey) {
-            case 'calorieRing':
-              return calorieRingCardVisible &&
-                (summary.foodEntries.length > 0 ||
-                  hasSupplementNutrition(summary.supplementTotals) ||
-                  summary.exerciseEntries.length > 0 ||
-                  goal > 0) ? (
-                <CalorieRingCard
-                  key="calorieRing"
-                  caloriesConsumed={eaten}
-                  caloriesBurned={burned}
-                  calorieGoal={eaten + remaining}
-                  remainingCalories={remaining}
-                  progressPercent={progress / 100}
-                />
-              ) : null;
-            case 'askSparky':
-              return askSparkyVisible ? (
-                <Pressable
-                  key="askSparky"
-                  onPress={() => navigation.navigate('Chat')}
-                  className="flex-row items-center bg-surface rounded-lg px-4 py-3 mb-3 shadow-sm"
-                >
-                  <Icon name="sparkles" size={18} color={accentColor} />
-                  <Text className="text-text-muted text-base ml-3">
-                    {t('dashboard.askSparky', { defaultValue: 'Ask Sparky…' })}
-                  </Text>
-                </Pressable>
-              ) : null;
-            case 'macros':
-              if (!macrosCardVisible) return null;
-              if (
-                (summary.foodEntries.length > 0 ||
-                  hasSupplementNutrition(summary.supplementTotals)) &&
-                summaryNutrients.length > 0
-              ) {
-                const CORE_MACROS = new Set([
-                  'protein',
-                  'carbs',
-                  'fat',
-                  'dietary_fiber',
-                ]);
-                const customNutrientNames = new Set(
-                  customNutrients.map((cn) => cn.name)
-                );
-                const dashboardNutrients = summaryNutrients.filter(
-                  (key) => CORE_MACROS.has(key) || customNutrientNames.has(key)
-                );
-                if (dashboardNutrients.length === 0) return null;
-                return (
-                  <View
-                    key="macros"
-                    className="bg-surface rounded-xl p-3 mb-3 shadow-sm"
+        {renderDashboardCardColumns(
+          orderedDashboardCards.map((cardKey) => {
+            switch (cardKey) {
+              case 'calorieRing':
+                return calorieRingCardVisible &&
+                  (summary.foodEntries.length > 0 ||
+                    hasSupplementNutrition(summary.supplementTotals) ||
+                    summary.exerciseEntries.length > 0 ||
+                    goal > 0) ? (
+                  <CalorieRingCard
+                    key="calorieRing"
+                    caloriesConsumed={eaten}
+                    caloriesBurned={burned}
+                    calorieGoal={eaten + remaining}
+                    remainingCalories={remaining}
+                    progressPercent={progress / 100}
+                  />
+                ) : null;
+              case 'askSparky':
+                return askSparkyVisible ? (
+                  <Pressable
+                    key="askSparky"
+                    onPress={() =>
+                      navigation.navigate(
+                        'Chat',
+                        newestCoachId ? { coachId: newestCoachId } : undefined
+                      )
+                    }
+                    className="flex-row items-center bg-surface rounded-lg px-4 py-3 mb-3 shadow-sm"
                   >
+                    <Icon name="sparkles" size={18} color={accentColor} />
+                    <Text className="text-text-muted text-base ml-3">
+                      {t('dashboard.askSparky', {
+                        defaultValue: 'Ask Sparky…',
+                      })}
+                    </Text>
+                    {coachUnreadTotal > 0 && (
+                      <View
+                        testID="ask-sparky-unread"
+                        className="ml-auto h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1"
+                        accessibilityLabel={t('coaches.thread.unread', {
+                          defaultValue: '{{count}} unread',
+                          defaultValue_one: '{{count}} unread',
+                          count: coachUnreadTotal,
+                        })}
+                      >
+                        <Text className="text-white text-xs font-semibold">
+                          {coachUnreadTotal > 9 ? '9+' : coachUnreadTotal}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                ) : null;
+              case 'macros':
+                if (!macrosCardVisible) return null;
+                if (
+                  (summary.foodEntries.length > 0 ||
+                    hasSupplementNutrition(summary.supplementTotals)) &&
+                  summaryNutrients.length > 0
+                ) {
+                  const CORE_MACROS = new Set([
+                    'protein',
+                    'carbs',
+                    'fat',
+                    'dietary_fiber',
+                  ]);
+                  const customNutrientNames = new Set(
+                    customNutrients.map((cn) => cn.name)
+                  );
+                  const dashboardNutrients = summaryNutrients.filter(
+                    (key) =>
+                      CORE_MACROS.has(key) || customNutrientNames.has(key)
+                  );
+                  if (dashboardNutrients.length === 0) return null;
+                  return (
+                    <View
+                      key="macros"
+                      className="bg-surface rounded-xl p-3 mb-3 shadow-sm"
+                    >
+                      <Pressable
+                        onPress={() =>
+                          navigation.navigate('DailyNutritionDetails', {
+                            date: summary.date,
+                          })
+                        }
+                        className="flex-row justify-between items-center mb-2 px-1"
+                      >
+                        <Text className="text-md font-bold text-text-secondary">
+                          {t('dashboard.nutrients', {
+                            defaultValue: 'Nutrients',
+                          })}
+                        </Text>
+                        <View className="flex-row items-center">
+                          <Text className="text-xs font-semibold text-accent-primary mr-1">
+                            {t('common.details', { defaultValue: 'Details' })}
+                          </Text>
+                          <Icon
+                            name="chevron-forward"
+                            size={14}
+                            color={accentColor}
+                          />
+                        </View>
+                      </Pressable>
+                      <View className="flex-row flex-wrap justify-between">
+                        {dashboardNutrients.map((nutrientKey) => {
+                          // Resolve display label and unit.
+                          const meta = NUTRIENT_META[nutrientKey];
+                          const customDef = !meta
+                            ? customNutrients.find(
+                                (cn) => cn.name === nutrientKey
+                              )
+                            : undefined;
+                          const label = meta
+                            ? getNutrientLabel(t, nutrientKey)
+                            : (customDef?.name ?? nutrientKey);
+                          const unit = meta?.unit ?? customDef?.unit ?? 'g';
+
+                          // Use theme-aware CSS variable colors for the 4 core macros;
+                          // custom nutrients fall back to the app accent color.
+                          let color: string;
+                          if (nutrientKey === 'protein') color = proteinColor;
+                          else if (nutrientKey === 'carbs') color = carbsColor;
+                          else if (nutrientKey === 'fat') color = fatColor;
+                          else if (nutrientKey === 'dietary_fiber')
+                            color = fiberColor;
+                          else color = accentColor;
+
+                          // Resolve consumed value.
+                          let consumed: number;
+                          if (nutrientKey === 'carbs' && showNetCarbs) {
+                            consumed = getNetCarbsValue(
+                              summary.carbs.consumed,
+                              summary.fiber.consumed
+                            );
+                          } else if (nutrientKey === 'protein') {
+                            consumed = summary.protein.consumed;
+                          } else if (nutrientKey === 'carbs') {
+                            consumed = summary.carbs.consumed;
+                          } else if (nutrientKey === 'fat') {
+                            consumed = summary.fat.consumed;
+                          } else if (nutrientKey === 'dietary_fiber') {
+                            consumed = summary.fiber.consumed;
+                          } else {
+                            consumed =
+                              summary.customNutrientTotals[nutrientKey] ?? 0;
+                          }
+
+                          // Resolve goal. Core macros use their tracked goals; custom
+                          // nutrients use their per-nutrient goal when one is set. When a
+                          // custom nutrient has no goal, `goal` stays undefined and
+                          // MacroCard hides the "/0".
+                          let goal: number | undefined;
+                          if (nutrientKey === 'protein')
+                            goal = summary.protein.goal || undefined;
+                          else if (nutrientKey === 'carbs')
+                            goal = summary.carbs.goal || undefined;
+                          else if (nutrientKey === 'fat')
+                            goal = summary.fat.goal || undefined;
+                          else if (nutrientKey === 'dietary_fiber')
+                            goal = summary.fiber.goal || undefined;
+                          else
+                            goal =
+                              summary.customNutrientGoals[nutrientKey] ||
+                              undefined;
+
+                          const displayLabel =
+                            nutrientKey === 'carbs' && showNetCarbs
+                              ? t('nutrients.netCarbs', {
+                                  defaultValue: 'Net Carbs',
+                                })
+                              : label;
+
+                          return (
+                            <MacroCard
+                              key={nutrientKey}
+                              label={displayLabel}
+                              consumed={consumed}
+                              goal={goal}
+                              color={color}
+                              overfillColor={progressTrackOverfillColor}
+                              unit={unit}
+                            />
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                }
+                if (summary.foodEntries.length === 0) {
+                  return (
                     <Pressable
+                      key="macros-empty"
+                      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
                       onPress={() =>
-                        navigation.navigate('DailyNutritionDetails', {
-                          date: summary.date,
+                        navigation.navigate('FoodSearch', {
+                          date: selectedDate,
                         })
                       }
-                      className="flex-row justify-between items-center mb-2 px-1"
                     >
-                      <Text className="text-md font-bold text-text-secondary">
-                        {t('dashboard.nutrients', {
-                          defaultValue: 'Nutrients',
+                      <Text className="text-md font-bold text-text-primary mb-4">
+                        {t('dashboard.food', { defaultValue: 'Food' })}
+                      </Text>
+                      <Text className="text-text-muted text-sm text-center mb-4">
+                        {t('dashboard.tapToAddFood', {
+                          defaultValue: 'Tap to add food',
                         })}
                       </Text>
-                      <View className="flex-row items-center">
-                        <Text className="text-xs font-semibold text-accent-primary mr-1">
-                          {t('common.details', { defaultValue: 'Details' })}
-                        </Text>
-                        <Icon
-                          name="chevron-forward"
-                          size={14}
-                          color={accentColor}
-                        />
-                      </View>
                     </Pressable>
-                    <View className="flex-row flex-wrap justify-between">
-                      {dashboardNutrients.map((nutrientKey) => {
-                        // Resolve display label and unit.
-                        const meta = NUTRIENT_META[nutrientKey];
-                        const customDef = !meta
-                          ? customNutrients.find(
-                              (cn) => cn.name === nutrientKey
-                            )
-                          : undefined;
-                        const label = meta
-                          ? getNutrientLabel(t, nutrientKey)
-                          : (customDef?.name ?? nutrientKey);
-                        const unit = meta?.unit ?? customDef?.unit ?? 'g';
-
-                        // Use theme-aware CSS variable colors for the 4 core macros;
-                        // custom nutrients fall back to the app accent color.
-                        let color: string;
-                        if (nutrientKey === 'protein') color = proteinColor;
-                        else if (nutrientKey === 'carbs') color = carbsColor;
-                        else if (nutrientKey === 'fat') color = fatColor;
-                        else if (nutrientKey === 'dietary_fiber')
-                          color = fiberColor;
-                        else color = accentColor;
-
-                        // Resolve consumed value.
-                        let consumed: number;
-                        if (nutrientKey === 'carbs' && showNetCarbs) {
-                          consumed = getNetCarbsValue(
-                            summary.carbs.consumed,
-                            summary.fiber.consumed
-                          );
-                        } else if (nutrientKey === 'protein') {
-                          consumed = summary.protein.consumed;
-                        } else if (nutrientKey === 'carbs') {
-                          consumed = summary.carbs.consumed;
-                        } else if (nutrientKey === 'fat') {
-                          consumed = summary.fat.consumed;
-                        } else if (nutrientKey === 'dietary_fiber') {
-                          consumed = summary.fiber.consumed;
-                        } else {
-                          consumed =
-                            summary.customNutrientTotals[nutrientKey] ?? 0;
-                        }
-
-                        // Resolve goal. Core macros use their tracked goals; custom
-                        // nutrients use their per-nutrient goal when one is set. When a
-                        // custom nutrient has no goal, `goal` stays undefined and
-                        // MacroCard hides the "/0".
-                        let goal: number | undefined;
-                        if (nutrientKey === 'protein')
-                          goal = summary.protein.goal || undefined;
-                        else if (nutrientKey === 'carbs')
-                          goal = summary.carbs.goal || undefined;
-                        else if (nutrientKey === 'fat')
-                          goal = summary.fat.goal || undefined;
-                        else if (nutrientKey === 'dietary_fiber')
-                          goal = summary.fiber.goal || undefined;
-                        else
-                          goal =
-                            summary.customNutrientGoals[nutrientKey] ||
-                            undefined;
-
-                        const displayLabel =
-                          nutrientKey === 'carbs' && showNetCarbs
-                            ? t('nutrients.netCarbs', {
-                                defaultValue: 'Net Carbs',
-                              })
-                            : label;
-
-                        return (
-                          <MacroCard
-                            key={nutrientKey}
-                            label={displayLabel}
-                            consumed={consumed}
-                            goal={goal}
-                            color={color}
-                            overfillColor={progressTrackOverfillColor}
-                            unit={unit}
-                          />
-                        );
-                      })}
-                    </View>
-                  </View>
-                );
-              }
-              if (summary.foodEntries.length === 0) {
-                return (
-                  <Pressable
-                    key="macros-empty"
-                    className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
-                    onPress={() =>
-                      navigation.navigate('FoodSearch', { date: selectedDate })
+                  );
+                }
+                return null;
+              case 'exercise':
+                return exerciseCardVisible &&
+                  (summary.foodEntries.length > 0 ||
+                    summary.exerciseEntries.length > 0) &&
+                  (summary.exerciseMinutesGoal > 0 ||
+                    summary.exerciseCaloriesGoal > 0 ||
+                    summary.exerciseMinutes > 0 ||
+                    summary.otherExerciseCalories > 0) ? (
+                  <ExerciseProgressCard
+                    key="exercise"
+                    exerciseMinutes={summary.exerciseMinutes}
+                    exerciseMinutesGoal={summary.exerciseMinutesGoal}
+                    exerciseCalories={summary.otherExerciseCalories}
+                    exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
+                    onPressDetails={() =>
+                      navigation.navigate('ExerciseStatistics')
                     }
-                  >
-                    <Text className="text-md font-bold text-text-primary mb-4">
-                      {t('dashboard.food', { defaultValue: 'Food' })}
-                    </Text>
-                    <Text className="text-text-muted text-sm text-center mb-4">
-                      {t('dashboard.tapToAddFood', {
-                        defaultValue: 'Tap to add food',
-                      })}
-                    </Text>
-                  </Pressable>
-                );
-              }
-              return null;
-            case 'exercise':
-              return exerciseCardVisible &&
-                (summary.foodEntries.length > 0 ||
-                  summary.exerciseEntries.length > 0) &&
-                (summary.exerciseMinutesGoal > 0 ||
-                  summary.exerciseCaloriesGoal > 0 ||
-                  summary.exerciseMinutes > 0 ||
-                  summary.otherExerciseCalories > 0) ? (
-                <ExerciseProgressCard
-                  key="exercise"
-                  exerciseMinutes={summary.exerciseMinutes}
-                  exerciseMinutesGoal={summary.exerciseMinutesGoal}
-                  exerciseCalories={summary.otherExerciseCalories}
-                  exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
-                  onPressDetails={() =>
-                    navigation.navigate('ExerciseStatistics')
-                  }
-                />
-              ) : null;
-            case 'hydration':
-              return hydrationCardVisible
-                ? renderHydrationGauge(summary)
-                : null;
-            case 'caffeine':
-              return caffeineCardVisible ? (
-                <CaffeineCard
-                  key="caffeine"
-                  kinetics={caffeineKinetics}
-                  nowMs={caffeineNowMs}
-                  isLoading={isCaffeineLoading}
-                />
-              ) : null;
-            case 'bloodAlcohol':
-              return bloodAlcoholCardVisible ? (
-                <BloodAlcoholCard
-                  key="bloodAlcohol"
-                  date={selectedDate}
-                  estimate={bloodAlcoholEstimate}
-                  nowMs={bloodAlcoholNowMs}
-                  isLoading={isBloodAlcoholLoading}
-                />
-              ) : null;
-            case 'fasting':
-              return fastingCardVisible ? (
-                <FastingCard key="fasting" navigation={navigation} />
-              ) : null;
-            case 'cycle':
-              return cycleCardVisible ? (
-                <CycleCard key="cycle" navigation={navigation} />
-              ) : null;
-            case 'medications':
-              return medicationsCardVisible ? (
-                <MedicationsCard key="medications" navigation={navigation} />
-              ) : null;
-            case 'symptoms':
-              return symptomsCardVisible ? (
-                <SymptomsCard
-                  key="symptoms"
-                  navigation={navigation}
-                  date={selectedDate}
-                />
-              ) : null;
-            case 'mood':
-              return moodCardVisible ? (
-                <MoodCard
-                  key="mood"
-                  navigation={navigation}
-                  date={selectedDate}
-                />
-              ) : null;
-            case 'progressPhotos':
-              return progressPhotosCardVisible ? (
-                <ProgressPhotosCard
-                  key="progressPhotos"
-                  navigation={navigation}
-                  date={selectedDate}
-                />
-              ) : null;
-            case 'healthTrends':
-              return healthTrendsCardVisible ? (
-                <View key="healthTrends" className="mb-3">
-                  <Text className="text-text-primary text-xl font-bold mb-2">
-                    {t('dashboard.healthTrends', {
-                      defaultValue: 'Health Trends',
-                    })}
-                  </Text>
-                  {/* Beside the heading, not around it: the heading stays a direct
-                      child of the card's wrapper, which carries the card margin. */}
-                  <Pressable
-                    testID="dashboard-reports-link"
-                    accessibilityRole="button"
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={() => navigation.navigate('Reports')}
-                    className="flex-row items-center"
-                    style={{ position: 'absolute', right: 0, top: 6 }}
-                  >
-                    <Text className="text-accent-primary font-medium">
-                      {t('dashboard.reportsLink', {
-                        defaultValue: 'Reports',
-                      })}
-                    </Text>
-                    <Icon
-                      name="chevron-forward"
-                      size={14}
-                      color={accentColor}
-                      style={{ marginLeft: 2 }}
-                    />
-                  </Pressable>
-                  {visibleTrends.length > 0 && (
-                    <SegmentedControl
-                      segments={RANGE_SEGMENTS(t)}
-                      activeKey={trendsRange}
-                      onSelect={setTrendsRange}
-                    />
-                  )}
-                  <HealthTrendsPager
-                    steps={trends.steps}
-                    weight={weightSeries}
-                    sleep={trends.sleep}
-                    hydration={trends.hydration}
-                    calories={trends.calories}
-                    heartRate={trends.heartRate}
-                    vo2max={trends.vo2max}
-                    mood={trends.mood}
-                    range={trendsRange}
-                    weightUnit={weightUnit}
-                    waterUnit={waterDisplayUnit}
-                    hydrationGoals={trends.hydration.hydrationGoals}
-                    weightGoal={weightGoal}
-                    calorieGoals={trends.calories.calorieGoals}
-                    visibleTrends={visibleTrends}
-                    activePage={chartPage}
-                    onPageSelected={setChartPage}
                   />
-                </View>
-              ) : null;
-            case 'trainingLoad':
-              return trainingLoadCardVisible ? (
-                <TrainingLoadDashboardCard
-                  key="trainingLoad"
-                  navigation={navigation}
-                />
-              ) : null;
-            case 'labResults':
-              return labResultsCardVisible ? (
-                <LabResultsCard key="labResults" navigation={navigation} />
-              ) : null;
-            case 'oralCare':
-              return oralCareCardVisible ? (
-                <OralCareCard
-                  key="oralCare"
-                  navigation={navigation}
-                  selectedDate={selectedDate}
-                />
-              ) : null;
-            case 'challenges':
-              return challengesCardVisible ? (
-                <ChallengesCard key="challenges" navigation={navigation} />
-              ) : null;
-            case 'mindfulness':
-              return mindfulnessCardVisible ? (
-                <MindfulnessCard
-                  key="mindfulness"
-                  sessions={mindfulSessions}
-                  totalMindfulMinutes={totalMindfulMinutes}
-                  selectedDate={selectedDate}
-                  onSaveSession={saveMindfulSession}
-                  onDeleteSession={deleteMindfulSession}
-                  onPressDetails={() =>
-                    navigation.navigate('MindfulnessDetail', { selectedDate })
-                  }
-                />
-              ) : null;
-            default:
-              return null;
-          }
-        })}
+                ) : null;
+              case 'hydration':
+                return hydrationCardVisible
+                  ? renderHydrationGauge(summary)
+                  : null;
+              case 'caffeine':
+                // The card renders nothing while loading or with no doses;
+                // skip it here too so the grid has no empty cell.
+                return caffeineCardVisible &&
+                  !isCaffeineLoading &&
+                  (caffeineKinetics?.doses.length ?? 0) > 0 ? (
+                  <CaffeineCard
+                    key="caffeine"
+                    kinetics={caffeineKinetics}
+                    nowMs={caffeineNowMs}
+                    isLoading={isCaffeineLoading}
+                  />
+                ) : null;
+              case 'bloodAlcohol':
+                // Same empty states as BloodAlcoholCard, so the grid has no
+                // empty cell.
+                return bloodAlcoholCardVisible &&
+                  !isBloodAlcoholLoading &&
+                  bloodAlcoholEstimate &&
+                  !(
+                    bloodAlcoholEstimate.status === 'ok' &&
+                    bloodAlcoholEstimate.doses.length === 0
+                  ) ? (
+                  <BloodAlcoholCard
+                    key="bloodAlcohol"
+                    date={selectedDate}
+                    estimate={bloodAlcoholEstimate}
+                    nowMs={bloodAlcoholNowMs}
+                    isLoading={isBloodAlcoholLoading}
+                  />
+                ) : null;
+              case 'fasting':
+                return fastingCardVisible ? (
+                  <FastingCard key="fasting" navigation={navigation} />
+                ) : null;
+              case 'cycle':
+                return cycleCardVisible ? (
+                  <CycleCard key="cycle" navigation={navigation} />
+                ) : null;
+              case 'medications':
+                return medicationsCardVisible ? (
+                  <MedicationsCard key="medications" navigation={navigation} />
+                ) : null;
+              case 'symptoms':
+                return symptomsCardVisible ? (
+                  <SymptomsCard
+                    key="symptoms"
+                    navigation={navigation}
+                    date={selectedDate}
+                  />
+                ) : null;
+              case 'mood':
+                return moodCardVisible ? (
+                  <MoodCard
+                    key="mood"
+                    navigation={navigation}
+                    date={selectedDate}
+                  />
+                ) : null;
+              case 'progressPhotos':
+                return progressPhotosCardVisible ? (
+                  <ProgressPhotosCard
+                    key="progressPhotos"
+                    navigation={navigation}
+                    date={selectedDate}
+                  />
+                ) : null;
+              case 'healthTrends':
+                return healthTrendsCardVisible ? (
+                  <View key="healthTrends" className="mb-3">
+                    <Text className="text-text-primary text-xl font-bold mb-2">
+                      {t('dashboard.healthTrends', {
+                        defaultValue: 'Health Trends',
+                      })}
+                    </Text>
+                    {/* Beside the heading, not around it: the heading stays a direct
+                      child of the card's wrapper, which carries the card margin. */}
+                    <Pressable
+                      testID="dashboard-reports-link"
+                      accessibilityRole="button"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => navigation.navigate('Reports')}
+                      className="flex-row items-center"
+                      style={{ position: 'absolute', right: 0, top: 6 }}
+                    >
+                      <Text className="text-accent-primary font-medium">
+                        {t('dashboard.reportsLink', {
+                          defaultValue: 'Reports',
+                        })}
+                      </Text>
+                      <Icon
+                        name="chevron-forward"
+                        size={14}
+                        color={accentColor}
+                        style={{ marginLeft: 2 }}
+                      />
+                    </Pressable>
+                    {visibleTrends.length > 0 && (
+                      <SegmentedControl
+                        segments={RANGE_SEGMENTS(t)}
+                        activeKey={trendsRange}
+                        onSelect={setTrendsRange}
+                      />
+                    )}
+                    <HealthTrendsPager
+                      steps={trends.steps}
+                      weight={weightSeries}
+                      sleep={trends.sleep}
+                      hydration={trends.hydration}
+                      calories={trends.calories}
+                      heartRate={trends.heartRate}
+                      vo2max={trends.vo2max}
+                      mood={trends.mood}
+                      range={trendsRange}
+                      weightUnit={weightUnit}
+                      waterUnit={waterDisplayUnit}
+                      hydrationGoals={trends.hydration.hydrationGoals}
+                      weightGoal={weightGoal}
+                      calorieGoals={trends.calories.calorieGoals}
+                      visibleTrends={visibleTrends}
+                      activePage={chartPage}
+                      onPageSelected={setChartPage}
+                    />
+                  </View>
+                ) : null;
+              case 'trainingLoad':
+                return trainingLoadCardVisible ? (
+                  <TrainingLoadDashboardCard
+                    key="trainingLoad"
+                    navigation={navigation}
+                  />
+                ) : null;
+              case 'labResults':
+                return labResultsCardVisible ? (
+                  <LabResultsCard key="labResults" navigation={navigation} />
+                ) : null;
+              case 'oralCare':
+                return oralCareCardVisible ? (
+                  <OralCareCard
+                    key="oralCare"
+                    navigation={navigation}
+                    selectedDate={selectedDate}
+                  />
+                ) : null;
+              case 'challenges':
+                return challengesCardVisible ? (
+                  <ChallengesCard key="challenges" navigation={navigation} />
+                ) : null;
+              case 'mindfulness':
+                return mindfulnessCardVisible ? (
+                  <MindfulnessCard
+                    key="mindfulness"
+                    sessions={mindfulSessions}
+                    totalMindfulMinutes={totalMindfulMinutes}
+                    selectedDate={selectedDate}
+                    onSaveSession={saveMindfulSession}
+                    onDeleteSession={deleteMindfulSession}
+                    onPressDetails={() =>
+                      navigation.navigate('MindfulnessDetail', { selectedDate })
+                    }
+                  />
+                ) : null;
+              default:
+                return null;
+            }
+          }),
+          twoColumnCards
+        )}
       </ScrollView>
     );
   };

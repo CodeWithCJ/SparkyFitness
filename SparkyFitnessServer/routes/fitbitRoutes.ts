@@ -59,7 +59,9 @@ router.get(
 router.post(
   '/callback',
   authMiddleware.authenticate,
-  checkPermissionMiddleware('diary'),
+  // Self-only: linking from a switched/delegated context would let a delegate
+  // attach their own Fitbit account to the owner's row. See ouraRoutes callback.
+  requireSelfActor,
   async (req, res) => {
     try {
       const { code } = req.body;

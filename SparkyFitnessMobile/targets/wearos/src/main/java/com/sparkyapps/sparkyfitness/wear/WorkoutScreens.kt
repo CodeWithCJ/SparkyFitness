@@ -1,11 +1,14 @@
 package com.sparkyapps.sparkyfitness.wear
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +16,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberOverscrollEffect
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.DirectionsRun
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.EventAvailable
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,16 +57,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.itemsIndexed
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
-import androidx.wear.compose.material.Text
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
+import androidx.wear.compose.material3.Card
+import androidx.wear.compose.material3.CardDefaults
+import androidx.wear.compose.material3.CircularProgressIndicator
+import androidx.wear.compose.material3.CompactButton
+import androidx.wear.compose.material3.CompactButtonDefaults
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.FilledIconButton
+import androidx.wear.compose.material3.FilledTonalButton
+import androidx.wear.compose.material3.FilledTonalIconButton
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.IconButtonDefaults
+import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.ListHeaderDefaults
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
+import androidx.wear.compose.material3.touchTargetAwareSize
 import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -97,7 +151,8 @@ private fun WorkoutIdlePickerView(
   val watchCtx by checkInStore.watchContext.collectAsState()
   val startingId by workoutStore.startingPresetId.collectAsState()
   val errorMessage by workoutStore.startErrorMessage.collectAsState()
-  val listState = rememberScalingLazyListState()
+  val columnState = rememberTransformingLazyColumnState()
+  val transformationSpec = rememberTransformationSpec()
   var showCardioLauncher by remember { mutableStateOf(false) }
 
   if (showCardioLauncher) {
@@ -118,158 +173,185 @@ private fun WorkoutIdlePickerView(
     return
   }
 
-  ScalingLazyColumn(
-    state = listState,
-    autoCentering = null,
-    modifier = Modifier
-      .fillMaxSize()
-      .wearRotaryScroll(listState, isCurrentPage),
-    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally
-  ) {
-    item {
-      Text(
-        text = stringResource(R.string.workout_title),
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = SparkyColors.Green,
-        modifier = Modifier.padding(bottom = 6.dp)
-      )
-    }
-
-    if (errorMessage != null) {
+  SparkyListScaffold(columnState = columnState) { contentPadding ->
+    TransformingLazyColumn(
+      state = columnState,
+      contentPadding = contentPadding,
+      modifier = Modifier.fillMaxSize(),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
       item {
-        Column(
+        ListHeader(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 6.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(SparkyColors.Rose.copy(alpha = 0.2f))
-            .clickable { workoutStore.clearStartError() }
-            .padding(8.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
+            .minimumVerticalContentPadding(
+              ListHeaderDefaults.minimumTopListContentPadding,
+              ListHeaderDefaults.minimumBottomListContentPadding
+            )
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec)
         ) {
-          Text(
-            text = errorMessage ?: "",
-            fontSize = 10.sp,
-            color = SparkyColors.Rose,
-            textAlign = TextAlign.Center
+          SparkySectionHeader(
+            title = stringResource(R.string.workout_title),
+            icon = Icons.Rounded.FitnessCenter,
+            accent = SparkyColors.Green
           )
         }
       }
-    }
 
-    item {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(vertical = 3.dp)
-          .clip(RoundedCornerShape(12.dp))
-          .background(SparkyColors.Cyan.copy(alpha = 0.2f))
-          .clickable { showCardioLauncher = true }
-          .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-      ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = stringResource(R.string.workout_cardio_title),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = SparkyColors.Cyan,
-            maxLines = 1
-          )
-          Text(
-            text = stringResource(R.string.workout_cardio_subtitle),
-            fontSize = 9.sp,
-            color = SparkyColors.Muted,
-            maxLines = 1
-          )
-        }
-        Text(
-          text = "▶",
-          fontSize = 13.sp,
-          fontWeight = FontWeight.Bold,
-          color = SparkyColors.Cyan
-        )
-      }
-    }
-
-    if (scheduled.isEmpty() && startable.isEmpty()) {
-      item {
-        EmptyStateCard(stringResource(R.string.workout_empty_state))
-      }
-    } else {
-      items(scheduled, key = { "sched_${it.presetId}" }) { item ->
-        val isStarting = startingId == item.presetId
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(SparkyColors.CardBg)
-            .clickable(enabled = startingId == null) {
-              workoutStore.requestStartPreset(item.presetId)
-            }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Column(modifier = Modifier.weight(1f)) {
+      if (errorMessage != null) {
+        item(key = "workout_start_error") {
+          Card(
+            onClick = { workoutStore.clearStartError() },
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(CardDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            colors = CardDefaults.cardColors(
+              containerColor = MaterialTheme.colorScheme.errorContainer
+            )
+          ) {
             Text(
-              text = item.name,
-              fontSize = 12.sp,
-              fontWeight = FontWeight.SemiBold,
-              color = Color.White,
+              text = errorMessage ?: "",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onErrorContainer,
+              textAlign = TextAlign.Center,
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+        }
+      }
+
+      item(key = "cardio_launcher") {
+        Button(
+          onClick = { showCardioLauncher = true },
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            secondaryContentColor = SparkyColors.Cyan,
+            iconColor = SparkyColors.Cyan
+          ),
+          icon = {
+            Icon(
+              imageVector = Icons.AutoMirrored.Rounded.DirectionsRun,
+              contentDescription = null,
+              modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+          },
+          label = {
+            Text(
+              text = stringResource(R.string.workout_cardio_title),
               maxLines = 1,
               overflow = TextOverflow.Ellipsis
             )
-            val meta = listOfNotNull(item.planName.takeIf { it.isNotBlank() }, item.caption.takeIf { it.isNotBlank() })
-              .joinToString(" • ")
-            if (meta.isNotEmpty()) {
-              Text(text = meta, fontSize = 10.sp, color = SparkyColors.Muted, maxLines = 1)
-            }
+          },
+          secondaryLabel = {
+            Text(
+              text = stringResource(R.string.workout_cardio_subtitle),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis
+            )
           }
-          Spacer(Modifier.width(6.dp))
-          Text(
-            text = if (isStarting) "…" else "▶",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = SparkyColors.Green
-          )
-        }
+        )
       }
 
-      items(startable, key = { "start_${it.presetId}" }) { item ->
-        val isStarting = startingId == item.presetId
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(SparkyColors.CardBg)
-            .clickable(enabled = startingId == null) {
-              workoutStore.requestStartPreset(item.presetId)
-            }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Text(
-            text = item.name,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+      if (scheduled.isEmpty() && startable.isEmpty()) {
+        item {
+          EmptyStateCard(
+            message = stringResource(R.string.workout_empty_state),
+            modifier = Modifier
+              .minimumVerticalContentPadding(CardDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec)
           )
-          Spacer(Modifier.width(6.dp))
-          Text(
-            text = if (isStarting) "…" else "▶",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = SparkyColors.Green
+        }
+      } else {
+        items(scheduled, key = { "sched_${it.presetId}" }) { item ->
+          val isStarting = startingId == item.presetId
+          val meta = listOfNotNull(
+            item.planName.takeIf { it.isNotBlank() },
+            item.caption.takeIf { it.isNotBlank() }
+          ).joinToString(" · ")
+
+          Button(
+            onClick = { workoutStore.requestStartPreset(item.presetId) },
+            enabled = startingId == null,
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+              secondaryContentColor = SparkyColors.Green,
+              iconColor = SparkyColors.Green
+            ),
+            icon = {
+              if (isStarting) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+              } else {
+                Icon(
+                  imageVector = Icons.Rounded.EventAvailable,
+                  contentDescription = null,
+                  modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
+              }
+            },
+            label = {
+              Text(
+                text = item.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+              )
+            },
+            secondaryLabel = if (meta.isNotEmpty()) {
+              {
+                Text(
+                  text = meta,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
+            } else null
+          )
+        }
+
+        items(startable, key = { "start_${it.presetId}" }) { item ->
+          val isStarting = startingId == item.presetId
+          Button(
+            onClick = { workoutStore.requestStartPreset(item.presetId) },
+            enabled = startingId == null,
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            colors = ButtonDefaults.filledTonalButtonColors(),
+            icon = {
+              if (isStarting) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+              } else {
+                Icon(
+                  imageVector = Icons.Rounded.PlayArrow,
+                  contentDescription = null,
+                  tint = SparkyColors.Green,
+                  modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
+              }
+            },
+            label = {
+              Text(
+                text = item.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+              )
+            }
           )
         }
       }
@@ -288,100 +370,185 @@ private fun CardioChoicesView(
   var selectedPlan by remember { mutableStateOf<WatchRunPlan?>(null) }
   var paceAlert by remember { mutableStateOf(false) }
   var hrAlert by remember { mutableStateOf(false) }
-  val listState = rememberScalingLazyListState()
+  val columnState = rememberTransformingLazyColumnState()
+  val transformationSpec = rememberTransformationSpec()
 
-  ScalingLazyColumn(
-    state = listState,
-    autoCentering = null,
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    modifier = Modifier
-      .fillMaxSize()
-      .background(Color.Black)
-      .wearRotaryScroll(listState, isCurrentPage = true),
-    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 26.dp, bottom = 32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally
-  ) {
-    item {
-      Text(
-        text = stringResource(R.string.cardio_start_title),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = SparkyColors.Cyan
-      )
-    }
-
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton(
-          label = stringResource(R.string.cardio_kind_run),
-          color = if (kind == "run") SparkyColors.Cyan else SparkyColors.CardBg,
-          textColor = if (kind == "run") Color.Black else Color.White,
-          onClick = { kind = "run" }
+  SparkyListScaffold(
+    columnState = columnState,
+    edgeButton = {
+      EdgeButton(
+        onClick = { onStart(kind, place, selectedPlan, paceAlert, hrAlert) },
+        buttonSize = EdgeButtonSize.Medium,
+        modifier = Modifier.scrollable(
+          columnState,
+          orientation = Orientation.Vertical,
+          reverseDirection = true,
+          overscrollEffect = rememberOverscrollEffect()
         )
-        SmallPillButton(
-          label = stringResource(R.string.cardio_kind_walk),
-          color = if (kind == "walk") SparkyColors.Cyan else SparkyColors.CardBg,
-          textColor = if (kind == "walk") Color.Black else Color.White,
-          onClick = { kind = "walk" }
+      ) {
+        Icon(
+          imageVector = Icons.Rounded.PlayArrow,
+          contentDescription = stringResource(R.string.cardio_start_btn),
+          modifier = Modifier.size(ButtonDefaults.IconSize)
         )
       }
     }
-
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton(
-          label = stringResource(R.string.cardio_place_outdoor),
-          color = if (place == "outdoor") SparkyColors.Green else SparkyColors.CardBg,
-          textColor = if (place == "outdoor") Color.Black else Color.White,
-          onClick = { place = "outdoor" }
-        )
-        SmallPillButton(
-          label = stringResource(R.string.cardio_place_indoor),
-          color = if (place == "indoor") SparkyColors.Green else SparkyColors.CardBg,
-          textColor = if (place == "indoor") Color.Black else Color.White,
-          onClick = { place = "indoor" }
-        )
-      }
-    }
-
-    if (runPlans.isNotEmpty()) {
+  ) { contentPadding ->
+    TransformingLazyColumn(
+      state = columnState,
+      contentPadding = contentPadding,
+      modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
       item {
-        val label = selectedPlan?.name ?: stringResource(R.string.cardio_plan_free)
-        SmallPillButton(
-          label = label,
-          color = SparkyColors.CardBg,
-          textColor = SparkyColors.Amber,
-          onClick = {
-            val idx = if (selectedPlan == null) 0 else (runPlans.indexOf(selectedPlan) + 1)
-            selectedPlan = if (idx < runPlans.size) runPlans[idx] else null
-          }
-        )
-      }
-    }
-
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton(
-          label = if (paceAlert) stringResource(R.string.cardio_pace_checked) else stringResource(R.string.cardio_pace),
-          color = if (paceAlert) SparkyColors.Amber.copy(alpha = 0.3f) else SparkyColors.CardBg,
-          textColor = if (paceAlert) SparkyColors.Amber else SparkyColors.Muted,
-          onClick = { paceAlert = !paceAlert }
-        )
-        SmallPillButton(
-          label = if (hrAlert) stringResource(R.string.cardio_hr_checked) else stringResource(R.string.cardio_hr),
-          color = if (hrAlert) SparkyColors.Rose.copy(alpha = 0.3f) else SparkyColors.CardBg,
-          textColor = if (hrAlert) SparkyColors.Rose else SparkyColors.Muted,
-          onClick = { hrAlert = !hrAlert }
-        )
-      }
-    }
-
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton(stringResource(R.string.cardio_back), SparkyColors.CardBg, SparkyColors.Muted, onCancel)
-        SmallPillButton(stringResource(R.string.cardio_start_btn), SparkyColors.Green, Color.Black) {
-          onStart(kind, place, selectedPlan, paceAlert, hrAlert)
+        ListHeader(
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(
+              ListHeaderDefaults.minimumTopListContentPadding,
+              ListHeaderDefaults.minimumBottomListContentPadding
+            )
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec)
+        ) {
+          SparkySectionHeader(
+            title = stringResource(R.string.cardio_start_title),
+            icon = Icons.AutoMirrored.Rounded.DirectionsRun,
+            accent = SparkyColors.Cyan
+          )
         }
+      }
+
+      item {
+        Row(
+          modifier = Modifier
+            .selectableGroup()
+            .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          CompactButton(
+            onClick = { kind = "run" },
+            modifier = Modifier.semantics {
+              selected = kind == "run"
+              role = Role.RadioButton
+            },
+            colors = if (kind == "run") {
+              ButtonDefaults.buttonColors(containerColor = SparkyColors.Cyan, contentColor = Color.Black)
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = { Text(stringResource(R.string.cardio_kind_run)) }
+          )
+          CompactButton(
+            onClick = { kind = "walk" },
+            modifier = Modifier.semantics {
+              selected = kind == "walk"
+              role = Role.RadioButton
+            },
+            colors = if (kind == "walk") {
+              ButtonDefaults.buttonColors(containerColor = SparkyColors.Cyan, contentColor = Color.Black)
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = { Text(stringResource(R.string.cardio_kind_walk)) }
+          )
+        }
+      }
+
+      item {
+        Row(
+          modifier = Modifier
+            .selectableGroup()
+            .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          CompactButton(
+            onClick = { place = "outdoor" },
+            modifier = Modifier.semantics {
+              selected = place == "outdoor"
+              role = Role.RadioButton
+            },
+            colors = if (place == "outdoor") {
+              ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black)
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = { Text(stringResource(R.string.cardio_place_outdoor)) }
+          )
+          CompactButton(
+            onClick = { place = "indoor" },
+            modifier = Modifier.semantics {
+              selected = place == "indoor"
+              role = Role.RadioButton
+            },
+            colors = if (place == "indoor") {
+              ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black)
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = { Text(stringResource(R.string.cardio_place_indoor)) }
+          )
+        }
+      }
+
+      if (runPlans.isNotEmpty()) {
+        item {
+          val label = selectedPlan?.name ?: stringResource(R.string.cardio_plan_free)
+          FilledTonalButton(
+            onClick = {
+              val idx = if (selectedPlan == null) 0 else (runPlans.indexOf(selectedPlan) + 1)
+              selectedPlan = if (idx < runPlans.size) runPlans[idx] else null
+            },
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+          )
+        }
+      }
+
+      item {
+        Row(
+          modifier = Modifier
+            .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          CompactButton(
+            onClick = { paceAlert = !paceAlert },
+            colors = if (paceAlert) {
+              ButtonDefaults.buttonColors(
+                containerColor = SparkyColors.Amber.copy(alpha = 0.28f),
+                contentColor = SparkyColors.Amber
+              )
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = {
+              Text(if (paceAlert) stringResource(R.string.cardio_pace_checked) else stringResource(R.string.cardio_pace))
+            }
+          )
+          CompactButton(
+            onClick = { hrAlert = !hrAlert },
+            colors = if (hrAlert) {
+              ButtonDefaults.buttonColors(
+                containerColor = SparkyColors.Rose.copy(alpha = 0.28f),
+                contentColor = SparkyColors.Rose
+              )
+            } else ButtonDefaults.filledTonalButtonColors(),
+            label = {
+              Text(if (hrAlert) stringResource(R.string.cardio_hr_checked) else stringResource(R.string.cardio_hr))
+            }
+          )
+        }
+      }
+
+      item {
+        CompactButton(
+          onClick = onCancel,
+          modifier = Modifier
+            .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          colors = ButtonDefaults.outlinedButtonColors(),
+          border = ButtonDefaults.outlinedButtonBorder(enabled = true),
+          label = { Text(stringResource(R.string.cardio_back)) }
+        )
       }
     }
   }
@@ -413,7 +580,7 @@ private fun ActiveWorkoutView(
   val watchCtx by checkInStore.watchContext.collectAsState()
 
   var showOptionsSheet by remember { mutableStateOf(false) }
-  var showKeypadFor by remember { mutableStateOf<String?>(null) } // "reps" | "weight"
+  var showKeypadFor by remember { mutableStateOf<String?>(null) }
 
   if (phase == WorkoutSessionStore.Phase.ASKING_PRESET_UPDATE) {
     PresetUpdatePromptView(
@@ -425,12 +592,14 @@ private fun ActiveWorkoutView(
 
   if (phase == WorkoutSessionStore.Phase.COMPLETED && summary != null) {
     if (watchCtx.effectiveNewWorkout) {
-      WorkoutFinishSummaryView(
-        summary = summary!!,
-        workoutStore = workoutStore,
-        watchCtx = watchCtx,
-        onDone = { workoutStore.dismissSummary() }
-      )
+      ScreenScaffold(timeText = {}) {
+        WorkoutFinishSummaryView(
+          summary = summary!!,
+          workoutStore = workoutStore,
+          watchCtx = watchCtx,
+          onDone = { workoutStore.dismissSummary() }
+        )
+      }
     } else {
       WorkoutSummaryView(
         summary = summary!!,
@@ -441,12 +610,15 @@ private fun ActiveWorkoutView(
     return
   }
 
+  // Keep custom New Workout View HUD intact inside a clean ScreenScaffold
   if (watchCtx.effectiveNewWorkout && !(steps.isEmpty() && plan != null)) {
-    NewActiveWorkoutView(
-      checkInStore = checkInStore,
-      workoutStore = workoutStore,
-      isCurrentPage = isCurrentPage
-    )
+    ScreenScaffold {
+      NewActiveWorkoutView(
+        checkInStore = checkInStore,
+        workoutStore = workoutStore,
+        isCurrentPage = isCurrentPage
+      )
+    }
     return
   }
 
@@ -537,101 +709,99 @@ private fun ActiveWorkoutView(
   val unitLabel = workoutStore.weightUnit.suffix
   var adjustMode by remember { mutableStateOf("reps") }
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .wearRotaryStepper(isCurrentPage = isCurrentPage) { dir ->
-        when {
-          step.timed -> workoutStore.adjustDuration(dir * 5)
-          adjustMode == "distance" && step.carry -> workoutStore.adjustDistance(dir)
-          adjustMode == "weight" && (!step.bodyweight || step.weighted) -> workoutStore.adjustWeight(dir)
-          else -> workoutStore.adjustReps(dir)
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .wearRotaryStepper(isCurrentPage = isCurrentPage) { dir ->
+          when {
+            step.timed -> workoutStore.adjustDuration(dir * 5)
+            adjustMode == "distance" && step.carry -> workoutStore.adjustDistance(dir)
+            adjustMode == "weight" && (!step.bodyweight || step.weighted) -> workoutStore.adjustWeight(dir)
+            else -> workoutStore.adjustReps(dir)
+          }
         }
-      }
-      .padding(horizontal = 10.dp, vertical = 8.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.SpaceBetween
-  ) {
-    // Top telemetry / PR / Interval Cap row
-    if (prBanner != null) {
-      Text(
-        text = prBanner!!,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        color = SparkyColors.Amber
-      )
-    } else {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        val formatTag = curPlan?.workoutFormat?.takeIf { it != "standard" }?.uppercase()
-        val leftText = if (formatTag != null && capRemainingSec != null) {
-          "$formatTag ${formatDuration(capRemainingSec!!)}"
-        } else {
-          formatDuration(elapsedSec)
-        }
+        .padding(contentPadding)
+        .padding(horizontal = 10.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.SpaceBetween
+    ) {
+      if (prBanner != null) {
         Text(
-          text = leftText,
-          fontSize = 10.sp,
-          color = if (formatTag != null) SparkyColors.Amber else SparkyColors.Muted
+          text = prBanner!!,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.Bold,
+          color = SparkyColors.Amber
         )
-        Text(
-          text = if (heartRate != null) {
-            "♥ ${heartRate!!.toInt()}"
+      } else {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          val formatTag = curPlan?.workoutFormat?.takeIf { it != "standard" }?.uppercase(Locale.US)
+          val leftText = if (formatTag != null && capRemainingSec != null) {
+            "$formatTag ${formatDuration(capRemainingSec!!)}"
           } else {
-            stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise)
-          },
-          fontSize = 10.sp,
-          color = if (heartRate != null) SparkyColors.Rose else SparkyColors.Green
-        )
-      }
-    }
-
-    // Exercise name + superset / setType badges
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-      Text(
-        text = step.exerciseName,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-      )
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text(
-          text = stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise),
-          fontSize = 10.sp,
-          color = SparkyColors.Green
-        )
-        if (step.supersetRun != null) {
+            formatDuration(elapsedSec)
+          }
           Text(
-            text = stringResource(R.string.workout_superset_badge, kotlin.math.max(1, step.supersetRun + 1)),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = SparkyColors.Purple
+            text = leftText,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (formatTag != null) SparkyColors.Amber else MaterialTheme.colorScheme.onSurfaceVariant
           )
-        }
-        val rawSetType = step.setType?.trim()?.takeIf { it.isNotEmpty() }
-        if (rawSetType != null && !rawSetType.equals("normal", ignoreCase = true)) {
-          val localizedSetType = localizedSetTypeLabel(rawSetType)
           Text(
-            text = "• ${localizedSetType.uppercase()}",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = SparkyColors.Amber
+            text = if (heartRate != null) {
+              "♥ ${heartRate!!.toInt()}"
+            } else {
+              stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise)
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (heartRate != null) SparkyColors.Rose else SparkyColors.Green
           )
         }
       }
-    }
 
-    // Value adjusters (Timed vs Carry/Weight/Reps)
-    if (step.timed) {
       Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+          text = step.exerciseName,
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis
+        )
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = stringResource(R.string.workout_set_counter, step.setIndexInExercise, step.totalSetsInExercise),
+            style = MaterialTheme.typography.labelSmall,
+            color = SparkyColors.Green
+          )
+          if (step.supersetRun != null) {
+            Text(
+              text = stringResource(R.string.workout_superset_badge, max(1, step.supersetRun + 1)),
+              style = MaterialTheme.typography.labelSmall,
+              fontWeight = FontWeight.Bold,
+              color = SparkyColors.Purple
+            )
+          }
+          val rawSetType = step.setType?.trim()?.takeIf { it.isNotEmpty() }
+          if (rawSetType != null && !rawSetType.equals("normal", ignoreCase = true)) {
+            val localizedSetType = localizedSetTypeLabel(rawSetType)
+            Text(
+              text = "· ${localizedSetType.uppercase(Locale.US)}",
+              style = MaterialTheme.typography.labelSmall,
+              fontWeight = FontWeight.Bold,
+              color = SparkyColors.Amber
+            )
+          }
+        }
+      }
+
+      if (step.timed) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -642,122 +812,168 @@ private fun ActiveWorkoutView(
           val displaySec = if (setTimerRunning) setTimerElapsed else draftDuration
           Text(
             text = "${displaySec}s",
-            fontSize = 20.sp,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = if (setTimerRunning) SparkyColors.Cyan else Color.White
+            color = if (setTimerRunning) SparkyColors.Cyan else MaterialTheme.colorScheme.onSurface
           )
           if (!setTimerRunning) {
             RoundStepperButton("+5") { workoutStore.adjustDuration(5) }
           }
         }
-      }
-    } else {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-      ) {
-        Column(
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (adjustMode == "reps") SparkyColors.Green.copy(alpha = 0.22f) else SparkyColors.CardBg)
-            .clickable {
-              if (adjustMode == "reps") showKeypadFor = "reps" else adjustMode = "reps"
-            }
-            .padding(horizontal = 7.dp, vertical = 3.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
+      } else {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-          Text("$draftReps", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-          Text(stringResource(R.string.workout_reps_label), fontSize = 8.sp, color = SparkyColors.Muted)
-        }
-
-        if (!step.bodyweight || step.weighted) {
           Column(
             modifier = Modifier
-              .clip(RoundedCornerShape(8.dp))
-              .background(if (adjustMode == "weight") SparkyColors.Green.copy(alpha = 0.22f) else SparkyColors.CardBg)
+              .clip(RoundedCornerShape(10.dp))
+              .background(if (adjustMode == "reps") SparkyColors.Green.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceContainer)
               .clickable {
-                if (adjustMode == "weight") showKeypadFor = "weight" else adjustMode = "weight"
+                if (adjustMode == "reps") showKeypadFor = "reps" else adjustMode = "reps"
               }
-              .padding(horizontal = 7.dp, vertical = 3.dp),
+              .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
           ) {
-            Text(
-              String.format(Locale.US, "%.1f", draftWeight),
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Bold,
-              color = Color.White
+            Text("$draftReps", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(stringResource(R.string.workout_reps_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+
+          if (!step.bodyweight || step.weighted) {
+            Column(
+              modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (adjustMode == "weight") SparkyColors.Green.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceContainer)
+                .clickable {
+                  if (adjustMode == "weight") showKeypadFor = "weight" else adjustMode = "weight"
+                }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+              horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+              Text(
+                formatWorkoutLocaleDecimal(draftWeight, fractionDigits = 1),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+              )
+              Text(unitLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+          }
+
+          if (step.carry) {
+            val carryFactor = if (workoutStore.usesMiles) 1093.6133 else 1000.0
+            val carryUnit = stringResource(
+              if (workoutStore.usesMiles) R.string.workout_new_unit_yd else R.string.workout_new_unit_m
             )
-            Text(unitLabel, fontSize = 8.sp, color = SparkyColors.Muted)
+            val distDisplay = String.format(Locale.getDefault(), "%.0f%s", draftDistanceKm * carryFactor, carryUnit)
+            Column(
+              modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (adjustMode == "distance") SparkyColors.Cyan.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceContainer)
+                .clickable { adjustMode = "distance" }
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+              horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+              Text(distDisplay, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+              Text(stringResource(R.string.workout_carry_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
           }
-        }
 
-        if (step.carry) {
-          val distDisplay = if (workoutStore.usesMiles) {
-            String.format(Locale.US, "%.0fft", draftDistanceKm * 3280.84)
-          } else {
-            String.format(Locale.US, "%.0fm", draftDistanceKm * 1000.0)
-          }
-          Column(
-            modifier = Modifier
-              .clip(RoundedCornerShape(8.dp))
-              .background(if (adjustMode == "distance") SparkyColors.Cyan.copy(alpha = 0.22f) else SparkyColors.CardBg)
-              .clickable { adjustMode = "distance" }
-              .padding(horizontal = 6.dp, vertical = 3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+          val isDistanceAdjust = adjustMode == "distance" && step.carry
+          val isWeightAdjust = adjustMode == "weight" && (!step.bodyweight || step.weighted)
+          val decreaseDesc = stringResource(
+            when {
+              isDistanceAdjust -> R.string.stepper_decrease_distance
+              isWeightAdjust -> R.string.stepper_decrease_weight
+              else -> R.string.stepper_decrease_reps
+            }
+          )
+          val increaseDesc = stringResource(
+            when {
+              isDistanceAdjust -> R.string.stepper_increase_distance
+              isWeightAdjust -> R.string.stepper_increase_weight
+              else -> R.string.stepper_increase_reps
+            }
+          )
+          FilledTonalIconButton(
+            onClick = {
+              when {
+                isDistanceAdjust -> workoutStore.adjustDistance(-1)
+                isWeightAdjust -> workoutStore.adjustWeight(-1)
+                else -> workoutStore.adjustReps(-1)
+              }
+            },
+            modifier = Modifier.size(30.dp)
           ) {
-            Text(distDisplay, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(stringResource(R.string.workout_carry_label), fontSize = 8.sp, color = SparkyColors.Muted)
+            Icon(Icons.Rounded.Remove, contentDescription = decreaseDesc, modifier = Modifier.size(16.dp))
           }
-        }
-
-        RoundStepperButton("−") {
-          when {
-            adjustMode == "distance" && step.carry -> workoutStore.adjustDistance(-1)
-            adjustMode == "weight" && (!step.bodyweight || step.weighted) -> workoutStore.adjustWeight(-1)
-            else -> workoutStore.adjustReps(-1)
-          }
-        }
-        RoundStepperButton("+") {
-          when {
-            adjustMode == "distance" && step.carry -> workoutStore.adjustDistance(1)
-            adjustMode == "weight" && (!step.bodyweight || step.weighted) -> workoutStore.adjustWeight(1)
-            else -> workoutStore.adjustReps(1)
+          FilledTonalIconButton(
+            onClick = {
+              when {
+                isDistanceAdjust -> workoutStore.adjustDistance(1)
+                isWeightAdjust -> workoutStore.adjustWeight(1)
+                else -> workoutStore.adjustReps(1)
+              }
+            },
+            modifier = Modifier.size(30.dp)
+          ) {
+            Icon(Icons.Rounded.Add, contentDescription = increaseDesc, modifier = Modifier.size(16.dp))
           }
         }
       }
-    }
 
-    // Bottom action buttons
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-      SmallPillButton(
-        label = "•••",
-        color = SparkyColors.CardBg,
-        textColor = SparkyColors.Muted,
-        onClick = { showOptionsSheet = true }
-      )
-      if (step.timed) {
-        SmallPillButton(
-          label = if (setTimerRunning) {
-            stringResource(R.string.workout_timer_stop)
-          } else {
-            stringResource(R.string.workout_timer_start)
-          },
-          color = if (setTimerRunning) SparkyColors.Amber else SparkyColors.Cyan,
-          textColor = Color.Black,
-          onClick = {
-            if (setTimerRunning) workoutStore.stopSetTimer() else workoutStore.startSetTimer()
-          }
-        )
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        FilledTonalIconButton(
+          onClick = { showOptionsSheet = true },
+          modifier = Modifier.size(34.dp)
+        ) {
+          Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.workout_options_title))
+        }
+        if (step.timed) {
+          CompactButton(
+            onClick = {
+              if (setTimerRunning) workoutStore.stopSetTimer() else workoutStore.startSetTimer()
+            },
+            colors = ButtonDefaults.buttonColors(
+              containerColor = if (setTimerRunning) SparkyColors.Amber else SparkyColors.Cyan,
+              contentColor = Color.Black
+            ),
+            label = {
+              Text(
+                if (setTimerRunning) stringResource(R.string.workout_timer_stop)
+                else stringResource(R.string.workout_timer_start),
+                maxLines = 1
+              )
+            }
+          )
+        }
+        FilledIconButton(
+          onClick = { workoutStore.completeCurrentSet() },
+          colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = SparkyColors.Green,
+            contentColor = Color.Black
+          ),
+          modifier = Modifier.size(38.dp)
+        ) {
+          Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.workout_done_check))
+        }
       }
-      SmallPillButton(
-        label = stringResource(R.string.workout_done_check),
-        color = SparkyColors.Green,
-        textColor = Color.Black,
-        onClick = { workoutStore.completeCurrentSet() }
-      )
     }
   }
 }
+
+private fun formatWorkoutLocaleDecimal(
+  value: Double,
+  fractionDigits: Int,
+  locale: Locale = Locale.getDefault()
+): String = java.text.NumberFormat.getNumberInstance(locale).apply {
+  isGroupingUsed = false
+  minimumFractionDigits = fractionDigits
+  maximumFractionDigits = fractionDigits
+}.format(value)
 
 @Composable
 private fun localizedSetTypeLabel(rawType: String): String = when (rawType.trim().lowercase(Locale.US)) {
@@ -773,26 +989,42 @@ private fun PresetUpdatePromptView(
   workoutName: String,
   onAnswer: (Boolean) -> Unit
 ) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .background(Color.Black)
-      .padding(14.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Text(stringResource(R.string.workout_preset_update_title), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
-    Spacer(Modifier.height(4.dp))
-    Text(
-      text = stringResource(R.string.workout_preset_update_desc, workoutName),
-      fontSize = 10.sp,
-      color = SparkyColors.Muted,
-      textAlign = TextAlign.Center
-    )
-    Spacer(Modifier.height(10.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      SmallPillButton(stringResource(R.string.workout_preset_keep_old), SparkyColors.CardBg, Color.White) { onAnswer(false) }
-      SmallPillButton(stringResource(R.string.workout_preset_update_btn), SparkyColors.Green, Color.Black) { onAnswer(true) }
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black)
+        .padding(contentPadding)
+        .padding(horizontal = 14.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
+      Text(
+        text = stringResource(R.string.workout_preset_update_title),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = SparkyColors.Amber
+      )
+      Spacer(Modifier.height(4.dp))
+      Text(
+        text = stringResource(R.string.workout_preset_update_desc, workoutName),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+      )
+      Spacer(Modifier.height(10.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        CompactButton(
+          onClick = { onAnswer(false) },
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          label = { Text(stringResource(R.string.workout_preset_keep_old)) }
+        )
+        CompactButton(
+          onClick = { onAnswer(true) },
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black),
+          label = { Text(stringResource(R.string.workout_preset_update_btn)) }
+        )
+      }
     }
   }
 }
@@ -806,41 +1038,56 @@ private fun RestTimerView(
   onAdd15: () -> Unit,
   onSkip: () -> Unit
 ) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(12.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    if (prBanner != null) {
-      Text(prBanner, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
-      Spacer(Modifier.height(2.dp))
-    }
-    Text(stringResource(R.string.workout_rest_title), fontSize = 12.sp, color = SparkyColors.Cyan, fontWeight = FontWeight.SemiBold)
-    Text(
-      text = formatDuration(remainingSeconds),
-      fontSize = 28.sp,
-      fontWeight = FontWeight.Bold,
-      color = Color.White
-    )
-    if (heartRate != null) {
-      Text("♥ ${heartRate.toInt()} bpm", fontSize = 11.sp, color = SparkyColors.Rose)
-    }
-    if (nextStep != null) {
-      Spacer(Modifier.height(2.dp))
-      Text(
-        text = stringResource(R.string.workout_rest_next, nextStep.exerciseName, nextStep.setIndexInExercise),
-        fontSize = 10.sp,
-        color = SparkyColors.Muted,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(contentPadding)
+        .padding(horizontal = 12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
+      if (prBanner != null) {
+        Text(prBanner, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = SparkyColors.Amber)
+        Spacer(Modifier.height(2.dp))
+      }
+      SparkySectionHeader(
+        title = stringResource(R.string.workout_rest_title),
+        icon = Icons.Rounded.Timer,
+        accent = SparkyColors.Cyan
       )
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      SmallPillButton(stringResource(R.string.workout_rest_add_15), SparkyColors.CardBg, Color.White, onAdd15)
-      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.Cyan, Color.Black, onSkip)
+      Text(
+        text = formatDuration(remainingSeconds),
+        style = MaterialTheme.typography.displaySmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+      )
+      if (heartRate != null) {
+        Text("♥ ${heartRate.toInt()} bpm", style = MaterialTheme.typography.labelSmall, color = SparkyColors.Rose)
+      }
+      if (nextStep != null) {
+        Spacer(Modifier.height(2.dp))
+        Text(
+          text = stringResource(R.string.workout_rest_next, nextStep.exerciseName, nextStep.setIndexInExercise),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis
+        )
+      }
+      Spacer(Modifier.height(8.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CompactButton(
+          onClick = onAdd15,
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          label = { Text(stringResource(R.string.workout_rest_add_15)) }
+        )
+        CompactButton(
+          onClick = onSkip,
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Cyan, contentColor = Color.Black),
+          label = { Text(stringResource(R.string.common_skip)) }
+        )
+      }
     }
   }
 }
@@ -851,36 +1098,61 @@ private fun RpePromptView(
   onSkip: () -> Unit
 ) {
   var rpe by remember { mutableDoubleStateOf(8.0) }
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .wearRotaryStepper(isCurrentPage = true) { steps ->
-        rpe = (rpe + steps * 0.5).coerceIn(5.0, 10.0)
-        Haptics.click()
-      }
-      .padding(12.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Text(stringResource(R.string.workout_rpe_title), fontSize = 12.sp, color = SparkyColors.Amber)
-    Spacer(Modifier.height(6.dp))
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp)
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .wearRotaryStepper(isCurrentPage = true) { steps ->
+          rpe = (rpe + steps * 0.5).coerceIn(5.0, 10.0)
+          Haptics.click()
+        }
+        .padding(contentPadding)
+        .padding(horizontal = 12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
     ) {
-      RoundStepperButton("−") { rpe = max(5.0, rpe - 0.5) }
       Text(
-        text = String.format(Locale.US, "%.1f", rpe),
-        fontSize = 24.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White
+        text = stringResource(R.string.workout_rpe_title),
+        style = MaterialTheme.typography.titleSmall,
+        color = SparkyColors.Amber
       )
-      RoundStepperButton("+") { rpe = min(10.0, rpe + 0.5) }
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.CardBg, SparkyColors.Muted, onSkip)
-      SmallPillButton(stringResource(R.string.common_save), SparkyColors.Amber, Color.Black) { onSubmit(rpe) }
+      Spacer(Modifier.height(6.dp))
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
+        FilledTonalIconButton(
+          onClick = { rpe = max(5.0, rpe - 0.5) },
+          modifier = Modifier.size(34.dp)
+        ) {
+          Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.stepper_decrease_effort))
+        }
+        Text(
+          text = formatWorkoutLocaleDecimal(rpe, fractionDigits = 1),
+          style = MaterialTheme.typography.titleLarge,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface
+        )
+        FilledTonalIconButton(
+          onClick = { rpe = min(10.0, rpe + 0.5) },
+          modifier = Modifier.size(34.dp)
+        ) {
+          Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.stepper_increase_effort))
+        }
+      }
+      Spacer(Modifier.height(8.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CompactButton(
+          onClick = onSkip,
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          label = { Text(stringResource(R.string.common_skip)) }
+        )
+        CompactButton(
+          onClick = { onSubmit(rpe) },
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Amber, contentColor = Color.Black),
+          label = { Text(stringResource(R.string.common_save)) }
+        )
+      }
     }
   }
 }
@@ -894,31 +1166,56 @@ private fun CardioWorkoutView(
   onFinish: () -> Unit,
   energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(12.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = SparkyColors.Green, maxLines = 1)
-    Spacer(Modifier.height(4.dp))
-    Text(formatDuration(elapsedSeconds), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
-    Spacer(Modifier.height(4.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(contentPadding)
+        .padding(horizontal = 12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
       Text(
-        text = if (heartRate != null) "♥ ${heartRate.toInt()}" else "♥ --",
-        fontSize = 12.sp,
-        color = SparkyColors.Rose
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = SparkyColors.Green,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
       )
+      Spacer(Modifier.height(4.dp))
       Text(
-        text = "${energy.value(calories).toInt()} ${energy.unit}",
-        fontSize = 12.sp,
-        color = SparkyColors.Amber
+        text = formatDuration(elapsedSeconds),
+        style = MaterialTheme.typography.displaySmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+      )
+      Spacer(Modifier.height(4.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          text = if (heartRate != null) "♥ ${heartRate.toInt()}" else "♥ --",
+          style = MaterialTheme.typography.labelMedium,
+          color = SparkyColors.Rose
+        )
+        Text(
+          text = "${energy.value(calories).toInt()} ${energy.unit}",
+          style = MaterialTheme.typography.labelMedium,
+          color = SparkyColors.Amber
+        )
+      }
+      Spacer(Modifier.height(10.dp))
+      CompactButton(
+        onClick = onFinish,
+        colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Rose, contentColor = Color.White),
+        icon = {
+          Icon(
+            Icons.Rounded.Stop,
+            contentDescription = null,
+            modifier = Modifier.size(CompactButtonDefaults.ExtraSmallIconSize)
+          )
+        },
+        label = { Text(stringResource(R.string.workout_end_btn)) }
       )
     }
-    Spacer(Modifier.height(10.dp))
-    SmallPillButton(stringResource(R.string.workout_end_btn), SparkyColors.Rose, Color.White, onFinish)
   }
 }
 
@@ -935,48 +1232,107 @@ private fun WorkoutOptionsSheet(
   onClose: () -> Unit
 ) {
   var showAddExercisePicker by remember { mutableStateOf(false) }
-  val listState = rememberScalingLazyListState()
+  val columnState = rememberTransformingLazyColumnState()
+  val addColumnState = rememberTransformingLazyColumnState()
+  val transformationSpec = rememberTransformationSpec()
   val currentStep = steps.getOrNull(currentIndex)
 
+  BackHandler {
+    if (showAddExercisePicker) {
+      showAddExercisePicker = false
+    } else {
+      onClose()
+    }
+  }
+
   if (showAddExercisePicker) {
-    ScalingLazyColumn(
-      state = rememberScalingLazyListState(),
-      autoCentering = null,
-      verticalArrangement = Arrangement.spacedBy(4.dp),
-      modifier = Modifier
-        .fillMaxSize()
-        .background(Color.Black),
-      contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 32.dp),
-      horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-      item {
-        Text(stringResource(R.string.workout_add_exercise_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
-      }
-      item {
-        SmallPillButton(stringResource(R.string.common_cancel), SparkyColors.CardBg, SparkyColors.Muted) {
-          showAddExercisePicker = false
+    SparkyListScaffold(
+      columnState = addColumnState,
+      edgeButton = {
+        EdgeButton(
+          onClick = { showAddExercisePicker = false },
+          buttonSize = EdgeButtonSize.Small,
+          modifier = Modifier.scrollable(
+            addColumnState,
+            orientation = Orientation.Vertical,
+            reverseDirection = true,
+            overscrollEffect = rememberOverscrollEffect()
+          )
+        ) {
+          Text(stringResource(R.string.common_cancel))
         }
       }
-      if (suggestedExercises.isEmpty()) {
+    ) { contentPadding ->
+      TransformingLazyColumn(
+        state = addColumnState,
+        contentPadding = contentPadding,
+        modifier = Modifier
+          .fillMaxSize()
+          .background(Color.Black),
+        horizontalAlignment = Alignment.CenterHorizontally
+      ) {
         item {
-          EmptyStateCard(stringResource(R.string.workout_no_recent_exercises))
-        }
-      } else {
-        items(suggestedExercises, key = { it.exerciseId }) { ex ->
-          Row(
+          ListHeader(
             modifier = Modifier
               .fillMaxWidth()
-              .clip(RoundedCornerShape(10.dp))
-              .background(SparkyColors.CardBg)
-              .clickable {
+              .minimumVerticalContentPadding(
+                ListHeaderDefaults.minimumTopListContentPadding,
+                ListHeaderDefaults.minimumBottomListContentPadding
+              )
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec)
+          ) {
+            Text(
+              text = stringResource(R.string.workout_add_exercise_title),
+              style = MaterialTheme.typography.titleSmall,
+              color = SparkyColors.Cyan
+            )
+          }
+        }
+        item {
+          CompactButton(
+            onClick = { showAddExercisePicker = false },
+            modifier = Modifier
+              .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            colors = ButtonDefaults.filledTonalButtonColors(),
+            icon = {
+              Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp)
+              )
+            },
+            label = { Text(stringResource(R.string.cardio_back), maxLines = 1) }
+          )
+        }
+        if (suggestedExercises.isEmpty()) {
+          item {
+            EmptyStateCard(
+              message = stringResource(R.string.workout_no_recent_exercises),
+              modifier = Modifier
+                .minimumVerticalContentPadding(CardDefaults.minimumVerticalListContentPadding)
+                .transformedHeight(this, transformationSpec)
+            )
+          }
+        } else {
+          items(suggestedExercises, key = { it.exerciseId }) { ex ->
+            Button(
+              onClick = {
                 showAddExercisePicker = false
                 onEditAction(WorkoutEditAction.AddExercise(ex.exerciseId))
-              }
-              .padding(horizontal = 10.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Text(ex.name, fontSize = 11.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("+", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
+              },
+              modifier = Modifier
+                .fillMaxWidth()
+                .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+                .transformedHeight(this, transformationSpec),
+              transformation = SurfaceTransformation(transformationSpec),
+              colors = ButtonDefaults.filledTonalButtonColors(),
+              icon = {
+                Icon(Icons.Rounded.Add, contentDescription = null, tint = SparkyColors.Green)
+              },
+              label = { Text(ex.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            )
           }
         }
       }
@@ -984,107 +1340,219 @@ private fun WorkoutOptionsSheet(
     return
   }
 
-  ScalingLazyColumn(
-    state = listState,
-    autoCentering = null,
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    modifier = Modifier
-      .fillMaxSize()
-      .background(Color.Black)
-      .wearRotaryScroll(listState, isCurrentPage = true),
-    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally
-  ) {
-    item {
-      Text(
-        stringResource(R.string.workout_options_title),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        modifier = Modifier.padding(bottom = 2.dp)
-      )
-    }
-    item {
-      SmallPillButton(stringResource(R.string.workout_back_to_set), SparkyColors.CardBg, Color.White, onClose)
-    }
-
-    if (currentStep != null) {
-      item {
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-          SmallPillButton(stringResource(R.string.workout_add_set), SparkyColors.Cyan.copy(alpha = 0.25f), SparkyColors.Cyan) {
-            onEditAction(WorkoutEditAction.AddSet(currentStep.exerciseEntryId))
-          }
-          val setTypes = listOf("normal", "warmup", "drop", "failure")
-          val rawCurType = currentStep.setType?.trim()?.takeIf { it.isNotEmpty() } ?: "normal"
-          val normalizedCurType = when (rawCurType.lowercase(Locale.US)) {
-            "warm-up" -> "warmup"
-            "drop set" -> "drop"
-            else -> rawCurType.lowercase(Locale.US)
-          }
-          val curIdx = setTypes.indexOf(normalizedCurType)
-          val nextType = setTypes[(if (curIdx >= 0) curIdx + 1 else 0) % setTypes.size]
-          val localizedCurType = localizedSetTypeLabel(rawCurType)
-          SmallPillButton(stringResource(R.string.workout_set_type_label, localizedCurType), SparkyColors.CardBg, SparkyColors.Amber) {
-            onEditAction(WorkoutEditAction.SetSetType(currentStep.setId, nextType))
-          }
-        }
-      }
-
-      if (currentStep.totalSetsInExercise > 1) {
-        item {
-          SmallPillButton(stringResource(R.string.workout_delete_set), SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
-            onEditAction(WorkoutEditAction.DeleteSet(currentStep.setId))
-          }
-        }
-      }
-    }
-
-    if (suggestedExercises.isNotEmpty()) {
-      item {
-        SmallPillButton(stringResource(R.string.workout_add_exercise_btn), SparkyColors.CardBg, SparkyColors.Green) {
-          showAddExercisePicker = true
-        }
-      }
-    }
-
-    if (currentStep != null && steps.map { it.exerciseEntryId }.distinct().size > 1) {
-      item {
-        SmallPillButton(stringResource(R.string.workout_delete_exercise), SparkyColors.Rose.copy(alpha = 0.2f), SparkyColors.Rose) {
-          onEditAction(WorkoutEditAction.DeleteExercise(currentStep.exerciseEntryId))
-        }
-      }
-    }
-
-    item {
-      SmallPillButton(stringResource(R.string.workout_skip_exercise), SparkyColors.Amber.copy(alpha = 0.25f), SparkyColors.Amber, onSkipExercise)
-    }
-    item {
-      SmallPillButton(stringResource(R.string.workout_finish_btn), SparkyColors.Green, Color.Black, onFinishWorkout)
-    }
-    item {
-      SmallPillButton(stringResource(R.string.workout_discard_btn), SparkyColors.Rose.copy(alpha = 0.25f), SparkyColors.Rose, onDiscardWorkout)
-    }
-    itemsIndexed(steps) { idx, st ->
-      val isCur = idx == currentIndex
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(vertical = 2.dp)
-          .clip(RoundedCornerShape(8.dp))
-          .background(if (isCur) SparkyColors.Green.copy(alpha = 0.2f) else SparkyColors.CardBg)
-          .clickable { onJumpToStep(idx) }
-          .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-      ) {
-        Text(
-          text = st.exerciseName,
-          fontSize = 11.sp,
-          color = Color.White,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.weight(1f)
+  SparkyListScaffold(
+    columnState = columnState,
+    edgeButton = {
+      EdgeButton(
+        onClick = onClose,
+        buttonSize = EdgeButtonSize.Small,
+        modifier = Modifier.scrollable(
+          columnState,
+          orientation = Orientation.Vertical,
+          reverseDirection = true,
+          overscrollEffect = rememberOverscrollEffect()
         )
-        Text("S${st.setIndexInExercise}", fontSize = 10.sp, color = SparkyColors.Muted)
+      ) {
+        Text(stringResource(R.string.common_done))
+      }
+    }
+  ) { contentPadding ->
+    TransformingLazyColumn(
+      state = columnState,
+      contentPadding = contentPadding,
+      modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+      item {
+        ListHeader(
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(
+              ListHeaderDefaults.minimumTopListContentPadding,
+              ListHeaderDefaults.minimumBottomListContentPadding
+            )
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec)
+        ) {
+          Text(
+            text = stringResource(R.string.workout_options_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+        }
+      }
+      item {
+        CompactButton(
+          onClick = onClose,
+          modifier = Modifier
+            .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          icon = {
+            Icon(
+              imageVector = Icons.Rounded.Close,
+              contentDescription = null,
+              modifier = Modifier.size(14.dp)
+            )
+          },
+          label = { Text(stringResource(R.string.common_close), maxLines = 1) }
+        )
+      }
+
+      if (currentStep != null) {
+        item {
+          Row(
+            modifier = Modifier
+              .minimumVerticalContentPadding(CompactButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+          ) {
+            CompactButton(
+              onClick = { onEditAction(WorkoutEditAction.AddSet(currentStep.exerciseEntryId)) },
+              colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = SparkyColors.Cyan
+              ),
+              label = { Text(stringResource(R.string.workout_add_set)) }
+            )
+            val setTypes = listOf("normal", "warmup", "drop", "failure")
+            val rawCurType = currentStep.setType?.trim()?.takeIf { it.isNotEmpty() } ?: "normal"
+            val normalizedCurType = when (rawCurType.lowercase(Locale.US)) {
+              "warm-up" -> "warmup"
+              "drop set" -> "drop"
+              else -> rawCurType.lowercase(Locale.US)
+            }
+            val curIdx = setTypes.indexOf(normalizedCurType)
+            val nextType = setTypes[(if (curIdx >= 0) curIdx + 1 else 0) % setTypes.size]
+            val localizedCurType = localizedSetTypeLabel(rawCurType)
+            CompactButton(
+              onClick = { onEditAction(WorkoutEditAction.SetSetType(currentStep.setId, nextType)) },
+              colors = ButtonDefaults.filledTonalButtonColors(),
+              label = { Text(stringResource(R.string.workout_set_type_label, localizedCurType)) }
+            )
+          }
+        }
+
+        if (currentStep.totalSetsInExercise > 1) {
+          item {
+            FilledTonalButton(
+              onClick = { onEditAction(WorkoutEditAction.DeleteSet(currentStep.setId)) },
+              modifier = Modifier
+                .fillMaxWidth()
+                .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+                .transformedHeight(this, transformationSpec),
+              transformation = SurfaceTransformation(transformationSpec),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = SparkyColors.Rose,
+                iconColor = SparkyColors.Rose
+              ),
+              icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+              label = { Text(stringResource(R.string.workout_delete_set)) }
+            )
+          }
+        }
+      }
+
+      if (suggestedExercises.isNotEmpty()) {
+        item {
+          FilledTonalButton(
+            onClick = { showAddExercisePicker = true },
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            icon = { Icon(Icons.Rounded.Add, contentDescription = null, tint = SparkyColors.Green) },
+            label = { Text(stringResource(R.string.workout_add_exercise_btn)) }
+          )
+        }
+      }
+
+      if (currentStep != null && steps.map { it.exerciseEntryId }.distinct().size > 1) {
+        item {
+          FilledTonalButton(
+            onClick = { onEditAction(WorkoutEditAction.DeleteExercise(currentStep.exerciseEntryId)) },
+            modifier = Modifier
+              .fillMaxWidth()
+              .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+              .transformedHeight(this, transformationSpec),
+            transformation = SurfaceTransformation(transformationSpec),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.errorContainer,
+              contentColor = SparkyColors.Rose,
+              iconColor = SparkyColors.Rose
+            ),
+            icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+            label = { Text(stringResource(R.string.workout_delete_exercise)) }
+          )
+        }
+      }
+
+      item {
+        FilledTonalButton(
+          onClick = onSkipExercise,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          icon = { Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = SparkyColors.Amber) },
+          label = { Text(stringResource(R.string.workout_skip_exercise)) }
+        )
+      }
+      item {
+        Button(
+          onClick = onFinishWorkout,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black),
+          icon = { Icon(Icons.Rounded.Check, contentDescription = null) },
+          label = { Text(stringResource(R.string.workout_finish_btn)) }
+        )
+      }
+      item {
+        FilledTonalButton(
+          onClick = onDiscardWorkout,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = SparkyColors.Rose,
+            iconColor = SparkyColors.Rose
+          ),
+          icon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+          label = { Text(stringResource(R.string.workout_discard_btn)) }
+        )
+      }
+
+      itemsIndexed(steps) { idx, st ->
+        val isCur = idx == currentIndex
+        Button(
+          onClick = { onJumpToStep(idx) },
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          colors = if (isCur) {
+            ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+              secondaryContentColor = SparkyColors.Green
+            )
+          } else ButtonDefaults.filledTonalButtonColors(),
+          label = { Text(st.exerciseName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+          secondaryLabel = { Text(stringResource(R.string.workout_step_set_short, st.setIndexInExercise)) }
+        )
       }
     }
   }
@@ -1096,35 +1564,59 @@ private fun WorkoutSummaryView(
   onDone: () -> Unit,
   energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(14.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Text(stringResource(R.string.workout_complete_title), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
-    Spacer(Modifier.height(4.dp))
-    Text(summary.workoutName, fontSize = 11.sp, color = Color.White, maxLines = 1)
-    Spacer(Modifier.height(6.dp))
-    Text(
-      text = pluralStringResource(
-        R.plurals.workout_summary_sets_duration,
-        summary.setsCompleted,
-        summary.setsCompleted,
-        formatDuration(summary.durationSeconds)
-      ),
-      fontSize = 11.sp,
-      color = SparkyColors.Muted
-    )
-    if (summary.averageBpm != null || summary.activeEnergyKcal != null) {
-      val parts = mutableListOf<String>()
-      summary.averageBpm?.let { parts.add(stringResource(R.string.workout_summary_avg_hr, it.toInt())) }
-      summary.activeEnergyKcal?.let { parts.add("${energy.value(it).toInt()} ${energy.unit}") }
-      Text(parts.joinToString(" • "), fontSize = 11.sp, color = SparkyColors.Amber)
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(contentPadding)
+        .padding(horizontal = 14.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
+      Icon(
+        imageVector = Icons.Rounded.EmojiEvents,
+        contentDescription = null,
+        tint = SparkyColors.Green,
+        modifier = Modifier.size(24.dp)
+      )
+      Spacer(Modifier.height(4.dp))
+      Text(
+        text = stringResource(R.string.workout_complete_title),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = SparkyColors.Green
+      )
+      Text(
+        text = summary.workoutName,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+      )
+      Spacer(Modifier.height(4.dp))
+      Text(
+        text = pluralStringResource(
+          R.plurals.workout_summary_sets_duration,
+          summary.setsCompleted,
+          summary.setsCompleted,
+          formatDuration(summary.durationSeconds)
+        ),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      if (summary.averageBpm != null || summary.activeEnergyKcal != null) {
+        val parts = mutableListOf<String>()
+        summary.averageBpm?.let { parts.add(stringResource(R.string.workout_summary_avg_hr, it.toInt())) }
+        summary.activeEnergyKcal?.let { parts.add("${energy.value(it).toInt()} ${energy.unit}") }
+        Text(parts.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = SparkyColors.Amber)
+      }
+      Spacer(Modifier.height(8.dp))
+      CompactButton(
+        onClick = onDone,
+        colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black),
+        label = { Text(stringResource(R.string.common_done)) }
+      )
     }
-    Spacer(Modifier.height(10.dp))
-    SmallPillButton(stringResource(R.string.common_done), SparkyColors.Green, Color.Black, onDone)
   }
 }
 
@@ -1164,81 +1656,115 @@ private fun RecordingRemoteView(
     else -> state.activity.replaceFirstChar { it.uppercase() }
   }
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(10.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Row(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalAlignment = Alignment.CenterVertically
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .padding(contentPadding)
+        .padding(horizontal = 10.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
     ) {
-      Text(
-        text = activityLabel,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = SparkyColors.Cyan
-      )
-      if (liveHr != null) {
-        Text(
-          text = "♥ ${liveHr!!.toInt()}",
-          fontSize = 11.sp,
-          fontWeight = FontWeight.Bold,
-          color = SparkyColors.Rose
-        )
-      }
-    }
-    Text(
-      text = formatDuration(elapsedSeconds),
-      fontSize = 23.sp,
-      fontWeight = FontWeight.Bold,
-      color = Color.White
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text(
-        text = distDisplay,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = SparkyColors.Green
-      )
-      if (paceDisplay != null) {
-        Text(
-          text = paceDisplay,
-          fontSize = 12.sp,
-          color = SparkyColors.Muted
-        )
-      }
-    }
-    if (state.interval != null) {
-      Text(
-        text = "${state.interval.label}: ${formatDuration(state.interval.remaining.toInt())}",
-        fontSize = 10.sp,
-        color = SparkyColors.Amber,
-        maxLines = 1
-      )
-    }
-    Spacer(Modifier.height(6.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      if (isPaused) {
-        SmallPillButton(stringResource(R.string.recording_resume), SparkyColors.Green, Color.Black) {
-          recordingStore.sendAction("resume")
-        }
-      } else {
-        SmallPillButton(stringResource(R.string.recording_pause), SparkyColors.Amber, Color.Black) {
-          recordingStore.sendAction("pause")
-        }
-      }
-      SmallPillButton(
-        label = if (state.lapCount > 0) stringResource(R.string.recording_lap_count, state.lapCount) else stringResource(R.string.recording_lap),
-        color = SparkyColors.CardBg,
-        textColor = Color.White
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
       ) {
-        recordingStore.sendAction("lap")
+        Text(
+          text = activityLabel,
+          style = MaterialTheme.typography.titleSmall,
+          color = SparkyColors.Cyan
+        )
+        if (liveHr != null) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+          ) {
+            Icon(Icons.Rounded.Favorite, contentDescription = null, tint = SparkyColors.Rose, modifier = Modifier.size(12.dp))
+            Text(
+              text = "${liveHr!!.toInt()}",
+              style = MaterialTheme.typography.labelMedium,
+              fontWeight = FontWeight.Bold,
+              color = SparkyColors.Rose
+            )
+          }
+        }
       }
-      SmallPillButton(stringResource(R.string.recording_stop), SparkyColors.Rose, Color.White) {
-        recordingStore.sendAction("finish")
+      Text(
+        text = formatDuration(elapsedSeconds),
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+          text = distDisplay,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.SemiBold,
+          color = SparkyColors.Green
+        )
+        if (paceDisplay != null) {
+          Text(
+            text = paceDisplay,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+      }
+      if (state.interval != null) {
+        Text(
+          text = "${state.interval.label}: ${formatDuration(state.interval.remaining.toInt())}",
+          style = MaterialTheme.typography.labelSmall,
+          color = SparkyColors.Amber,
+          maxLines = 1
+        )
+      }
+      Spacer(Modifier.height(8.dp))
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        FilledIconButton(
+          onClick = { recordingStore.sendAction(if (isPaused) "resume" else "pause") },
+          shapes = IconButtonDefaults.animatedShapes(),
+          colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = if (isPaused) SparkyColors.Green else SparkyColors.Amber,
+            contentColor = Color.Black
+          ),
+          modifier = Modifier.size(38.dp)
+        ) {
+          Icon(
+            imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+            contentDescription = stringResource(if (isPaused) R.string.recording_resume else R.string.recording_pause)
+          )
+        }
+        CompactButton(
+          onClick = { recordingStore.sendAction("lap") },
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          icon = {
+            Icon(
+              Icons.Rounded.Flag,
+              contentDescription = null,
+              modifier = Modifier.size(CompactButtonDefaults.ExtraSmallIconSize)
+            )
+          },
+          label = {
+            Text(
+              if (state.lapCount > 0) stringResource(R.string.recording_lap_count, state.lapCount)
+              else stringResource(R.string.recording_lap)
+            )
+          }
+        )
+        FilledIconButton(
+          onClick = { recordingStore.sendAction("finish") },
+          shapes = IconButtonDefaults.animatedShapes(),
+          colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = SparkyColors.Rose,
+            contentColor = Color.White
+          ),
+          modifier = Modifier.size(38.dp)
+        ) {
+          Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.recording_stop))
+        }
       }
     }
   }
@@ -1279,25 +1805,42 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
     } else {
       String.format(Locale.US, "%.2f km", distanceMeters / 1000.0)
     }
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(14.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Center
-    ) {
-      Text(stringResource(R.string.run_saved_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Green)
-      Spacer(Modifier.height(4.dp))
-      Text(
-        text = "$distLabel • ${formatDuration(elapsed)}",
-        fontSize = 12.sp,
-        color = Color.White
-      )
-      if (lapCount > 0) {
-        Text(pluralStringResource(R.plurals.run_laps_count, lapCount, lapCount), fontSize = 10.sp, color = SparkyColors.Muted)
+    ScreenScaffold { contentPadding ->
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(contentPadding)
+          .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+      ) {
+        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = SparkyColors.Green, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+          text = stringResource(R.string.run_saved_title),
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold,
+          color = SparkyColors.Green
+        )
+        Text(
+          text = "$distLabel · ${formatDuration(elapsed)}",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurface
+        )
+        if (lapCount > 0) {
+          Text(
+            text = pluralStringResource(R.plurals.run_laps_count, lapCount, lapCount),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+        Spacer(Modifier.height(10.dp))
+        CompactButton(
+          onClick = { runStore.dismiss() },
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black),
+          label = { Text(stringResource(R.string.common_done)) }
+        )
       }
-      Spacer(Modifier.height(10.dp))
-      SmallPillButton(stringResource(R.string.common_done), SparkyColors.Green, Color.Black) { runStore.dismiss() }
     }
     return
   }
@@ -1337,95 +1880,248 @@ private fun WatchRunActiveView(runStore: WatchRunStore, isCurrentPage: Boolean) 
     else -> req?.kind?.replaceFirstChar { it.uppercase() } ?: stringResource(R.string.cardio_kind_run)
   }
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .padding(horizontal = 10.dp, vertical = 8.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.SpaceBetween
-  ) {
-    // Top header + GPS indicator
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-      if (isOutdoor) {
-        val gpsColor = when {
-          gpsAcc == null -> SparkyColors.Muted
-          gpsAcc <= 15.0 -> SparkyColors.Green
-          gpsAcc <= 35.0 -> SparkyColors.Amber
-          else -> SparkyColors.Rose
-        }
-        Box(
-          modifier = Modifier
-            .size(6.dp)
-            .clip(CircleShape)
-            .background(gpsColor)
-        )
+  ScreenScaffold { contentPadding ->
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+      val hasMultiStep = (plan?.steps?.size ?: 0) > 1
+      val compactHeight = maxHeight < 205.dp
+      val isPaused = phase == WatchRunStore.RunPhase.PAUSED
+      val lapDescription = if (lapCount > 0) {
+        stringResource(R.string.recording_lap_count, lapCount)
+      } else {
+        stringResource(R.string.recording_lap)
       }
-      Text(
-        text = when {
-          autoPaused -> stringResource(R.string.run_auto_paused)
-          alertBanner != null -> alertBanner!!
-          else -> curStep?.label ?: plan?.name ?: fallbackKindLabel
-        },
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = if (autoPaused || alertBanner != null) SparkyColors.Amber else SparkyColors.Cyan,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-      )
-    }
 
-    // Main timer
-    Text(
-      text = if (stepRemaining != null) formatDuration(stepRemaining!!) else formatDuration(elapsed),
-      fontSize = 24.sp,
-      fontWeight = FontWeight.Bold,
-      color = Color.White
-    )
-
-    // Distance + Pace + HR
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-          text = distDisplay,
-          fontSize = 12.sp,
-          fontWeight = FontWeight.SemiBold,
-          color = SparkyColors.Green
-        )
-        if (paceDisplay != null) {
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(contentPadding)
+          .padding(horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+          if (isOutdoor) {
+            val gpsColor = when {
+              gpsAcc == null -> SparkyColors.Muted
+              gpsAcc <= 15.0 -> SparkyColors.Green
+              gpsAcc <= 35.0 -> SparkyColors.Amber
+              else -> SparkyColors.Rose
+            }
+            Box(
+              modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(gpsColor)
+            )
+          }
           Text(
-            text = paceDisplay,
-            fontSize = 11.sp,
-            color = SparkyColors.Muted
+            text = when {
+              autoPaused -> stringResource(R.string.run_auto_paused)
+              alertBanner != null -> alertBanner!!
+              else -> curStep?.label ?: plan?.name ?: fallbackKindLabel
+            },
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (autoPaused || alertBanner != null) SparkyColors.Amber else SparkyColors.Cyan,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
           )
         }
-      }
-      if (heartRate != null) {
-        Text("♥ ${heartRate!!.toInt()} bpm", fontSize = 11.sp, color = SparkyColors.Rose)
-      }
-    }
 
-    // Controls row
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-      if (phase == WatchRunStore.RunPhase.PAUSED) {
-        SmallPillButton("▶", SparkyColors.Green, Color.Black) { runStore.resume() }
-      } else {
-        SmallPillButton("⏸", SparkyColors.Amber, Color.Black) { runStore.pause() }
+        Text(
+          text = if (stepRemaining != null) formatDuration(stepRemaining!!) else formatDuration(elapsed),
+          style = if (compactHeight) {
+            MaterialTheme.typography.titleMedium
+          } else {
+            MaterialTheme.typography.titleLarge
+          },
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+              text = distDisplay,
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.SemiBold,
+              color = SparkyColors.Green
+            )
+            if (paceDisplay != null) {
+              Text(
+                text = paceDisplay,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+          if (heartRate != null) {
+            Text("♥ ${heartRate!!.toInt()} bpm", style = MaterialTheme.typography.labelSmall, color = SparkyColors.Rose)
+          }
+        }
+
+        // Always lay out active run controls in two rows with dedicated 48dp touch targets
+        // so Finish never shares or overlaps hit bounds with Pause/Resume, Lap, Skip, or Settings.
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+          if (hasMultiStep) {
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              FilledIconButton(
+                onClick = { if (isPaused) runStore.resume() else runStore.pause() },
+                shapes = IconButtonDefaults.animatedShapes(),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                  containerColor = if (isPaused) SparkyColors.Green else SparkyColors.Amber,
+                  contentColor = Color.Black
+                ),
+                modifier = Modifier.touchTargetAwareSize(34.dp)
+              ) {
+                Icon(
+                  imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                  contentDescription = stringResource(
+                    if (isPaused) R.string.recording_resume else R.string.recording_pause
+                  ),
+                  modifier = Modifier.size(18.dp)
+                )
+              }
+              FilledTonalIconButton(
+                onClick = { runStore.markLap() },
+                modifier = Modifier
+                  .touchTargetAwareSize(32.dp)
+                  .semantics { contentDescription = lapDescription }
+              ) {
+                if (lapCount > 0) {
+                  Text(
+                    "L$lapCount",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clearAndSetSemantics {}
+                  )
+                } else {
+                  Icon(Icons.Rounded.Flag, contentDescription = null, modifier = Modifier.size(15.dp))
+                }
+              }
+              FilledIconButton(
+                onClick = { runStore.finish() },
+                shapes = IconButtonDefaults.animatedShapes(),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                  containerColor = SparkyColors.Rose,
+                  contentColor = Color.White
+                ),
+                modifier = Modifier.touchTargetAwareSize(34.dp)
+              ) {
+                Icon(
+                  Icons.Rounded.Stop,
+                  contentDescription = stringResource(R.string.workout_finish_btn),
+                  modifier = Modifier.size(18.dp)
+                )
+              }
+            }
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              FilledTonalIconButton(
+                onClick = { runStore.skipStep() },
+                modifier = Modifier.touchTargetAwareSize(32.dp)
+              ) {
+                Icon(
+                  Icons.Rounded.SkipNext,
+                  contentDescription = stringResource(R.string.workout_new_tile_skip),
+                  modifier = Modifier.size(16.dp)
+                )
+              }
+              FilledTonalIconButton(
+                onClick = { showSettings = true },
+                modifier = Modifier.touchTargetAwareSize(32.dp)
+              ) {
+                Icon(
+                  Icons.Rounded.Settings,
+                  contentDescription = stringResource(R.string.run_settings_title),
+                  modifier = Modifier.size(16.dp)
+                )
+              }
+            }
+          } else {
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              FilledIconButton(
+                onClick = { if (isPaused) runStore.resume() else runStore.pause() },
+                shapes = IconButtonDefaults.animatedShapes(),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                  containerColor = if (isPaused) SparkyColors.Green else SparkyColors.Amber,
+                  contentColor = Color.Black
+                ),
+                modifier = Modifier.touchTargetAwareSize(36.dp)
+              ) {
+                Icon(
+                  imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                  contentDescription = stringResource(
+                    if (isPaused) R.string.recording_resume else R.string.recording_pause
+                  ),
+                  modifier = Modifier.size(18.dp)
+                )
+              }
+              FilledTonalIconButton(
+                onClick = { runStore.markLap() },
+                modifier = Modifier
+                  .touchTargetAwareSize(34.dp)
+                  .semantics { contentDescription = lapDescription }
+              ) {
+                if (lapCount > 0) {
+                  Text(
+                    "L$lapCount",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clearAndSetSemantics {}
+                  )
+                } else {
+                  Icon(Icons.Rounded.Flag, contentDescription = null, modifier = Modifier.size(15.dp))
+                }
+              }
+            }
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              FilledTonalIconButton(
+                onClick = { showSettings = true },
+                modifier = Modifier.touchTargetAwareSize(34.dp)
+              ) {
+                Icon(
+                  Icons.Rounded.Settings,
+                  contentDescription = stringResource(R.string.run_settings_title),
+                  modifier = Modifier.size(16.dp)
+                )
+              }
+              FilledIconButton(
+                onClick = { runStore.finish() },
+                shapes = IconButtonDefaults.animatedShapes(),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                  containerColor = SparkyColors.Rose,
+                  contentColor = Color.White
+                ),
+                modifier = Modifier.touchTargetAwareSize(36.dp)
+              ) {
+                Icon(
+                  Icons.Rounded.Stop,
+                  contentDescription = stringResource(R.string.workout_finish_btn),
+                  modifier = Modifier.size(18.dp)
+                )
+              }
+            }
+          }
+        }
       }
-      SmallPillButton(
-        label = if (lapCount > 0) "L$lapCount" else stringResource(R.string.recording_lap),
-        color = SparkyColors.CardBg,
-        textColor = Color.White
-      ) {
-        runStore.markLap()
-      }
-      if ((plan?.steps?.size ?: 0) > 1) {
-        SmallPillButton("⏭", SparkyColors.CardBg, Color.White) { runStore.skipStep() }
-      }
-      SmallPillButton("⚙", SparkyColors.CardBg, SparkyColors.Muted) { showSettings = true }
-      SmallPillButton("⏹", SparkyColors.Rose, Color.White) { runStore.finish() }
     }
   }
 }
@@ -1442,61 +2138,143 @@ private fun WatchRunSettingsSheet(
   onTestVoice: () -> Unit,
   onClose: () -> Unit
 ) {
-  val listState = rememberScalingLazyListState()
+  val columnState = rememberTransformingLazyColumnState()
+  val transformationSpec = rememberTransformationSpec()
   val onStr = stringResource(R.string.run_setting_on)
   val offStr = stringResource(R.string.run_setting_off)
 
-  ScalingLazyColumn(
-    state = listState,
-    autoCentering = null,
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    modifier = Modifier
-      .fillMaxSize()
-      .background(Color.Black)
-      .wearRotaryScroll(listState, isCurrentPage = true),
-    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 26.dp, bottom = 32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally
-  ) {
-    item {
-      Text(stringResource(R.string.run_settings_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
+  SparkyListScaffold(
+    columnState = columnState,
+    edgeButton = {
+      EdgeButton(
+        onClick = onClose,
+        buttonSize = EdgeButtonSize.Small,
+        modifier = Modifier.scrollable(
+          columnState,
+          orientation = Orientation.Vertical,
+          reverseDirection = true,
+          overscrollEffect = rememberOverscrollEffect()
+        )
+      ) {
+        Text(stringResource(R.string.common_done))
+      }
     }
-    item {
-      SmallPillButton(stringResource(R.string.common_done), SparkyColors.CardBg, Color.White, onClose)
-    }
-    item {
-      SmallPillButton(
-        label = stringResource(R.string.run_setting_auto_pause, if (settings.autoPause) onStr else offStr),
-        color = if (settings.autoPause) SparkyColors.Green.copy(alpha = 0.25f) else SparkyColors.CardBg,
-        textColor = if (settings.autoPause) SparkyColors.Green else Color.White,
-        onClick = onToggleAutoPause
-      )
-    }
-    item {
-      SmallPillButton(
-        label = stringResource(R.string.run_setting_voice_cues, if (settings.voiceCues) onStr else offStr),
-        color = if (settings.voiceCues) SparkyColors.Cyan.copy(alpha = 0.25f) else SparkyColors.CardBg,
-        textColor = if (settings.voiceCues) SparkyColors.Cyan else Color.White,
-        onClick = onToggleVoiceCues
-      )
-    }
-    item {
-      SmallPillButton(
-        label = stringResource(R.string.run_setting_pace_alerts, if (paceAlert) onStr else offStr),
-        color = if (paceAlert) SparkyColors.Amber.copy(alpha = 0.25f) else SparkyColors.CardBg,
-        textColor = if (paceAlert) SparkyColors.Amber else Color.White,
-        onClick = onTogglePaceAlert
-      )
-    }
-    item {
-      SmallPillButton(
-        label = stringResource(R.string.run_setting_hr_alerts, if (hrAlert) onStr else offStr),
-        color = if (hrAlert) SparkyColors.Rose.copy(alpha = 0.25f) else SparkyColors.CardBg,
-        textColor = if (hrAlert) SparkyColors.Rose else Color.White,
-        onClick = onToggleHrAlert
-      )
-    }
-    item {
-      SmallPillButton(stringResource(R.string.run_setting_test_voice), SparkyColors.CardBg, SparkyColors.Muted, onTestVoice)
+  ) { contentPadding ->
+    TransformingLazyColumn(
+      state = columnState,
+      contentPadding = contentPadding,
+      modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black),
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+      item {
+        ListHeader(
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(
+              ListHeaderDefaults.minimumTopListContentPadding,
+              ListHeaderDefaults.minimumBottomListContentPadding
+            )
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec)
+        ) {
+          SparkySectionHeader(
+            title = stringResource(R.string.run_settings_title),
+            icon = Icons.Rounded.Settings,
+            accent = SparkyColors.Cyan
+          )
+        }
+      }
+
+      @Composable
+      fun TransformingLazyColumnItemScope.SettingToggleRow(
+        label: String,
+        active: Boolean,
+        accent: Color,
+        onClick: () -> Unit,
+        modifier: Modifier
+      ) {
+        Button(
+          onClick = onClick,
+          modifier = modifier,
+          transformation = SurfaceTransformation(transformationSpec),
+          colors = ButtonDefaults.buttonColors(
+            containerColor = if (active) accent.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            iconColor = if (active) accent else MaterialTheme.colorScheme.onSurfaceVariant
+          ),
+          icon = {
+            Icon(
+              imageVector = if (active) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+              contentDescription = null,
+              modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+          },
+          label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        )
+      }
+
+      item {
+        SettingToggleRow(
+          label = stringResource(R.string.run_setting_auto_pause, if (settings.autoPause) onStr else offStr),
+          active = settings.autoPause,
+          accent = SparkyColors.Green,
+          onClick = onToggleAutoPause,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec)
+        )
+      }
+      item {
+        SettingToggleRow(
+          label = stringResource(R.string.run_setting_voice_cues, if (settings.voiceCues) onStr else offStr),
+          active = settings.voiceCues,
+          accent = SparkyColors.Cyan,
+          onClick = onToggleVoiceCues,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec)
+        )
+      }
+      item {
+        SettingToggleRow(
+          label = stringResource(R.string.run_setting_pace_alerts, if (paceAlert) onStr else offStr),
+          active = paceAlert,
+          accent = SparkyColors.Amber,
+          onClick = onTogglePaceAlert,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec)
+        )
+      }
+      item {
+        SettingToggleRow(
+          label = stringResource(R.string.run_setting_hr_alerts, if (hrAlert) onStr else offStr),
+          active = hrAlert,
+          accent = SparkyColors.Rose,
+          onClick = onToggleHrAlert,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec)
+        )
+      }
+      item {
+        FilledTonalButton(
+          onClick = onTestVoice,
+          modifier = Modifier
+            .fillMaxWidth()
+            .minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding)
+            .transformedHeight(this, transformationSpec),
+          transformation = SurfaceTransformation(transformationSpec),
+          icon = { Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null) },
+          label = { Text(stringResource(R.string.run_setting_test_voice), maxLines = 1) }
+        )
+      }
     }
   }
 }
@@ -1531,50 +2309,81 @@ private fun TreadmillDistanceView(
     return
   }
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .background(Color.Black)
-      .wearRotaryStepper(isCurrentPage = true) { steps ->
-        displayVal = max(0.01, ((displayVal + steps * 0.05) * 100.0).roundToInt() / 100.0)
-        Haptics.click()
-      }
-      .padding(12.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    Text(stringResource(R.string.run_treadmill_distance_title), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SparkyColors.Cyan)
-    Spacer(Modifier.height(4.dp))
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(8.dp)
+  ScreenScaffold { contentPadding ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black)
+        .wearRotaryStepper(isCurrentPage = true) { steps ->
+          displayVal = max(0.01, ((displayVal + steps * 0.05) * 100.0).roundToInt() / 100.0)
+          Haptics.click()
+        }
+        .padding(contentPadding)
+        .padding(horizontal = 12.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
     ) {
-      RoundStepperButton("−") {
-        displayVal = max(0.01, ((displayVal - 0.05) * 100.0).roundToInt() / 100.0)
-        Haptics.click()
-      }
-      Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { showKeypad = true }
+      Text(
+        text = stringResource(R.string.run_treadmill_distance_title),
+        style = MaterialTheme.typography.titleSmall,
+        color = SparkyColors.Cyan
+      )
+      Spacer(Modifier.height(4.dp))
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
-        Text(
-          text = String.format(Locale.US, "%.2f", displayVal),
-          fontSize = 22.sp,
-          fontWeight = FontWeight.Bold,
-          color = Color.White
+        FilledTonalIconButton(
+          onClick = {
+            displayVal = max(0.01, ((displayVal - 0.05) * 100.0).roundToInt() / 100.0)
+            Haptics.click()
+          },
+          modifier = Modifier.size(34.dp)
+        ) {
+          Icon(Icons.Rounded.Remove, contentDescription = stringResource(R.string.stepper_decrease_distance))
+        }
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable { showKeypad = true }
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+          Text(
+            text = formatWorkoutLocaleDecimal(displayVal, fractionDigits = 2),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Text(
+            text = unitLabel.uppercase(Locale.US),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+        FilledTonalIconButton(
+          onClick = {
+            displayVal = ((displayVal + 0.05) * 100.0).roundToInt() / 100.0
+            Haptics.click()
+          },
+          modifier = Modifier.size(34.dp)
+        ) {
+          Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.stepper_increase_distance))
+        }
+      }
+      Spacer(Modifier.height(8.dp))
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        CompactButton(
+          onClick = onSkip,
+          colors = ButtonDefaults.filledTonalButtonColors(),
+          label = { Text(stringResource(R.string.common_skip)) }
         )
-        Text(unitLabel.uppercase(), fontSize = 9.sp, color = SparkyColors.Muted)
-      }
-      RoundStepperButton("+") {
-        displayVal = ((displayVal + 0.05) * 100.0).roundToInt() / 100.0
-        Haptics.click()
-      }
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      SmallPillButton(stringResource(R.string.common_skip), SparkyColors.CardBg, SparkyColors.Muted, onSkip)
-      SmallPillButton(stringResource(R.string.common_save), SparkyColors.Green, Color.Black) {
-        onConfirm(displayVal * unitFactor)
+        CompactButton(
+          onClick = { onConfirm(displayVal * unitFactor) },
+          colors = ButtonDefaults.buttonColors(containerColor = SparkyColors.Green, contentColor = Color.Black),
+          label = { Text(stringResource(R.string.common_save)) }
+        )
       }
     }
   }

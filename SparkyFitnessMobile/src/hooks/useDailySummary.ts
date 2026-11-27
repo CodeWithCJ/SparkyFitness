@@ -29,6 +29,7 @@ export function useDailySummary({
 
   return {
     summary: query.data,
+    dataUpdatedAt: query.dataUpdatedAt,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

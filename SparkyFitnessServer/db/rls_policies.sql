@@ -71,6 +71,9 @@ BEGIN
     'food_assistant_preferences',
     'food_assistant_tasks',
     'food_assistant_operations',
+    'coach_profile',
+    'user_coaches',
+    'coach_nudges',
     'admin_activity_logs',
     'api_key',
     'jwks',
@@ -664,6 +667,9 @@ SELECT create_owner_policy('sparky_chat_history');
 SELECT create_owner_policy('food_assistant_preferences');
 SELECT create_owner_policy('food_assistant_tasks');
 SELECT create_owner_policy('food_assistant_operations');
+SELECT create_owner_policy('coach_profile');
+SELECT create_owner_policy('user_coaches');
+SELECT create_owner_policy('coach_nudges');
 
 -- Profiles: delegates can read (with any meaningful permission) but only owner can write.
 -- Delegates do not need to modify another user's profile to manage their diary.

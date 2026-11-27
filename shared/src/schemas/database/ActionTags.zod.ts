@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 export const actionTagsIdSchema = z.string();
 
+export const dbActionTagPresetAmountsSchema = z
+  .array(z.number().positive().max(10000))
+  .max(8)
+  .nullable();
+
 export const actionTagsSchema = z.object({
   id: actionTagsIdSchema,
   user_id: z.string(),
@@ -9,6 +14,10 @@ export const actionTagsSchema = z.object({
   label: z.string(),
   action: z.record(z.string(), z.unknown()),
   ask_before_running: z.boolean(),
+  allow_amount_adjustment: z.boolean(),
+  allow_custom_timestamp: z.boolean(),
+  tap_to_log: z.boolean(),
+  preset_amounts: dbActionTagPresetAmountsSchema,
   last_run_at: z.coerce.date().nullable(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
@@ -23,6 +32,10 @@ export const actionTagsInitializerSchema = z.object({
   label: z.string(),
   action: z.record(z.string(), z.unknown()),
   ask_before_running: z.boolean().optional().default(false),
+  allow_amount_adjustment: z.boolean().optional().default(false),
+  allow_custom_timestamp: z.boolean().optional().default(false),
+  tap_to_log: z.boolean().optional().default(false),
+  preset_amounts: dbActionTagPresetAmountsSchema.optional().default(null),
   last_run_at: z.coerce.date().optional().nullable(),
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
