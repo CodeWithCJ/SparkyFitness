@@ -42,6 +42,7 @@ type DeferredEndEntry = {
   payload: WatchFastEndRequestPayload;
   blockedByStartIds: Set<string>;
   remainingOriginalStartIds: Set<string>;
+  confirmedFastIds: Set<string>;
   hasConfirmedOriginalStart: boolean;
   supersededByStartPrune: boolean;
 };
@@ -199,14 +200,23 @@ export function useWatchFastingBridge(enabled: boolean): void {
       ownerKey: string,
       expectedOwnerId: string | undefined,
       newerStartedAt: number,
-      excludeClientId?: string
+      excludeClientIds?: string | readonly string[]
     ): boolean => {
       if (!Number.isFinite(newerStartedAt) || newerStartedAt <= 0) return false;
       const map = retryingStartsByOwnerRef.current.get(ownerKey);
       if (!map) return false;
+      const excluded = new Set(
+        excludeClientIds == null
+          ? []
+          : typeof excludeClientIds === 'string'
+            ? excludeClientIds
+              ? [excludeClientIds]
+              : []
+            : excludeClientIds.filter(Boolean)
+      );
       const prunedStartIds: string[] = [];
       for (const [cid, entry] of map.entries()) {
-        if (excludeClientId && cid === excludeClientId) continue;
+        if (excluded.has(cid)) continue;
         const entryTime = entry.startedAt ?? entry.recordedAt;
         if (entryTime < newerStartedAt - 1_000) {
           map.delete(cid);
@@ -226,17 +236,25 @@ export function useWatchFastingBridge(enabled: boolean): void {
             const dependedOnPruned = prunedStartIds.some((id) =>
               deferred.blockedByStartIds.has(id)
             );
-            const dependedOnSurvivor =
-              excludeClientId != null &&
-              deferred.blockedByStartIds.has(excludeClientId);
+            const dependedOnSurvivor = [...excluded].some((id) =>
+              deferred.blockedByStartIds.has(id)
+            );
+            let removedOriginal = false;
             for (const id of prunedStartIds) {
               deferred.blockedByStartIds.delete(id);
-              deferred.remainingOriginalStartIds.delete(id);
+              if (deferred.remainingOriginalStartIds.delete(id)) {
+                removedOriginal = true;
+              }
             }
+            const retiredLastOriginal =
+              removedOriginal &&
+              deferred.remainingOriginalStartIds.size === 0 &&
+              !deferred.hasConfirmedOriginalStart;
             if (
-              dependedOnPruned &&
-              !dependedOnSurvivor &&
-              deferred.blockedByStartIds.size === 0 &&
+              ((dependedOnPruned &&
+                !dependedOnSurvivor &&
+                deferred.blockedByStartIds.size === 0) ||
+                retiredLastOriginal) &&
               isStartlessEnd(deferred.payload)
             ) {
               deferred.supersededByStartPrune = true;
@@ -316,6 +334,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
           payload,
           blockedByStartIds: new Set(blockingStartIds),
           remainingOriginalStartIds: new Set(blockingStartIds),
+          confirmedFastIds: new Set<string>(),
           hasConfirmedOriginalStart: false,
           supersededByStartPrune: false,
         },
@@ -337,7 +356,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
 
     const executeEnd = async (
       resolvedOwner: string,
-      payload: WatchFastEndRequestPayload
+      payload: WatchFastEndRequestPayload,
+      allowedFastIds?: ReadonlySet<string>
     ) => {
       const expectedOwnerId = resolvedOwner || undefined;
       if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
@@ -387,13 +407,15 @@ export function useWatchFastingBridge(enabled: boolean): void {
           const staleReplay =
             requestedFastId !== ''
               ? current.id !== requestedFastId
-              : hasStartedAt
-                ? !Number.isFinite(serverStartedAt) ||
-                  Math.abs(serverStartedAt - requestedStartedAt) > 1_000 ||
-                  (hasEndedAt && serverStartedAt > requestedEndedAt)
-                : hasEndedAt &&
-                  (!Number.isFinite(serverStartedAt) ||
-                    serverStartedAt > requestedEndedAt);
+              : allowedFastIds && allowedFastIds.size > 0
+                ? !allowedFastIds.has(current.id)
+                : hasStartedAt
+                  ? !Number.isFinite(serverStartedAt) ||
+                    Math.abs(serverStartedAt - requestedStartedAt) > 1_000 ||
+                    (hasEndedAt && serverStartedAt > requestedEndedAt)
+                  : hasEndedAt &&
+                    (!Number.isFinite(serverStartedAt) ||
+                      serverStartedAt > requestedEndedAt);
           if (staleReplay) {
             ackFast = toWatchFast(current) ?? null;
           } else {
@@ -502,7 +524,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
       ownerKey: string,
       startOutcome:
         'confirmed' | 'rejected' | 'terminal' | 'superseded' = 'confirmed',
-      settledStartClientIds?: string | readonly string[]
+      settledStartClientIds?: string | readonly string[],
+      confirmedFastId?: string
     ) => {
       const pending = deferredEndsByOwnerRef.current.get(ownerKey);
       if (!pending || pending.length === 0) return;
@@ -514,6 +537,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
               ? [settledStartClientIds]
               : []
             : settledStartClientIds.filter(Boolean);
+      const cleanConfirmedFastId = confirmedFastId?.trim() ?? '';
       const unblocked: DeferredEndEntry[] = [];
       const stillBlocked: DeferredEndEntry[] = [];
       for (const deferred of pending) {
@@ -527,6 +551,9 @@ export function useWatchFastingBridge(enabled: boolean): void {
           if (removedOriginal) {
             if (startOutcome === 'confirmed') {
               deferred.hasConfirmedOriginalStart = true;
+              if (cleanConfirmedFastId !== '') {
+                deferred.confirmedFastIds.add(cleanConfirmedFastId);
+              }
             } else if (
               deferred.remainingOriginalStartIds.size === 0 &&
               !deferred.hasConfirmedOriginalStart &&
@@ -590,7 +617,13 @@ export function useWatchFastingBridge(enabled: boolean): void {
             );
           }
         } else {
-          await executeEnd(ownerKey, deferred.payload);
+          await executeEnd(
+            ownerKey,
+            deferred.payload,
+            deferred.confirmedFastIds.size > 0
+              ? deferred.confirmedFastIds
+              : undefined
+          );
         }
       }
     };
@@ -750,7 +783,14 @@ export function useWatchFastingBridge(enabled: boolean): void {
             );
           }
         }
-        await drainDeferredEnds(resolvedOwner, startOutcome, payload.clientId);
+        await drainDeferredEnds(
+          resolvedOwner,
+          startOutcome,
+          payload.clientId,
+          startOutcome === 'confirmed'
+            ? (ackWatchFast?.id ?? undefined)
+            : undefined
+        );
       } catch (error) {
         addLog(`[Watch] Fast start failed: ${String(error)}`, 'WARNING');
         if (isPermanentWatchClientRejection(error)) {
@@ -828,13 +868,67 @@ export function useWatchFastingBridge(enabled: boolean): void {
           }
           const syncedClientId = payload.clientId?.trim() ?? '';
           if (syncedClientId !== '') {
-            recordSettled(`${resolvedOwner}:${syncedClientId}`, true);
             const matchingRetrying = retryingStartsByOwnerRef.current
               .get(resolvedOwner)
               ?.get(syncedClientId);
-            if (matchingRetrying) {
+            if (!matchingRetrying) {
+              recordSettled(`${resolvedOwner}:${syncedClientId}`, true);
+            } else {
+              const explicitOutcome = payload.fastStartOutcome;
+              let resolvedOutcome: 'confirmed' | 'terminal' | 'superseded' =
+                explicitOutcome ?? 'confirmed';
+              let verifiedFastId: string | undefined;
+              if (explicitOutcome === undefined) {
+                const pendingEnds =
+                  deferredEndsByOwnerRef.current.get(resolvedOwner) ?? [];
+                const hasGuardedStartlessEnd = pendingEnds.some(
+                  (deferred) =>
+                    isStartlessEnd(deferred.payload) &&
+                    (deferred.blockedByStartIds.has(syncedClientId) ||
+                      deferred.remainingOriginalStartIds.has(syncedClientId))
+                );
+                if (hasGuardedStartlessEnd) {
+                  try {
+                    const readConfig =
+                      await resolveWatchServerConfig(expectedOwnerId);
+                    if (!readConfig) return;
+                    const current = await fetchCurrentFast(readConfig);
+                    if (
+                      !(await isPayloadForActiveServer({
+                        ownerId: expectedOwnerId,
+                      }))
+                    ) {
+                      return;
+                    }
+                    const isMatchingCurrent =
+                      current != null &&
+                      !current.is_auto_calculated &&
+                      !current.is_eating_window &&
+                      !isTerminalFast(current) &&
+                      isMatchingFastForStart(current, {
+                        clientId: syncedClientId,
+                        presetId: '',
+                        startedAt: matchingRetrying.startedAt ?? undefined,
+                      });
+                    resolvedOutcome = isMatchingCurrent
+                      ? 'confirmed'
+                      : 'superseded';
+                    if (isMatchingCurrent && current.id) {
+                      verifiedFastId = current.id;
+                    }
+                  } catch {
+                    // Leave the retrying start unsettled and deferred startless
+                    // end intact until server state can be confirmed.
+                    return;
+                  }
+                }
+              }
+              recordSettled(`${resolvedOwner}:${syncedClientId}`, true);
               clearRetryingStart(resolvedOwner, syncedClientId);
-              if (matchingRetrying.startedAt != null) {
+              if (
+                resolvedOutcome === 'confirmed' &&
+                matchingRetrying.startedAt != null
+              ) {
                 pruneOlderRetryingStarts(
                   resolvedOwner,
                   expectedOwnerId,
@@ -844,8 +938,9 @@ export function useWatchFastingBridge(enabled: boolean): void {
               }
               await drainDeferredEnds(
                 resolvedOwner,
-                'confirmed',
-                syncedClientId
+                resolvedOutcome,
+                syncedClientId,
+                verifiedFastId
               );
               return;
             }
@@ -863,7 +958,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
             if (
               current &&
               !current.is_auto_calculated &&
-              !current.is_eating_window
+              !current.is_eating_window &&
+              !isTerminalFast(current)
             ) {
               const serverStartedAt = new Date(current.start_time).getTime();
               const retryingMap =
@@ -873,29 +969,49 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 if (syncedClientId === '') {
                   for (const [cid, entry] of retryingMap.entries()) {
                     if (
-                      entry.startedAt != null &&
-                      Math.abs(serverStartedAt - entry.startedAt) <= 1_000
+                      isMatchingFastForStart(current, {
+                        clientId: cid,
+                        presetId: '',
+                        startedAt: entry.startedAt ?? undefined,
+                      })
                     ) {
                       matchedClientIds.push(cid);
+                    }
+                  }
+                }
+                const matchedFastId = current.id?.trim() ?? '';
+                if (matchedClientIds.length > 0) {
+                  for (const cid of matchedClientIds) {
+                    recordSettled(`${resolvedOwner}:${cid}`, true);
+                    clearRetryingStart(resolvedOwner, cid);
+                  }
+                  const deferredList =
+                    deferredEndsByOwnerRef.current.get(resolvedOwner);
+                  if (deferredList) {
+                    for (const deferred of deferredList) {
+                      for (const cid of matchedClientIds) {
+                        if (deferred.remainingOriginalStartIds.delete(cid)) {
+                          deferred.hasConfirmedOriginalStart = true;
+                          if (matchedFastId !== '') {
+                            deferred.confirmedFastIds.add(matchedFastId);
+                          }
+                        }
+                      }
                     }
                   }
                 }
                 const prunedOlder = pruneOlderRetryingStarts(
                   resolvedOwner,
                   expectedOwnerId,
-                  serverStartedAt
+                  serverStartedAt,
+                  matchedClientIds
                 );
-                if (matchedClientIds.length > 0) {
-                  for (const cid of matchedClientIds) {
-                    recordSettled(`${resolvedOwner}:${cid}`, true);
-                    clearRetryingStart(resolvedOwner, cid);
-                  }
-                }
                 if (matchedClientIds.length > 0 || prunedOlder) {
                   await drainDeferredEnds(
                     resolvedOwner,
                     'confirmed',
-                    matchedClientIds
+                    matchedClientIds,
+                    matchedFastId || undefined
                   );
                 }
               }

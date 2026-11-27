@@ -889,6 +889,7 @@ describe('useWatchFastingBridge', () => {
       domain: 'fasting',
       ownerId: 'srv-1',
       clientId: 'retrying-start-a',
+      fastStartOutcome: 'confirmed',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-matching-a', true)
@@ -911,6 +912,7 @@ describe('useWatchFastingBridge', () => {
       domain: 'fasting',
       ownerId: 'srv-1',
       clientId: 'retrying-start-b',
+      fastStartOutcome: 'confirmed',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-bare', true)
@@ -1269,6 +1271,7 @@ describe('useWatchFastingBridge', () => {
       domain: 'fasting',
       ownerId: 'srv-1',
       clientId: 'retrying-later-start',
+      fastStartOutcome: 'confirmed',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-no-timestamps', true)
@@ -2842,6 +2845,387 @@ describe('useWatchFastingBridge', () => {
       expect(endFast).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'fast-confirmed-a' })
       );
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
+
+  it('retires deferred startless end when pruning removes its last unconfirmed original Start A even if Start B was added via End replay', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const startAClientId = '16161616-1616-4161-8161-161616161616';
+      const startBClientId = '17171717-1717-4171-8171-171717171717';
+      const startCClientId = '18181818-1818-4181-8181-181818181818';
+      const endClientId = '19191919-1919-4191-8191-191919191919';
+      const startAMs = Date.parse('2026-11-25T08:00:00.000Z');
+      const startCMs = Date.parse('2026-11-25T10:00:00.000Z');
+      const startBMs = Date.parse('2026-11-25T11:00:00.000Z');
+      const fastC = {
+        id: 'fast-c-pruner',
+        client_id: startCClientId,
+        start_time: new Date(startCMs).toISOString(),
+        end_time: null,
+        target_end_time: new Date(startCMs + 16 * 3_600_000).toISOString(),
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      const fastB = {
+        id: 'fast-b-later',
+        client_id: startBClientId,
+        start_time: new Date(startBMs).toISOString(),
+        end_time: null,
+        target_end_time: new Date(startBMs + 16 * 3_600_000).toISOString(),
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline A')) // Start A attempt 1
+        .mockRejectedValueOnce(new Error('offline B')) // Start B attempt 1
+        .mockResolvedValueOnce(null) // Start C /current
+        .mockResolvedValueOnce(fastC) // Retired End replaySettledAck /current
+        .mockResolvedValueOnce(null); // Start B attempt 2 /current
+      (startFast as jest.Mock)
+        .mockResolvedValueOnce(fastC)
+        .mockResolvedValueOnce(fastB);
+
+      renderHook(() => useWatchFastingBridge(true));
+      // 1. Start A fails -> retrying = {A}.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startAClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startAMs,
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(1));
+
+      // 2. Startless End arrives -> original starts = {A}.
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      // 3. Newer Start B (11:00) fails -> retrying = {A, B}; replay of End adds B to blockedByStartIds only.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startBClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startBMs,
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(2));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      // 4. Start C (10:00) commits -> prunes A (08:00) but NOT B (11:00). Because A was End's last unconfirmed original start, End retires now!
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startCClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startCMs,
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-c-pruner' })
+        )
+      );
+
+      // 5. Start B later confirms active -> endFast must NEVER be called on B.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startBClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startBMs,
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          startBClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-b-later' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
+
+  it('retires deferred startless end on native terminal sync and verifies /current when fastStartOutcome is omitted', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const startAClientId = '20202020-2020-4202-8202-202020202020';
+      const endAClientId = '21212121-2121-4212-8212-212121212121';
+      const startBClientId = '22222222-2222-4222-8222-222222222223';
+      const endBClientId = '23232323-2323-4232-8232-232323232323';
+      const startAMs = Date.parse('2026-11-25T08:00:00.000Z');
+      const startBMs = Date.parse('2026-11-25T09:00:00.000Z');
+      const unrelatedFast = {
+        id: 'fast-unrelated-current',
+        client_id: '24242424-2424-4242-8242-242424242424',
+        start_time: '2026-11-25T14:00:00.000Z',
+        end_time: null,
+        target_end_time: '2026-11-26T06:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline A')) // Start A fails
+        .mockResolvedValueOnce(unrelatedFast) // Retired End A replaySettledAck
+        .mockRejectedValueOnce(new Error('offline B')) // Start B fails
+        .mockResolvedValueOnce(unrelatedFast) // Omitted-outcome sync verifies /current (mismatch)
+        .mockResolvedValueOnce(unrelatedFast); // Retired End B replaySettledAck
+
+      renderHook(() => useWatchFastingBridge(true));
+      // Part 1: Explicit fastStartOutcome: 'terminal' retires deferred bare End without calling endFast on unrelatedFast.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startAClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startAMs,
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(1));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endAClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+        clientId: startAClientId,
+        fastStartOutcome: 'terminal',
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endAClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-unrelated-current' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+
+      // Part 2: Native sync omitting fastStartOutcome checks /current; mismatch retires deferred bare End without calling endFast.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startBClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: startBMs,
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(2));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endBClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+        clientId: startBClientId,
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endBClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-unrelated-current' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
+
+  it('keeps retrying Start unsettled when omitted-outcome sync verification fails and protects ID-matched Start without startedAt from pruning', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const startAClientId = '25252525-2525-4252-8252-252525252525';
+      const endAClientId = '26262626-2626-4262-8262-262626262626';
+      const startBClientId = '27272727-2727-4272-8272-272727272727';
+      const endBClientId = '28282828-2828-4282-8282-282828282828';
+      const fastA = {
+        id: 'fast-verify-retry-a',
+        client_id: startAClientId,
+        start_time: '2026-11-25T08:00:00.000Z',
+        end_time: null,
+        target_end_time: '2026-11-26T00:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      // Delayed native sync created Fast B far in the future relative to recordedAt.
+      const futureStartIso = new Date(Date.now() + 2 * 3_600_000).toISOString();
+      const fastB = {
+        id: 'fast-id-matched-no-startedat',
+        client_id: startBClientId,
+        start_time: futureStartIso,
+        end_time: null,
+        target_end_time: new Date(Date.now() + 18 * 3_600_000).toISOString(),
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline A')) // Start A attempt 1
+        .mockRejectedValueOnce(new Error('verify failed')) // omitted-outcome sync verify fails
+        .mockResolvedValueOnce(fastA) // Start A retry succeeds against matching fastA
+        .mockResolvedValueOnce(fastA) // Deferred End A drains and ends fastA
+        .mockRejectedValueOnce(new Error('offline B')) // Start B (no startedAt) attempt 1
+        .mockResolvedValueOnce(fastB) // ID-less sync sees matching client_id fastB
+        .mockResolvedValueOnce(fastB); // Deferred End B drains and ends fastB
+      (endFast as jest.Mock).mockResolvedValue({});
+
+      renderHook(() => useWatchFastingBridge(true));
+      // Part 1: Verification fetch fails on omitted-outcome sync -> Start A stays unsettled so retry drains End A.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startAClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(1));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endAClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+        clientId: startAClientId,
+      });
+      await waitFor(() => expect(fetchCurrentFast).toHaveBeenCalledTimes(2));
+      expect(endFast).not.toHaveBeenCalled();
+
+      // Watch retries Start A -> NOT trapped in replaySettledAck; executes, confirms fastA, and drains End A.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startAClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endAClientId,
+          true,
+          true,
+          null
+        )
+      );
+      expect(endFast).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'fast-verify-retry-a' })
+      );
+
+      // Part 2: Start B has no startedAt (uses recordedAt); ID-less sync matches by client_id with later server start_time -> NOT pruned, drains End B.
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startBClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(2));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endBClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endBClientId,
+          true,
+          true,
+          null
+        )
+      );
+      expect(endFast).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'fast-id-matched-no-startedat' })
+      );
+
+      // Part 3: When a replacement Fast C becomes current before executeEnd runs, the bound confirmedFastId prevents ending C.
+      const startCClientId = '29292929-2929-4292-8292-292929292929';
+      const endCClientId = '30303030-3030-4303-8303-303030303030';
+      const fastCOrig = {
+        id: 'fast-orig-c',
+        client_id: startCClientId,
+        start_time: futureStartIso,
+        end_time: null,
+        target_end_time: new Date(Date.now() + 18 * 3_600_000).toISOString(),
+        fasting_type: '16:8 Leangains',
+        status: 'ACTIVE',
+      };
+      const fastCReplacement = {
+        id: 'fast-replacement-after-match',
+        client_id: '31313131-3131-4313-8313-313131313131',
+        start_time: new Date(Date.now() + 3 * 3_600_000).toISOString(),
+        end_time: null,
+        target_end_time: new Date(Date.now() + 19 * 3_600_000).toISOString(),
+        fasting_type: '18:6 Warrior',
+        status: 'ACTIVE',
+      };
+      (endFast as jest.Mock).mockClear();
+      (fetchCurrentFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline C')) // Start C attempt 1
+        .mockResolvedValueOnce(fastCOrig) // ID-less sync confirms fast-orig-c & binds confirmedFastIds
+        .mockResolvedValueOnce(fastCReplacement); // executeEnd sees replacement fast -> MUST reject as staleReplay
+
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startCClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(3));
+
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endCClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endCClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-replacement-after-match' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
     } finally {
       delete watchMock.sendFastAck;
     }

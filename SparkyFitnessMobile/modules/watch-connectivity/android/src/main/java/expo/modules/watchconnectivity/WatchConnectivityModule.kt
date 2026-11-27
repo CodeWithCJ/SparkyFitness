@@ -4093,6 +4093,30 @@ internal object WatchConnectivityHub {
     val confirmedFastJson: JSONObject?
     var replayRefreshFailed = false
     var endedReplayFastId: String? = null
+    var startSyncOutcome: String? = "confirmed"
+    val isMatchingFastJsonForStart: (JSONObject, String, Long?) -> Boolean = { fastObj, cid, reqStartMs ->
+      val cleanCid = cid.trim()
+      val isUuidCid = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        .matches(cleanCid)
+      if (fastObj.has("client_id")) {
+        val rowCid = if (!fastObj.isNull("client_id")) fastObj.optString("client_id", "").trim() else ""
+        if (cleanCid.isNotEmpty() && isUuidCid) {
+          rowCid.isNotEmpty() && rowCid.equals(cleanCid, ignoreCase = true)
+        } else if (rowCid.isNotEmpty()) {
+          cleanCid.isNotEmpty() && rowCid.equals(cleanCid, ignoreCase = true)
+        } else if (reqStartMs != null && reqStartMs > 0L) {
+          val sMs = fastObj.optString("start_time", "").trim().takeIf { it.isNotEmpty() }?.let { parseIsoMillis(it) }
+          sMs != null && kotlin.math.abs(sMs - reqStartMs) <= 1_000L
+        } else {
+          false
+        }
+      } else if (reqStartMs != null && reqStartMs > 0L) {
+        val sMs = fastObj.optString("start_time", "").trim().takeIf { it.isNotEmpty() }?.let { parseIsoMillis(it) }
+        sMs != null && kotlin.math.abs(sMs - reqStartMs) <= 1_000L
+      } else {
+        false
+      }
+    }
     if (existingManualFast == null) {
       val startMs = requestedStartedAt?.takeIf { it > 0L } ?: System.currentTimeMillis()
       val targetMs = startMs + (hours * 3_600_000.0).toLong()
@@ -4127,6 +4151,9 @@ internal object WatchConnectivityHub {
         null
       }
       val isAlreadyEnded = createdObj != null && isTerminalFastJson(createdObj)
+      if (isAlreadyEnded) {
+        startSyncOutcome = "terminal"
+      }
       if (isAlreadyEnded && createdObj != null && createdObj.has("id") && !createdObj.isNull("id")) {
         endedReplayFastId = createdObj.optString("id", "").trim().takeIf { it.isNotEmpty() }
       }
@@ -4144,6 +4171,7 @@ internal object WatchConnectivityHub {
         val latestTrimmed = latestBody?.trim()
         if (latestStatus in 200..299 && !latestTrimmed.isNullOrEmpty()) {
           if (latestTrimmed == "null") {
+            if (!isAlreadyEnded) startSyncOutcome = "terminal"
             null
           } else {
             try {
@@ -4155,15 +4183,24 @@ internal object WatchConnectivityHub {
                 !isTerminalFastJson(latestObj)
               ) {
                 replayRefreshFailed = true
+                if (!isAlreadyEnded) startSyncOutcome = null
+              } else if (!isAlreadyEnded) {
+                startSyncOutcome = when {
+                  parsedLatest == null -> "terminal"
+                  isMatchingFastJsonForStart(latestObj, clientId, startMs) -> "confirmed"
+                  else -> "superseded"
+                }
               }
               parsedLatest
             } catch (_: Throwable) {
               replayRefreshFailed = true
+              if (!isAlreadyEnded) startSyncOutcome = null
               null
             }
           }
         } else {
           replayRefreshFailed = true
+          if (!isAlreadyEnded) startSyncOutcome = null
           null
         }
       } else {
@@ -4178,6 +4215,9 @@ internal object WatchConnectivityHub {
       ) {
         if (rawJson != null) enqueueInboundJson(context, rawJson)
         return
+      }
+      if (parsedExisting == null || !isMatchingFastJsonForStart(existingManualFast, clientId, requestedStartedAt)) {
+        startSyncOutcome = "superseded"
       }
       confirmedFastJson = parsedExisting
     }
@@ -4225,6 +4265,7 @@ internal object WatchConnectivityHub {
     if (!isHeadlessOwnerStillActive(context, creds)) return
     val startSyncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to payloadOwner)
     if (clientId.isNotEmpty()) startSyncEvent["clientId"] = clientId
+    if (startSyncOutcome != null) startSyncEvent["fastStartOutcome"] = startSyncOutcome
     activeModule?.emitEvent("onWatchServerSynced", startSyncEvent)
     drainQueuedFastEndsForOwner(context, payloadOwner)
     if (fastAckSent) {
@@ -5106,6 +5147,7 @@ internal object WatchConnectivityHub {
                             clearInFlightForegroundFastStart(clientId, ownerId)
                             val syncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to ownerId)
                             if (clientId.isNotEmpty()) syncEvent["clientId"] = clientId
+                            if (freshFast == null) syncEvent["fastStartOutcome"] = "terminal"
                             activeModule?.emitEvent("onWatchServerSynced", syncEvent)
                             drainQueuedFastEndsForOwner(appCtx, ownerId)
                           } else {
@@ -5351,6 +5393,10 @@ internal object WatchConnectivityHub {
         val event = mutableMapOf<String, Any?>("domain" to domain, "ownerId" to ownerId)
         if (entryDate != null) event["entryDate"] = entryDate
         if (clientId != null) event["clientId"] = clientId
+        val fastStartOutcome = (payload["fastStartOutcome"] as? String)?.trim()?.takeIf {
+          it == "confirmed" || it == "terminal" || it == "superseded"
+        }
+        if (fastStartOutcome != null) event["fastStartOutcome"] = fastStartOutcome
         mod?.emitEvent("onWatchServerSynced", event)
       }
       "checkIn" -> {

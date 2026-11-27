@@ -7248,6 +7248,7 @@ class WearOsParityTest {
         val appliedNull = outcomeNull as DirectWriteOutcome.Applied
         assertNull(appliedNull.fast)
         assertTrue(appliedNull.fastUpdated)
+        assertEquals("terminal", appliedNull.fastStartOutcome)
 
         // Unreadable 2xx start body also queries /api/fasting/current instead of fabricating a timer
         val outcomeUnreadable = WearDirectApiClient.resolveFastStartOutcome(
@@ -7258,6 +7259,27 @@ class WearOsParityTest {
         val appliedUnreadable = outcomeUnreadable as DirectWriteOutcome.Applied
         assertNull(appliedUnreadable.fast)
         assertTrue(appliedUnreadable.fastUpdated)
+        assertEquals("terminal", appliedUnreadable.fastStartOutcome)
+
+        // Unreadable 2xx start body that re-fetches an unrelated active fast reports superseded
+        val outcomeSuperseded = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = null,
+            clientId = validUuid,
+            requestedStartedAtMs = 1_700_000_000_000L,
+            fetchLatestCurrent = { activeWithEndTimeJson }
+        )
+        assertTrue(outcomeSuperseded is DirectWriteOutcome.Applied)
+        assertEquals("superseded", (outcomeSuperseded as DirectWriteOutcome.Applied).fastStartOutcome)
+
+        // Direct sync notice forwards fastStartOutcome when present
+        val terminalNotice = WearSessionManager.buildDirectSyncNotice(
+            domain = "fasting",
+            ownerId = "srv-1",
+            entryDate = null,
+            clientId = validUuid,
+            fastStartOutcome = "terminal"
+        )
+        assertEquals("terminal", terminalNotice.getString("fastStartOutcome"))
 
         // Transient failure or invalid JSON on re-fetch falls back so the idempotent clientId stays persisted and retries
         val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(

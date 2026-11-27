@@ -347,7 +347,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
                       domain = direct.syncedDomain,
                       ownerId = payloadOwner,
                       entryDate = syncEntryDate,
-                      clientId = clientId
+                      clientId = clientId,
+                      fastStartOutcome = direct.fastStartOutcome
                     )
                     val sentLive = sendLiveMessage(syncNotice)
                     if (!sentLive && checkInStore.currentAccountGeneration() == opGen) {
@@ -371,7 +372,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
                       domain = direct.syncedDomain,
                       ownerId = payloadOwner,
                       entryDate = syncEntryDate,
-                      clientId = clientId
+                      clientId = clientId,
+                      fastStartOutcome = direct.fastStartOutcome
                     )
                     val sentLive = sendLiveMessage(syncNotice)
                     if (!sentLive && checkInStore.currentAccountGeneration() == opGen) {
@@ -2065,7 +2067,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
       domain: String,
       ownerId: String,
       entryDate: String?,
-      clientId: String
+      clientId: String,
+      fastStartOutcome: String? = null
     ): JSONObject = JSONObject()
       .put("type", "watchDirectSynced")
       .put("domain", domain)
@@ -2073,6 +2076,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
       .apply {
         if (!entryDate.isNullOrEmpty()) put("entryDate", entryDate)
         if (clientId.isNotEmpty()) put("clientId", clientId)
+        if (!fastStartOutcome.isNullOrEmpty()) put("fastStartOutcome", fastStartOutcome)
       }
 
     internal fun shouldApplyLiveRefresh(
