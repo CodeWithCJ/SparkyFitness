@@ -2262,11 +2262,11 @@ async function getWaterIntakeLogByDate(
   try {
     const result = await client.query(
       source
-        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
+        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor, client_id
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2 AND source = $3
            ORDER BY logged_at DESC`
-        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
+        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor, client_id
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2
            ORDER BY logged_at DESC`,

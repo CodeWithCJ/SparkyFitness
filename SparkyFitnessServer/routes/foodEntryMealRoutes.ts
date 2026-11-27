@@ -737,7 +737,10 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
     const requestedOrder = parseImageOrder(req.body?.images);
     if (uploadedPaths.length === 0 && requestedOrder === undefined) {
       // Nothing to apply; drop the files we already moved out of staging.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       return res.status(400).json({ error: 'An image file is required.' });
     }
     const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
@@ -752,17 +755,26 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
     } catch (persistError) {
       // The files are already out of staging, so cleanupStagedImages can no
       // longer reach them; remove them here or they leak permanently.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       throw persistError;
     }
     if (!updated) {
       // Concurrent delete, or the row is no longer the caller's.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       return res.status(404).json({ error: 'FoodEntryMeal not found.' });
     }
 
     // Drop files the client dropped so replacements don't accumulate on disk.
-    await removeOrphanedImages(existing.images, nextImages);
+    await removeOrphanedImages(existing.images, nextImages, {
+      domain: 'food_entry_meals',
+      entityId: id,
+    });
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {
@@ -806,7 +818,10 @@ router.delete('/:id/image', async (req, res, next) => {
       req.userId,
       []
     );
-    await removeOrphanedImages(existing.images, []);
+    await removeOrphanedImages(existing.images, [], {
+      domain: 'food_entry_meals',
+      entityId: id,
+    });
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {

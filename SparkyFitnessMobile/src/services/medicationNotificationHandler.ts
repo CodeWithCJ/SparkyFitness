@@ -264,12 +264,21 @@ async function removePendingAction(record: {
   });
 }
 
-async function readSnoozedReminders(): Promise<
-  SnoozedMedicationReminderRecord[]
+/**
+ * The stored records, or null when the store could not be read. Unreadable
+ * contents count as none, as they always have: the next write replaces them.
+ */
+async function tryReadSnoozedReminders(): Promise<
+  SnoozedMedicationReminderRecord[] | null
 > {
+  let raw: string | null;
   try {
-    const raw = await AsyncStorage.getItem(SNOOZED_MEDICATION_REMINDERS_KEY);
-    if (!raw) return [];
+    raw = await AsyncStorage.getItem(SNOOZED_MEDICATION_REMINDERS_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return [];
+  try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed)
       ? (parsed as SnoozedMedicationReminderRecord[])
@@ -277,6 +286,12 @@ async function readSnoozedReminders(): Promise<
   } catch {
     return [];
   }
+}
+
+async function readSnoozedReminders(): Promise<
+  SnoozedMedicationReminderRecord[]
+> {
+  return (await tryReadSnoozedReminders()) ?? [];
 }
 
 async function writeSnoozedReminders(
@@ -297,6 +312,25 @@ async function writeSnoozedReminders(
   }
 }
 
+// Stale snooze records: their snoozed copies were cancelled, but the store
+// could not be read or written to forget them. Kept in memory only, for as
+// long as the app runs: the reconcile's snooze sync leaves them out, so they do
+// not keep a dose silent, and the next write that works removes them.
+// `snoozeClearToRetry` is a clear that could neither read nor write: every
+// record stored then is stale, and a new snooze finishes that clear when it is
+// recorded, so until then every stored record is stale.
+let snoozeRemovalsToRetry = new Set<string>();
+let snoozeClearToRetry = false;
+
+function isStaleSnoozeRecord(item: SnoozedMedicationReminderRecord): boolean {
+  return snoozeClearToRetry || snoozeRemovalsToRetry.has(item.baseKey);
+}
+
+function forgetStaleSnoozeRecords(): void {
+  snoozeRemovalsToRetry = new Set();
+  snoozeClearToRetry = false;
+}
+
 async function recordSnoozedReminder(
   baseKey: string,
   entryDate: string,
@@ -304,9 +338,77 @@ async function recordSnoozedReminder(
 ): Promise<boolean> {
   return withPendingActionsLock(async () => {
     const existing = await readSnoozedReminders();
-    const filtered = existing.filter((item) => item.baseKey !== baseKey);
-    filtered.push({ baseKey, entryDate, doses });
-    return writeSnoozedReminders(filtered);
+    // Stale records go with this write, so a slot snoozed again since keeps
+    // its new record.
+    const kept = existing.filter(
+      (item) => item.baseKey !== baseKey && !isStaleSnoozeRecord(item)
+    );
+    kept.push({ baseKey, entryDate, doses });
+    const written = await writeSnoozedReminders(kept);
+    if (written) forgetStaleSnoozeRecords();
+    return written;
+  });
+}
+
+/**
+ * Forgets every snoozed reminder record, for when every medication reminder
+ * has just been cancelled (reminders or Medications turned off, or the
+ * account changed). A record left behind would still mark its slot as snoozed
+ * once they are back on the same day, and that dose would then get no
+ * reminder at all. Answers false when the store could not be written; the
+ * records are then stale for as long as the app runs (see above).
+ */
+export async function clearSnoozedMedicationReminders(): Promise<boolean> {
+  return withPendingActionsLock(async () => {
+    const existing = await tryReadSnoozedReminders();
+    const written = await writeSnoozedReminders([]);
+    if (written) {
+      forgetStaleSnoozeRecords();
+    } else if (existing === null) {
+      snoozeClearToRetry = true;
+    } else {
+      for (const item of existing) snoozeRemovalsToRetry.add(item.baseKey);
+    }
+    return written;
+  });
+}
+
+/**
+ * Forgets the snooze records of these reminders, for when their snoozed copies
+ * were cancelled (those of a server switched away from): a record left behind
+ * would keep that dose silent for the rest of the day once its server is back.
+ * Stale records go with it. Answers false when the store could not be read or
+ * written; those keys are then stale (see above).
+ */
+export async function removeSnoozedMedicationReminders(
+  baseKeys: Iterable<string>
+): Promise<boolean> {
+  const requested = new Set(baseKeys);
+  if (
+    requested.size === 0 &&
+    snoozeRemovalsToRetry.size === 0 &&
+    !snoozeClearToRetry
+  ) {
+    return true;
+  }
+  return withPendingActionsLock(async () => {
+    // Which records are stale is read under the lock: a slot snoozed again
+    // while this waited is not any more.
+    const existing = await tryReadSnoozedReminders();
+    let written = false;
+    if (existing !== null) {
+      const kept = existing.filter(
+        (item) => !requested.has(item.baseKey) && !isStaleSnoozeRecord(item)
+      );
+      written =
+        kept.length === existing.length || (await writeSnoozedReminders(kept));
+    }
+    if (written) {
+      forgetStaleSnoozeRecords();
+    } else {
+      for (const key of requested) snoozeRemovalsToRetry.add(key);
+    }
+    return written;
   });
 }
 
@@ -340,7 +442,11 @@ export async function syncSnoozedMedicationReminders(
   todayEntries?: MedicationEntry[]
 ): Promise<Set<string>> {
   return withPendingActionsLock(async () => {
-    const existing = await readSnoozedReminders();
+    const read = await tryReadSnoozedReminders();
+    const stored = read ?? [];
+    // Stale records (see above) are not snoozes any more: left out here, and
+    // dropped by the write below.
+    const existing = stored.filter((item) => !isStaleSnoozeRecord(item));
     const candidates = new Map<
       string,
       {
@@ -381,7 +487,16 @@ export async function syncSnoozedMedicationReminders(
       }
     }
 
-    if (candidates.size === 0) return new Set<string>();
+    if (candidates.size === 0) {
+      // Only stale records, if any, were stored: they go now.
+      if (
+        read !== null &&
+        (stored.length === 0 || (await writeSnoozedReminders([])))
+      ) {
+        forgetStaleSnoozeRecords();
+      }
+      return new Set<string>();
+    }
 
     const entriesByDate = new Map<string, Promise<MedicationEntry[] | null>>();
     const getEntriesForDate = (
@@ -449,8 +564,13 @@ export async function syncSnoozedMedicationReminders(
     const retainedStorage = existing.filter((item) =>
       retainedBaseKeys.has(item.baseKey)
     );
-    if (retainedStorage.length !== existing.length) {
-      await writeSnoozedReminders(retainedStorage);
+    // With nothing to write, no stale record was stored either.
+    if (
+      read !== null &&
+      (retainedStorage.length === stored.length ||
+        (await writeSnoozedReminders(retainedStorage)))
+    ) {
+      forgetStaleSnoozeRecords();
     }
     return retainedBaseKeys;
   });

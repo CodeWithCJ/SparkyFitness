@@ -118,9 +118,7 @@ describe('GET /api/reports/training-calendar', () => {
     expect(canAccessUserData).toHaveBeenCalledWith(
       'other-user',
       'reports',
-      'test-user-id',
-      // A matching email address is not enough: only a family grant counts.
-      { allowSameEmail: false }
+      'test-user-id'
     );
     expect(getTrainingCalendar).toHaveBeenCalledWith(
       'test-user-id',

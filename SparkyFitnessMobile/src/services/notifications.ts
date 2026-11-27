@@ -32,6 +32,8 @@ export const ORAL_CARE_CHANNEL_ID = 'oral-care';
 const MINDFULNESS_CHANNEL_ID = 'mindfulness';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
 export const CHALLENGES_CHANNEL_ID = 'challenges';
+export const COACHES_CHANNEL_ID = 'coaches';
+export const COACH_MESSAGE_KIND = 'coach-message';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
 export function notificationCopy(
@@ -230,6 +232,14 @@ export async function ensureOralCareChannel(): Promise<void> {
   });
 }
 
+export async function ensureCoachesChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(COACHES_CHANNEL_ID, {
+    name: notificationCopy('notifications.channels.coaches', 'Coaches'),
+    importance: AndroidImportance.DEFAULT,
+  });
+}
+
 export async function ensureChallengesChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHALLENGES_CHANNEL_ID, {
@@ -334,6 +344,7 @@ export async function initNotifications(): Promise<void> {
           category === MEDICATION_REMINDER_GROUP_CATEGORY;
         const isRestPing = category === REST_COMPLETE_CATEGORY;
         const kind = notification.request.content.data?.kind;
+        const isCoachMessage = kind === COACH_MESSAGE_KIND;
         const isMoodCheckin =
           kind === MOOD_CHECKIN_KIND ||
           kind === ORAL_CARE_REMINDER_KIND ||
@@ -352,11 +363,13 @@ export async function initNotifications(): Promise<void> {
           shouldShowBanner:
             isMedReminder ||
             isMoodCheckin ||
+            isCoachMessage ||
             restPingOwnsCue ||
             brushingPingOwnsCue,
           shouldShowList:
             isMedReminder ||
             isMoodCheckin ||
+            isCoachMessage ||
             restPingOwnsCue ||
             brushingPingOwnsCue,
           // Muted only while the chime owns the cue, so the two never double up.

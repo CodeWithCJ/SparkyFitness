@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
+import { trackBackgroundWork } from '../utils/shutdownHooks.js';
 import {
   buildSqlSearch,
   buildSqlRelevanceOrder,
@@ -362,55 +363,75 @@ function buildDefaultVariantEcho(
   };
 }
 
+/**
+ * Downloads a food's provider-hosted images to local storage and writes the
+ * localized paths back, after the row is already committed and the caller
+ * has returned its response.
+ *
+ * A slow or unreachable provider CDN must never hold up the create/update
+ * response (#3532): the food is durable as soon as it's committed, so image
+ * mirroring is a best-effort follow-up, not something the client should wait
+ * on. Failures are logged and leave the remote URL in place.
+ *
+ * The download has no overall deadline, so a pooled connection is acquired
+ * only for the brief write-back afterward, not held for the whole download.
+ */
+async function localizeFoodImagesInBackground(
+  foodId: string,
+  images: unknown,
+  userId: string
+): Promise<void> {
+  try {
+    const localizedImages = await localizeImages(images, foodId, 'foods');
+    if (!localizedImages) {
+      return;
+    }
+    const client = await getClient(userId);
+    try {
+      // Guarded: an edit can land while these downloads run. Don't clobber a
+      // newer value with a stale localized copy of the old one.
+      const localizeWrite = await client.query(
+        'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+        [
+          JSON.stringify(localizedImages),
+          foodId,
+          JSON.stringify(toImageArray(images)),
+        ]
+      );
+      if (localizeWrite.rowCount === 0) {
+        log(
+          'debug',
+          `[food] Images for ${foodId} changed before localization finished; keeping the newer value`
+        );
+      }
+    } finally {
+      client.release();
+    }
+  } catch (imageError) {
+    const message =
+      imageError instanceof Error ? imageError.message : String(imageError);
+    log('warn', `[food] Image localization failed for ${foodId}: ${message}`);
+  }
+}
+
 async function createFood(foodData: FoodInput) {
   const client = await getClient(foodData.user_id); // User-specific operation
   try {
     await client.query('BEGIN'); // Start transaction
     const created = await createFoodWithClient(client, foodData);
-    const newFood = created;
     await client.query('COMMIT'); // Commit transaction
 
-    // Localize provider-hosted images after COMMIT so network latency never
-    // holds the transaction open. Every food-creation path funnels through
-    // here, so provider imports get local copies without each caller opting in.
-    try {
-      const localizedImages = await localizeImages(
-        newFood.images,
-        newFood.id,
-        'foods'
-      );
-      if (localizedImages) {
-        // Guarded like updateFood: the food is already committed, so an edit
-        // can land while these downloads run. Don't clobber a newer value.
-        const localizeWrite = await client.query(
-          'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
-          [
-            JSON.stringify(localizedImages),
-            newFood.id,
-            JSON.stringify(toImageArray(newFood.images)),
-          ]
-        );
-        if (localizeWrite.rowCount === 0) {
-          log(
-            'debug',
-            `[food.createFood] Images for ${newFood.id} changed during localization; keeping the newer value`
-          );
-        } else {
-          newFood.images = localizedImages;
-        }
-      }
-    } catch (imageError) {
-      // The food itself is already committed; keep it and leave the remote URLs.
-      const message =
-        imageError instanceof Error ? imageError.message : String(imageError);
-      log(
-        'warn',
-        `[food] Image localization failed for ${newFood.id}: ${message}`
-      );
-    }
+    // Localize provider-hosted images in the background, after responding.
+    // Every food-creation path funnels through here, so provider imports
+    // still get local copies without each caller opting in.
+    trackBackgroundWork(
+      localizeFoodImagesInBackground(
+        created.id,
+        created.images,
+        foodData.user_id
+      )
+    );
 
-    // `created` already carries the default_variant echo; localization above
-    // mutates `newFood.images` in place, which is the same object.
     return created;
   } catch (error) {
     await client.query('ROLLBACK'); // Rollback transaction on error
@@ -663,44 +684,12 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
 
     // Mirror createFood: a caller that sets a provider-hosted URL here (e.g.
     // backfilling the photo onto an already-imported food) gets a local copy
-    // too, rather than leaving the row permanently hotlinked.
+    // too, rather than leaving the row permanently hotlinked. Runs in the
+    // background, after responding (#3532).
     if (updated && foodData.images !== undefined) {
-      try {
-        const localizedImages = await localizeImages(
-          updated.images,
-          updated.id,
-          'foods'
-        );
-        if (localizedImages) {
-          // Downloads happen outside the transaction, so another request can
-          // have replaced `images` in the meantime. Only write the localized
-          // result back if the row still holds exactly what we localized;
-          // otherwise the newer value wins and this stale write is skipped.
-          const localizeWrite = await client.query(
-            'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
-            [
-              JSON.stringify(localizedImages),
-              updated.id,
-              JSON.stringify(toImageArray(updated.images)),
-            ]
-          );
-          if (localizeWrite.rowCount === 0) {
-            log(
-              'debug',
-              `[food.updateFood] Images for ${updated.id} changed during localization; keeping the newer value`
-            );
-          } else {
-            updated.images = localizedImages;
-          }
-        }
-      } catch (imageError) {
-        // Non-fatal, as in createFood: keep the row and its remote URLs.
-        log(
-          'warn',
-          `[food.updateFood] Image localization failed for ${updated.id}; keeping remote URLs:`,
-          imageError
-        );
-      }
+      trackBackgroundWork(
+        localizeFoodImagesInBackground(updated.id, updated.images, userId)
+      );
     }
     return updated;
   } finally {

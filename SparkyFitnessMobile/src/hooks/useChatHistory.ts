@@ -7,6 +7,8 @@ import { chatHistoryQueryKey } from './queryKeys';
 
 interface UseChatHistoryOptions {
   enabled?: boolean;
+  /** A coach's thread (#2013); omitted or null is the main Sparky chat. */
+  coachId?: string | null;
 }
 
 /**
@@ -24,10 +26,16 @@ interface UseChatHistoryOptions {
  * On error `data` is `undefined`; callers default to `[]` so chat still works
  * against an older/offline server.
  */
-export function useChatHistory({ enabled = true }: UseChatHistoryOptions = {}) {
+export function useChatHistory({
+  enabled = true,
+  coachId = null,
+}: UseChatHistoryOptions = {}) {
   return useQuery({
-    queryKey: chatHistoryQueryKey,
-    queryFn: ({ signal }) => loadChatHistory(undefined, signal),
+    // The main thread keeps the root key; a coach's thread sits under it.
+    queryKey: coachId
+      ? [...chatHistoryQueryKey, 'coach', coachId]
+      : chatHistoryQueryKey,
+    queryFn: ({ signal }) => loadChatHistory(undefined, signal, coachId),
     enabled,
     staleTime: 0,
     gcTime: 0,

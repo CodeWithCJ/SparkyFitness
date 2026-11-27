@@ -37,7 +37,12 @@ interface ModuleTabDefinition {
 const MODULE_TABS: readonly ModuleTabDefinition[] = [
   { id: 'checkin', path: '/checkin', inPlusMenu: true },
   { id: 'cycle', path: '/cycle', inPlusMenu: true, feature: 'cycle' },
-  { id: 'medications', path: '/medications', inPlusMenu: true },
+  {
+    id: 'medications',
+    path: '/medications',
+    inPlusMenu: true,
+    feature: 'medications',
+  },
   { id: 'labs', path: '/labs', inPlusMenu: true, feature: 'labResults' },
   { id: 'reports', path: '/reports', inPlusMenu: false },
   { id: 'foods', path: '/foods', inPlusMenu: true },
@@ -90,8 +95,12 @@ export function choiceFeatureLabel(
   feature: ChoiceFeatureKey
 ): string {
   switch (feature) {
+    case 'medications':
+      return webTabLabel(t, 'medications');
     case 'labResults':
       return webTabLabel(t, 'labs');
+    case 'aiCoaches':
+      return t('coaches.settings.title', 'Coaches');
   }
 }
 

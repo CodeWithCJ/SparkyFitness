@@ -14,10 +14,29 @@
  * settings (the web tabs, Customize layout, the mobile dashboard and + menu)
  * still apply while a feature is on, and are kept while it is off.
  *
- * The switch hides UI only. No route, importer, sync or MCP tool checks it.
+ * The switch hides UI only. No route, importer, sync or MCP tool checks it,
+ * with two exceptions: the mobile app's medication reminders stop while
+ * `medications` is off there, come back when it is on, and are left as they
+ * are while the app cannot tell (see the repo-root AGENTS.md); and the AI
+ * coaches check-in job on the server runs only for people who have turned
+ * `aiCoaches` on in at least one app (`isFeatureEnabledAnywhere`).
+ *
+ * A feature that has shipped on one platform only lists that platform in
+ * `platforms`; each app's Features screen then offers it only where it exists
+ * (`isFeatureOffered`), so no switch is listed before there is anything behind
+ * it.
+ *
+ * An entry point outside a feature's own pages (a report pill, a chart layer,
+ * a picker, a chat chip) follows `isFeatureEnabled`, which gives the default
+ * while the choices load or fail; the website also shows it to someone acting
+ * for the owner. Records a person already has
+ * (`FEATURE_CUSTOM_CATEGORIES`, cycle hub symptoms) hide only while the
+ * feature is turned off on purpose (`isFeatureExplicitlyOff`).
+ *
  * Labels and descriptions live in each app's locale files, keyed by these ids.
  */
 import { z } from 'zod';
+import { GLP1_CHECKIN_CATEGORY_NAMES } from '../medications/glp1.ts';
 
 /**
  * Where a choice applies. `web` is the website on any screen, a phone browser
@@ -48,11 +67,20 @@ interface FeatureDefinition {
   group: FeatureGroup;
   defaultEnabled: boolean;
   storage: FeatureStorage;
+  /** The platforms that have the feature. Missing means all of them. */
+  platforms?: readonly FeaturePlatform[];
 }
 
 export const OPTIONAL_FEATURES = {
   cycle: { group: 'health', defaultEnabled: false, storage: 'cycleSettings' },
+  medications: { group: 'health', defaultEnabled: true, storage: 'choices' },
   labResults: { group: 'health', defaultEnabled: true, storage: 'choices' },
+  aiCoaches: {
+    group: 'wellbeing',
+    defaultEnabled: false,
+    storage: 'choices',
+    platforms: ['web', 'mobile'],
+  },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof OPTIONAL_FEATURES;
@@ -79,6 +107,15 @@ function featureDefinition(key: FeatureKey): FeatureDefinition {
 
 export function featureStorage(key: FeatureKey): FeatureStorage {
   return featureDefinition(key).storage;
+}
+
+/** Whether this platform has the feature at all (see `platforms`). Its
+ * Features screen lists a switch only for these. */
+export function isFeatureOffered(
+  key: FeatureKey,
+  platform: FeaturePlatform
+): boolean {
+  return featureDefinition(key).platforms?.includes(platform) ?? true;
 }
 
 /** Most keys one platform's choices may hold, per patch and stored. */
@@ -157,7 +194,8 @@ export function isFeatureEnabled(
 
 /**
  * On in at least one app. For answers that are not about one app's screens,
- * such as what someone acting for the person sees, or server-side behaviour.
+ * such as server-side behaviour. Someone acting for the person is never
+ * gated by the person's choices, so it is not for them either.
  */
 export function isFeatureEnabledAnywhere(
   key: FeatureKey,
@@ -205,7 +243,8 @@ export function filterByFeature<T extends { feature?: FeatureKey }>(
 /**
  * Custom measurement categories that belong to a feature. Cycle: the
  * reproductive data HealthKit and Health Connect sync stores as custom
- * measurements. Consumers hide them only when the feature is explicitly off.
+ * measurements. Medications: the GLP-1 daily check-in answers. Consumers hide
+ * them only when the feature is explicitly off.
  */
 export const FEATURE_CUSTOM_CATEGORIES: Partial<
   Record<FeatureKey, readonly string[]>
@@ -217,6 +256,7 @@ export const FEATURE_CUSTOM_CATEGORIES: Partial<
     'cervical_mucus',
     'intermenstrual_bleeding',
   ],
+  medications: Object.values(GLP1_CHECKIN_CATEGORY_NAMES),
 };
 
 /**

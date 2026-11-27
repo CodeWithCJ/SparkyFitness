@@ -79,6 +79,21 @@ describe('FeatureRoute', () => {
     expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
   });
 
+  it('names medications in its notice and turns it back on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['medications']);
+    render(
+      <MemoryRouter>
+        <FeatureRoute feature="medications">
+          <p>Medications page</p>
+        </FeatureRoute>
+      </MemoryRouter>
+    );
+    expect(screen.queryByText('Medications page')).not.toBeInTheDocument();
+    expect(screen.getByText('Medications is turned off')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on' }));
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('medications', true);
+  });
+
   it('shows the page to someone acting for the person, whose switch it is not', () => {
     mockFeaturesOff = new Set<FeatureKey>(['labResults']);
     mockActingOnBehalf = true;

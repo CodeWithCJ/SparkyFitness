@@ -15,6 +15,11 @@ const TOKEN_STATS_STORAGE_KEY = 'chat_token_stats';
 interface ChatbotVisibilityContextType {
   isChatOpen: boolean;
   openChat: () => void;
+  /** Opens the chat on a coach's thread (null is Sparky). */
+  openCoachChat: (coachId: string | null) => void;
+  /** The coach whose thread is showing; null is Sparky. */
+  activeCoachId: string | null;
+  setActiveCoachId: (coachId: string | null) => void;
   closeChat: () => void;
   toggleChat: () => void;
   showTokenStats: boolean;
@@ -39,6 +44,7 @@ export const ChatbotVisibilityProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeCoachId, setActiveCoachId] = useState<string | null>(null);
 
   // Shared (not local) state so the settings Switch and the chat Thread, which
   // can be mounted simultaneously, stay in sync. Read once from localStorage on
@@ -52,6 +58,10 @@ export const ChatbotVisibilityProvider: React.FC<{ children: ReactNode }> = ({
   }, [showTokenStats]);
 
   const openChat = () => setIsChatOpen(true);
+  const openCoachChat = (coachId: string | null) => {
+    setActiveCoachId(coachId);
+    setIsChatOpen(true);
+  };
   const closeChat = () => setIsChatOpen(false);
   const toggleChat = () => setIsChatOpen((prev) => !prev);
 
@@ -60,6 +70,9 @@ export const ChatbotVisibilityProvider: React.FC<{ children: ReactNode }> = ({
       value={{
         isChatOpen,
         openChat,
+        openCoachChat,
+        activeCoachId,
+        setActiveCoachId,
         closeChat,
         toggleChat,
         showTokenStats,

@@ -1,3 +1,5 @@
+import type { FeatureKey } from '../features/optionalFeatures.ts';
+
 /**
  * Chat tool categories: the user-facing grouping of the chatbot's tool domains.
  *
@@ -24,6 +26,20 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];
+
+/**
+ * Categories that belong to an optional feature. The web chat's tool selector
+ * leaves out the chip of a feature that is off on the website, through
+ * `useWebFeatures().isShown` (`isEnabled` for the owner, so the default while
+ * the choices load or fail, and always shown while acting on behalf). The
+ * stored selection and the server's tools are unchanged (the switch hides UI
+ * only), so a selected hidden category is still sent.
+ */
+export const CHAT_TOOL_CATEGORY_FEATURES: Partial<
+  Record<ChatToolCategorySlug, FeatureKey>
+> = {
+  medications: 'medications',
+};
 
 /**
  * Slugs included when the `core` profile/preset is selected. Must stay in sync

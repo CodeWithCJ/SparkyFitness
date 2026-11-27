@@ -95,6 +95,9 @@ private let waterTint = Color.cyan
 /// rings — those are closed circles, this one isn't.
 private struct WaterGoalRing: View {
     let progress: Double
+    /// The wearer's colour and icon from the phone, else cyan and the drop.
+    var tint: Color = waterTint
+    var icon: String = "drop.fill"
 
     /// How much of the circle is left open at the bottom for the droplet.
     /// Has to clear more than the droplet itself: the arc's round end caps
@@ -149,7 +152,7 @@ private struct WaterGoalRing: View {
                         Circle()
                             .trim(from: 0, to: CGFloat(Self.arcSpan * clamped))
                             .stroke(
-                                waterTint,
+                                tint,
                                 style: StrokeStyle(lineWidth: stroke, lineCap: .round)
                             )
                             .rotationEffect(.degrees(Self.arcStartDegrees))
@@ -177,9 +180,9 @@ private struct WaterGoalRing: View {
                 // where accessoryCircular clips, and the drop came back with
                 // its point cut off. Scaling the pull-in off `dropSize` keeps
                 // that clearance if the drop is ever resized.
-                Image(systemName: "drop.fill")
+                Image(systemName: icon)
                     .font(.system(size: dropSize))
-                    .foregroundStyle(waterTint)
+                    .foregroundStyle(tint)
                     .offset(y: side / 2 - stroke / 2 - dropSize * 0.4)
             }
             .frame(width: side, height: side)
@@ -195,8 +198,12 @@ private struct WaterGoalRing: View {
 struct WaterGoalComplicationEntryView: View {
     var entry: WaterGoalProvider.Entry
 
+    private var look: BuiltInLook {
+        builtInLook("water", color: Color.cyan, icon: "drop.fill")
+    }
+
     var body: some View {
-        WaterGoalRing(progress: entry.snapshot.progress)
+        WaterGoalRing(progress: entry.snapshot.progress, tint: look.color, icon: look.icon)
             // Opens the watch app straight to its Water page. The link was
             // wired ahead of this complication existing — see
             // ComplicationLinks.swift and WatchDeepLink in targets/watch.

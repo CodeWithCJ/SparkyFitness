@@ -138,6 +138,23 @@ describe('sparky_get_dashboard', () => {
     );
   });
 
+  it('shows a plain goal when minimum is only the built-in default', async () => {
+    svc.getDashboardStats.mockResolvedValue({
+      ...STATS,
+      eaten: 1800,
+      calorieGoalType: { goalType: 'minimum', isDefault: true },
+    });
+
+    const result = await tools.sparky_get_dashboard.execute!(
+      { action: 'daily_summary', date: '2026-02-01' },
+      opts
+    );
+
+    expect(result).toContain('- Goal: 2000 kcal');
+    expect(result).toContain(`- Remaining: ${STATS.remaining} kcal`);
+    expect(result).not.toMatch(/floor|needed to reach|Target Status/i);
+  });
+
   it('renders minimum floor status when calorieGoalType is minimum', async () => {
     svc.getDashboardStats.mockResolvedValue({
       ...STATS,

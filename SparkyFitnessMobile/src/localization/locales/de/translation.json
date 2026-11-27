@@ -915,7 +915,8 @@
       "ongoingWorkout": "Laufendes Training",
       "moodCheckin": "Stimmungs-Check-ins",
       "oralCare": "Zahnputz-Erinnerungen",
-      "mindfulness": "Meditations-Timer"
+      "mindfulness": "Meditations-Timer",
+      "challenges": "Challenges"
     },
     "actions": {
       "completeSet": "Satz abschließen",
@@ -974,6 +975,12 @@
     "offlineUploads": {
       "title": "Ein Workout wartet auf den Upload",
       "body": "Öffne SparkyFitness, sobald dein Server erreichbar ist."
+    },
+    "challengeWeek": {
+      "body": "{{leader}} führt mit {{total}}. Heute Abend endet die Woche.",
+      "bodyWithOwn": "{{leader}} führt mit {{total}}. Du bist #{{rank}} mit {{ownTotal}}. Heute Abend endet die Woche.",
+      "bodyYouLead": "Du führst mit {{total}}. Heute Abend endet die Woche.",
+      "title": "{{name}}: Wer führt diese Woche?"
     }
   },
   "activeWorkout": {
@@ -1238,7 +1245,9 @@
     "checkIn": "Täglicher Check-in",
     "checkInHint": "Gewohnheiten",
     "oralCare": "Mundpflege",
-    "oralCareHint": "Zähneputzen, Zahnseide"
+    "oralCareHint": "Zähneputzen, Zahnseide",
+    "copyFromYesterday": "Von gestern kopieren",
+    "copyFromYesterdayHint": "Mahlzeiten wiederholen"
   },
   "screens": {
     "foods": "Lebensmittel",
@@ -1334,7 +1343,9 @@
       "labResults": "Laborwerte",
       "labResultsSubtitle": "Bluttests und weitere Marker im Zeitverlauf",
       "trainingCalendar": "Trainingskalender",
-      "trainingCalendarSubtitle": "Geplante und absolvierte Trainingseinheiten sowie Trainingsbelastung nach Sportart"
+      "trainingCalendarSubtitle": "Geplante und absolvierte Trainingseinheiten sowie Trainingsbelastung nach Sportart",
+      "challenges": "Challenges",
+      "challengesSubtitle": "Bestenlisten mit Freunden & Familie"
     },
     "sleep": "Schlaf",
     "healthTrendsSettings": "Gesundheitstrends",
@@ -1913,7 +1924,8 @@
     "bloodAlcohol": "Geschätzter Blutalkoholwert",
     "bloodAlcoholSubtitle": "Auf dem Dashboard eine grobe Schätzung des Blutalkoholspiegels anhand der erfassten Getränke anzeigen",
     "wellness": "Wohlbefinden",
-    "offInFeatures": "Ausgeblendet: Unter „Funktionen“ deaktiviert"
+    "challenges": "Challenges",
+    "challengesSubtitle": "Zeigt deinen Platz in aktiven Challenges"
   },
   "diarySettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",
@@ -1992,7 +2004,10 @@
     "oralCareReminderTime": "Erinnerung {{number}}",
     "oralCareReminderTimeAccessibility": "Zahnputz-Erinnerung {{number}}, {{time}}",
     "oralCareRemoveReminder": "Zahnputz-Erinnerung {{number}} entfernen",
-    "oralCareAddReminder": "Erinnerung hinzufügen"
+    "oralCareAddReminder": "Erinnerung hinzufügen",
+    "challengeWeek": "Wochensieger",
+    "challengeWeekSubtitle": "Am letzten Abend jeder Challenge-Woche: Wer in deinen Challenges führt",
+    "challenges": "Challenges"
   },
   "workoutSettings": {
     "title": "Trainingseinstellungen",
@@ -2942,7 +2957,8 @@
       "lookupBarcode": "Dieser Barcode konnte nicht nachgeschlagen werden. Bitte versuche es erneut.",
       "timeout": "Zeitüberschreitung der Anfrage. Prüfe deine Serververbindung.",
       "retryOnDevice": "Dieses iPhone konnte das Etikett nicht lesen.",
-      "restartApp": "Galerie kann nicht geöffnet werden. Bitte starte die App neu."
+      "restartApp": "Galerie kann nicht geöffnet werden. Bitte starte die App neu.",
+      "offlineBarcode": "Keine Verbindung. Dieser Barcode ist nicht in den auf deinem Handy gespeicherten Lebensmitteln."
     },
     "permission": {
       "camera": "Wir benötigen deine Erlaubnis, um die Kamera anzuzeigen",
@@ -4173,7 +4189,9 @@
       "result": "= {{raw}} {{unit}} roh · {{energy}}",
       "incomplete": "Gib die Gewichte ein, um die Rohmenge zu berechnen.",
       "enterEaten": "Gib das gegessene Kochgewicht ein."
-    }
+    },
+    "queued": "Auf diesem Handy gespeichert",
+    "queuedMessage": "Wird hochgeladen, sobald dein Server erreichbar ist."
   },
   "exerciseSearch": {
     "title": "Übungen",
@@ -4338,7 +4356,13 @@
       "selected_one": "{{count}} ausgewählt",
       "selected_other": "{{count}} ausgewählt",
       "limitReached": "Du kannst bis zu {{limit}} Lebensmittel auswählen",
-      "foodCheckbox": "{{name}} auswählen"
+      "foodCheckbox": "{{name}} auswählen",
+      "needsConnection": "Mehrere Lebensmittel hinzufügen erfordert eine Verbindung",
+      "needsConnectionHint": "Füge sie einzeln hinzu, um sie auf diesem Handy zu speichern."
+    },
+    "foodResultCard": {
+      "tapForFullNutrition": "Tippen für alle Nährwerte",
+      "tapForNutrition": "Tippen für Nährwerte"
     }
   },
   "editBarcode": {
@@ -4622,7 +4646,9 @@
     "errors": {
       "permission": "Du hast keine Berechtigung, diesen Eintrag zu bearbeiten.",
       "saveFailed": "Änderungen konnten nicht gespeichert werden",
-      "deleteFailed": "Löschen fehlgeschlagen"
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "uploadingNow": "Wird gerade hochgeladen. Versuche es gleich noch einmal.",
+      "alreadyUploaded": "Wurde gerade hochgeladen. Versuche es erneut, sobald das Tagebuch aktualisiert ist."
     },
     "deleteConfirm": "Möchtest du diesen Lebensmitteleintrag wirklich löschen?",
     "entryNotes": "Notiz zu diesem Eintrag",
@@ -5221,7 +5247,8 @@
     "healthUnavailable": {
       "title": "Gesundheitsdaten nicht verfügbar",
       "message": "Der Zugriff auf Gesundheitsdaten konnte nicht initialisiert werden. Prüfe deine Berechtigungen in den Einstellungen."
-    }
+    },
+    "configureForCopy": "Richte in den Einstellungen deine Serververbindung ein, um von gestern zu kopieren."
   },
   "announcementModal": {
     "title": "Ankündigung",
@@ -5703,10 +5730,14 @@
     "customConfirm": "Diesen Zeitraum anzeigen"
   },
   "foodEntryMeal": {
-    "failed": "Mahlzeit konnte nicht hinzugefügt werden"
+    "failed": "Mahlzeit konnte nicht hinzugefügt werden",
+    "queued": "Auf diesem Handy gespeichert",
+    "queuedMessage": "Wird hochgeladen, sobald dein Server erreichbar ist."
   },
   "foodSave": {
-    "failed": "Lebensmittel konnte nicht gespeichert werden"
+    "failed": "Lebensmittel konnte nicht gespeichert werden",
+    "queued": "Auf diesem Handy gespeichert",
+    "queuedMessage": "Wird hochgeladen, sobald dein Server erreichbar ist."
   },
   "favorites": {
     "updateFailed": "Favoriten konnten nicht aktualisiert werden"
@@ -6039,7 +6070,9 @@
     "configure": "Bitte richte auf dem Server einen Wasserbehälter ein, um die Flüssigkeitszufuhr zu verfolgen.",
     "multipleNoPrimaryMobile": "Du hast mehrere Wasserbehälter, aber keiner ist als primär markiert. Tippe, um einen auszuwählen.",
     "configureMobile": "Füge einen Wasserbehälter hinzu, um mit dem Erfassen der Flüssigkeitszufuhr zu beginnen.",
-    "defaultContainer": "Standard"
+    "defaultContainer": "Standard",
+    "queued": "Auf diesem Handy gespeichert",
+    "queuedMessage": "Wird hochgeladen, sobald dein Server erreichbar ist."
   },
   "waterContainers": {
     "title": "Wasserbehälter",
@@ -9358,7 +9391,7 @@
     },
     "goBack": "Zurück",
     "followRoadsTooMany": "„Straßen folgen“ geht mit höchstens {{max}} Punkten. Mach Punkte rückgängig oder schalte „Straßen folgen“ zum Speichern aus.",
-    "osmAttribution": "© OpenStreetMap"
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9714,7 +9747,7 @@
     "chooseCard": "Kachel wählen",
     "slotLabel": "Kachel {{number}}: {{name}}",
     "slotHint": "Öffnet eine Liste, um festzulegen, was hier erscheint",
-    "offInFeatures": "Ausgeblendet: Unter „Funktionen“ deaktiviert"
+    "emptySlot": "Leer"
   },
   "calorieLink": {
     "action": "Synchronisiertes Training verknüpfen",
@@ -10753,7 +10786,9 @@
     "labResults": {
       "title": "Laborwerte",
       "description": "Blutwerte erfassen und einzelne Marker im Zeitverlauf verfolgen."
-    }
+    },
+    "someOff": "Einige Funktionen sind deaktiviert",
+    "manage": "Verwalten"
   },
   "bloodAlcohol": {
     "title": "Geschätzter Blutalkohol",
@@ -10939,7 +10974,7 @@
     "presetUpdateQueued": "Gespeichertes Workout wird aktualisiert, sobald du wieder online bist",
     "presetUpdateSkipped": "Gespeichertes Workout „{{name}}“ wurde nicht aktualisiert, da es an anderer Stelle geändert wurde",
     "presetUpdated": "Gespeichertes Workout „{{name}}“ aktualisiert",
-    "diaryNote": "Nur Workouts sind offline verfügbar. Ernährung und andere Einträge benötigen eine Verbindung.",
+    "diaryNote": "Lebensmittel und Workouts der letzten Woche sind offline verfügbar. Schlaf und andere Einträge benötigen eine Verbindung.",
     "diaryNothingSaved": "Für diesen Tag ist nichts gespeichert",
     "finishedTitle": "Auf diesem Handy gespeichert",
     "finishedMessage": "Wird hochgeladen, sobald dein Server erreichbar ist.",
@@ -10951,7 +10986,7 @@
     "notReadyMessage": "Verbinde dich einmal mit deinem Server, damit dieses Handy alle Workout-Daten speichern kann.",
     "banner": "Offline: Zeige Daten, die auf diesem Handy gespeichert sind",
     "bannerHint": "Prüft die Verbindung erneut",
-    "intro": "Workouts lassen sich ohne Verbindung starten und erfassen. Sie bleiben auf diesem Handy und werden hochgeladen, sobald dein Server erreichbar ist.",
+    "intro": "Workouts, Lebensmittel, Mahlzeiten, neue Lebensmittel und Getränke lassen sich ohne Verbindung erfassen. Sie bleiben auf diesem Handy und werden hochgeladen, sobald dein Server erreichbar ist.",
     "waitingHeading": "Wartet auf Upload",
     "nothingWaiting": "Nichts wartet auf den Upload",
     "nothingWaitingSubtitle": "Alles auf diesem Handy wurde hochgeladen.",
@@ -10965,7 +11000,7 @@
     "storageValue": "{{size}} MB",
     "refreshRow": "Jetzt aktualisieren",
     "refreshing": "Wird aktualisiert …",
-    "neverRefreshed": "Noch nicht heruntergeladen. Verbinde dich einmal mit deinem Server, um Offline-Workouts vorzubereiten.",
+    "neverRefreshed": "Noch nicht heruntergeladen. Verbinde dich einmal mit deinem Server, um die Offline-Nutzung vorzubereiten.",
     "lastRefreshed": "Zuletzt aktualisiert: {{when}}",
     "refreshDone": "Gespeicherte Daten sind auf dem neuesten Stand",
     "refreshFailed": "Aktualisierung fehlgeschlagen",
@@ -10973,7 +11008,7 @@
     "clearRow": "Offline-Daten löschen",
     "clearRowSubtitle": "Ausstehende Uploads bleiben erhalten",
     "clearTitle": "Offline-Daten löschen?",
-    "clearMessage": "Gespeicherte Workouts, Übungen und weitere Offline-Daten werden von diesem Handy entfernt und beim nächsten Mal neu geladen. Ausstehende Uploads bleiben erhalten.",
+    "clearMessage": "Gespeicherte Workouts, Übungen, Lebensmittel, Mahlzeiten und weitere Offline-Daten werden von diesem Handy entfernt und beim nächsten Mal neu geladen. Ausstehende Uploads bleiben erhalten.",
     "clearConfirm": "Löschen",
     "status": {
       "pending": "Wartet auf Upload",
@@ -10996,14 +11031,164 @@
     },
     "kind": {
       "workout": "Workout",
-      "other": "Gespeicherte Änderung"
+      "other": "Gespeicherte Änderung",
+      "food": "Lebensmitteleintrag",
+      "water": "Getränk"
     },
-    "libraryNote": "Nur Workouts und Übungen sind offline verfügbar. Alles andere in der Bibliothek benötigt eine Verbindung.",
+    "libraryNote": "Auf diesem Handy gespeicherte Workouts, Übungen, Lebensmittel und Mahlzeiten sind offline verfügbar. Alles andere in der Bibliothek benötigt eine Verbindung.",
     "keptAdded_one": "Bilder von {{count}} Übung werden offline gespeichert",
     "keptAdded_other": "Bilder von {{count}} Übungen werden offline gespeichert",
     "keptRemoved_one": "{{count}} Übung wird nicht mehr offline gespeichert",
     "keptRemoved_other": "{{count}} Übungen werden nicht mehr offline gespeichert",
     "selectedCount_one": "{{count}} ausgewählt",
-    "selectedCount_other": "{{count}} ausgewählt"
+    "selectedCount_other": "{{count}} ausgewählt",
+    "ownerless": {
+      "title": "Kein Konto erfasst",
+      "message": "Gespeichert, bevor das Konto bekannt war, wird nicht gesendet. Du kannst den Upload verwerfen.",
+      "discard": "Upload verwerfen",
+      "subtitle": "Kein Konto erfasst. Zum Verwerfen tippen."
+    },
+    "foodHeading": "Lebensmittel & Getränke offline",
+    "foodIntro": "Zuletzt und am häufigsten genutzte Lebensmittel, eigene Lebensmittel (bis zu 2.000), gespeicherte Mahlzeiten, Mahlzeittypen und Trinkbehälter bleiben zusammen mit Tagebuch und Summen der letzten Woche erhalten und werden bei bestehender Verbindung aktualisiert.",
+    "foodsKeptTitle": "Lebensmittel",
+    "mealsKeptTitle": "Gespeicherte Mahlzeiten",
+    "diaryDaysKeptTitle": "Tagebuchtage",
+    "foodsKeptValue_one": "{{count}} Lebensmittel",
+    "foodsKeptValue_other": "{{count}} Lebensmittel",
+    "mealsKeptValue_one": "{{count}} Mahlzeit",
+    "mealsKeptValue_other": "{{count}} Mahlzeiten",
+    "diaryDaysKeptValue_one": "{{count}} Ernährungstag",
+    "diaryDaysKeptValue_other": "{{count}} Ernährungstage"
+  },
+  "copyFromYesterday": {
+    "title": "Von gestern kopieren",
+    "subtitle": "Mahlzeiten von gestern auf heute übernehmen",
+    "emptySource": "Von gestern gibt es nichts zu kopieren.",
+    "copySelected": "Auswahl kopieren",
+    "copyAll": "Alle kopieren",
+    "copying": "Wird kopiert…",
+    "success": "Von gestern kopiert",
+    "failed": "Kopieren von gestern fehlgeschlagen",
+    "loadError": "Mahlzeiten von gestern konnten nicht geladen werden."
+  },
+  "challenges": {
+    "card": {
+      "a11y": "Challenges",
+      "leader": "{{name}} führt mit {{total}}",
+      "noScore": "Noch keine Punkte",
+      "refreshFailed": "Aktualisierung fehlgeschlagen; zeige letzten Stand",
+      "youLead": "Du führst",
+      "yourPlace": "#{{rank}} von {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "Ab {{start}}, kein Enddatum",
+      "range": "{{start}} bis {{end}}"
+    },
+    "detailLoadFailed": "Challenge konnte nicht geladen werden.",
+    "emptySubtitle": "Tritt mit einem Einladungscode eines Freundes bei oder erstelle eigene im Web.",
+    "emptyTitle": "Noch keine Challenges",
+    "format": {
+      "groupGoal": "Gruppenziel",
+      "hitGoal": "Ziel erreichen",
+      "leaderboard": "Bestenliste",
+      "race": "Wettlauf zum Ziel"
+    },
+    "hostOnWeb": "Du leitest diese Challenge. Regeln und Einladungscodes kannst du im Web ändern.",
+    "join": {
+      "closed": "Dieser Challenge kann derzeit nicht beigetreten werden.",
+      "codeLabel": "Einladungscode",
+      "codePlaceholder": "Code oder Link einfügen",
+      "ended": "Diese Challenge ist beendet.",
+      "failed": "Beitritt zur Challenge fehlgeschlagen.",
+      "full": "Diese Challenge ist voll.",
+      "invalidCode": "Der Code ist ungültig oder abgelaufen.",
+      "joined": "{{name}} beigetreten",
+      "lateJoinClosed": "Diese Challenge hat bereits begonnen und lässt keinen späten Beitritt mehr zu.",
+      "nameLabel": "Dein Name darin",
+      "namePlaceholder": "Zum Beispiel dein Vorname",
+      "nameRequired": "Gib den Namen ein, den andere Mitglieder sehen.",
+      "notACode": "Füge den erhaltenen Einladungscode oder Link ein.",
+      "privacy": "Mitglieder sehen diesen Namen und deine Punkte, niemals dein Tagebuch oder deine E-Mail. Du kannst jederzeit verlassen.",
+      "submit": "Beitreten",
+      "submitting": "beitreten…",
+      "title": "Challenge beitreten",
+      "tooMany": "Zu viele Versuche. Warte ein paar Minuten und versuche es erneut.",
+      "withCode": "Mit Code beitreten"
+    },
+    "leave": {
+      "action": "Challenge verlassen",
+      "confirm": "Verlassen",
+      "failed": "Challenge konnte nicht verlassen werden",
+      "message": "Deine Punkte darin werden gelöscht. Mit einem neuen Einladungscode kannst du erneut beitreten.",
+      "title": "Challenge verlassen?"
+    },
+    "listRefreshFailed": "Challenges konnten nicht aktualisiert werden; zeige letzten Stand.",
+    "loadFailed": "Deine Challenges konnten nicht geladen werden.",
+    "metric": {
+      "activeCalories": "Aktivitätskalorien",
+      "activeMinutes": "Aktivminuten",
+      "distance": "Distanz",
+      "elevation": "Höhenmeter",
+      "hrZoneMinutes": "HF-Zonen-Minuten",
+      "points": "Punkte",
+      "steps": "Schritte",
+      "workoutDays": "Trainingstage"
+    },
+    "moreActions": "Weitere Aktionen",
+    "period": {
+      "challenge": "Gesamte Challenge",
+      "day": "Täglich",
+      "month": "Monatlich",
+      "next": "Nächster Zeitraum",
+      "previous": "Vorheriger Zeitraum",
+      "week": "Wöchentlich"
+    },
+    "refreshFailed": "Challenge konnte nicht aktualisiert werden; zeige letzten Stand.",
+    "standings": {
+      "daysHit": "{{hit}} von {{eligible}} Tagen im Ziel",
+      "empty": "In diesem Zeitraum hat noch niemand gepunktet.",
+      "final": "Endergebnis",
+      "find": "Mitglied suchen",
+      "finished": "Beendet am {{date}}",
+      "groupTotal": "Gemeinsam: {{total}} von {{target}}",
+      "live": "Aktueller Stand; späte Watch-Syncs zählen noch",
+      "loadFailed": "Rangliste konnte nicht geladen werden.",
+      "minutes": "{{value}} Aktivmin.",
+      "noMatch": "Kein Mitglied passt zu „{{query}}“.",
+      "refreshFailed": "Rangliste konnte nicht aktualisiert werden; zeige letzten Stand.",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "Gewinner",
+      "you": "{{name}} (du)"
+    },
+    "state": {
+      "active": "Aktiv",
+      "ended": "Beendet",
+      "lastDay": "Letzter Tag",
+      "running": "Läuft",
+      "startsOn": "Startet am {{date}}",
+      "startsTomorrow": "Startet morgen",
+      "daysLeft_one": "Noch {{count}} Tag",
+      "daysLeft_other": "Noch {{count}} Tage",
+      "startsIn_one": "Startet in {{count}} Tag",
+      "startsIn_other": "Startet in {{count}} Tagen"
+    },
+    "target": "Ziel: {{target}}",
+    "title": "Herausforderungen",
+    "unavailableSubtitle": "Challenges sind auf dem Server deaktiviert oder ein Update fehlt. Frag deinen Administrator.",
+    "unavailableTitle": "Challenges nicht verfügbar",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} Min.",
+      "points": "{{value}} Pkt.",
+      "steps": "{{value}} Schritte",
+      "workoutDays_one": "{{count}} Tag",
+      "workoutDays_other": "{{count}} Tage"
+    },
+    "youHost": "Du leitest",
+    "memberCount_one": "{{count}} Mitglied",
+    "memberCount_other": "{{count}} Mitglieder"
   }
 }

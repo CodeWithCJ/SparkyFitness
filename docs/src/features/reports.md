@@ -150,6 +150,8 @@ The **Medications** tab (*Medications Report* — "Analyze dose correlations, si
 
 - **Sharing with your prescriber:** the **Prescriber-Ready Data Export** card offers a **Print / Save PDF Report** button that produces a clean PDF summary you can hand to your doctor, plus a **Download CSV Data** button for the raw numbers.
 
+While Medications is turned off on the website (**Settings → Features**), the **Medications** button leaves Reports, and a link to this report shows a notice that offers to turn Medications back on instead. Your **Customize Charts** choices are kept. Someone viewing your reports from their own account still sees it, as their permissions allow.
+
 
 - - -
 

@@ -346,3 +346,40 @@ describe('UpsertWaterIntakeBodySchema client_id', () => {
     ).toBe(true);
   });
 });
+
+describe('getWaterIntakeLogByDate client_id selection', () => {
+  it('selects client_id in both unfiltered and source-filtered queries', async () => {
+    const { getClient } = await import('../db/poolManager.js');
+    const mockQuery = vi.fn().mockResolvedValue({
+      rows: [{ id: 'row-1', client_id: CLIENT_ID, water_ml: 250 }],
+    });
+    const mockRelease = vi.fn();
+    vi.mocked(getClient).mockResolvedValue({
+      query: mockQuery,
+      release: mockRelease,
+    } as never);
+
+    const actualRepo = (
+      await vi.importActual<
+        typeof import('../models/measurementRepository.js')
+      >('../models/measurementRepository.js')
+    ).default;
+
+    const unfiltered = await actualRepo.getWaterIntakeLogByDate(USER, DATE);
+    expect(unfiltered).toEqual([
+      { id: 'row-1', client_id: CLIENT_ID, water_ml: 250 },
+    ]);
+    expect(mockQuery.mock.calls[0][0]).toContain('client_id');
+
+    const filtered = await actualRepo.getWaterIntakeLogByDate(
+      USER,
+      DATE,
+      'manual'
+    );
+    expect(filtered).toEqual([
+      { id: 'row-1', client_id: CLIENT_ID, water_ml: 250 },
+    ]);
+    expect(mockQuery.mock.calls[1][0]).toContain('client_id');
+    expect(mockRelease).toHaveBeenCalledTimes(2);
+  });
+});

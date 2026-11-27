@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useCoachesAvailable } from '../hooks/useCoaches';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -67,6 +68,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
   const { isConnected } = useServerConnection();
+  const coachesOn = useCoachesAvailable();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({
     enabled: isConnected,
@@ -298,6 +300,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   })}
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
+                />
+              )}
+              {isConnected && coachesOn && (
+                <SettingsRow
+                  icon="sparkles"
+                  title={t('coaches.settings.title', {
+                    defaultValue: 'Coaches',
+                  })}
+                  onPress={() => navigation.navigate('CoachSettings')}
+                  iconColor={catBlue}
                 />
               )}
               {isConnected && (

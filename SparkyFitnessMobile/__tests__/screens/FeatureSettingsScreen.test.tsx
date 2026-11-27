@@ -1,6 +1,11 @@
 import React from 'react';
 import { Text } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import FeatureSettingsScreen from '../../src/screens/FeatureSettingsScreen';
 import type { FeatureKey } from '@workspace/shared';
 import type { CycleSwitchState } from '../../src/hooks/useMobileFeatures';
@@ -69,6 +74,9 @@ jest.mock('../../src/hooks/useFeatureChoices', () => ({
 }));
 
 const renderScreen = () => render(<FeatureSettingsScreen {...({} as never)} />);
+
+const featureRow = (feature: FeatureKey) =>
+  within(screen.getByTestId(`feature-row-${feature}`));
 
 /** Every text on screen, and the switch's name, to check what they never say. */
 const allText = () =>
@@ -142,7 +150,9 @@ describe('FeatureSettingsScreen', () => {
     expect(toggle.props.value).toBe(true);
     expect(toggle.props.disabled).toBe(false);
     expect(
-      screen.getByText(/Only this app\. The website has its own switch\./)
+      featureRow('labResults').getByText(
+        /Only this app\. The website has its own switch\./
+      )
     ).toBeTruthy();
   });
 
@@ -165,6 +175,71 @@ describe('FeatureSettingsScreen', () => {
     expect(mockSetFeatureOn).toHaveBeenCalledWith('labResults', true);
   });
 
+  it('lists medications under Health, on by default, for this app only', () => {
+    renderScreen();
+    const toggle = screen.getByLabelText('Medications');
+    expect(toggle.props.value).toBe(true);
+    expect(toggle.props.disabled).toBe(false);
+    const row = featureRow('medications');
+    expect(
+      row.getByText(/^Medications, supplements and GLP-1 tracking\./)
+    ).toBeTruthy();
+    expect(
+      row.getByText(
+        /While it is off, reminders stop and come back when you turn it on; supplement nutrients still count in your totals\./
+      )
+    ).toBeTruthy();
+    expect(
+      row.getByText(/Only this app\. The website has its own switch\./)
+    ).toBeTruthy();
+  });
+
+  it('lists the Health features in the registry order', () => {
+    renderScreen();
+    const rows = screen
+      .queryAllByTestId(/^feature-row-/)
+      .map((node) => String(node.props.testID));
+    expect(rows).toEqual([
+      'feature-row-cycle',
+      'feature-row-medications',
+      'feature-row-labResults',
+      'feature-row-aiCoaches',
+    ]);
+  });
+
+  it('turns coaches on in this app', () => {
+    renderScreen();
+    fireEvent(
+      screen.getByTestId('feature-switch-aiCoaches'),
+      'valueChange',
+      true
+    );
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('aiCoaches', true);
+  });
+
+  it('turns medications off in this app', () => {
+    renderScreen();
+    fireEvent(
+      screen.getByTestId('feature-switch-medications'),
+      'valueChange',
+      false
+    );
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('medications', false);
+  });
+
+  it('turns medications back on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['medications']);
+    renderScreen();
+    const toggle = screen.getByTestId('feature-switch-medications');
+    expect(toggle.props.value).toBe(false);
+    // Only medications is off.
+    expect(screen.getByTestId('feature-switch-labResults').props.value).toBe(
+      true
+    );
+    fireEvent(toggle, 'valueChange', true);
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('medications', true);
+  });
+
   it.each([
     ['the choices load', { state: 'loading', isPending: false }],
     ['a change is saving', { state: 'ready', isPending: true }],
@@ -182,7 +257,11 @@ describe('FeatureSettingsScreen', () => {
     expect(screen.getByTestId('feature-switch-labResults').props.disabled).toBe(
       true
     );
-    fireEvent.press(screen.getByText('Retry'));
+    // One under each switch that reads the choices: medications, lab results,
+    // coaches.
+    const retries = screen.getAllByText('Retry');
+    expect(retries).toHaveLength(3);
+    fireEvent.press(retries[1]);
     expect(mockReloadChoices).toHaveBeenCalledTimes(1);
   });
 
@@ -193,7 +272,9 @@ describe('FeatureSettingsScreen', () => {
       true
     );
     expect(
-      screen.getByText(/Update your SparkyFitness server to change this\./)
+      featureRow('labResults').getByText(
+        /Update your SparkyFitness server to change this\./
+      )
     ).toBeTruthy();
   });
 

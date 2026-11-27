@@ -3,7 +3,7 @@ import { emailLoginGuard } from './middleware/emailLoginGuard.js';
 import { passkeyLoginGuard } from './middleware/passkeyLoginGuard.js';
 import { magicLinkLoginGuard } from './middleware/magicLinkLoginGuard.js';
 import { restoreWriteFence } from './middleware/restoreWriteFence.js';
-import { UPLOAD_STAGING_DIR } from './utils/uploadsPath.js';
+import { UPLOAD_STAGING_DIR, isSafePathSegment } from './utils/uploadsPath.js';
 
 import fs from 'fs';
 import type { ServerResponse } from 'http';
@@ -117,6 +117,7 @@ import recipeImportRoutesV2 from './routes/v2/recipeImportRoutes.js';
 import runProgramRoutesV2 from './routes/v2/runProgramRoutes.js';
 import fitnessTestRoutesV2 from './routes/v2/fitnessTestRoutes.js';
 import runGoalRoutesV2 from './routes/v2/runGoalRoutes.js';
+import coachRoutesV2 from './routes/v2/coachRoutes.js';
 import shoeRoutesV2 from './routes/v2/shoeRoutes.js';
 import plateInventoryRoutesV2 from './routes/v2/plateInventoryRoutes.js';
 import actionTagRoutesV2 from './routes/v2/actionTagRoutes.js';
@@ -643,6 +644,13 @@ app.get(
   ],
   async (req, res, _next) => {
     const { exerciseId, imageFileName } = req.params;
+    // This route is public, and Express decodes %2F into '/', so both parts
+    // are refused unless each is one plain name. Otherwise an id such as
+    // '../../owner/repo/main/exercises/X' would fetch another repository's JSON
+    // below and save its picture outside the uploads folder.
+    if (!isSafePathSegment(exerciseId) || !isSafePathSegment(imageFileName)) {
+      return res.status(400).send('Invalid image path.');
+    }
 
     // Security: Resolve and normalize the path to prevent traversal attacks
     const exercisesBaseDir = path.resolve(UPLOADS_BASE_DIR, 'exercises');
@@ -675,12 +683,12 @@ app.get(
     // Check primary path
     let resolvedStatus = 'NOT_FOUND';
     if (
-      normalizedLocalPath.startsWith(normalizedBaseDir) &&
+      normalizedLocalPath.startsWith(`${normalizedBaseDir}${path.sep}`) &&
       fs.existsSync(localImagePath)
     ) {
       resolvedStatus = 'FOUND_IN_SUBFOLDER';
     } else if (
-      normalizedFlatPath.startsWith(normalizedBaseDir) &&
+      normalizedFlatPath.startsWith(`${normalizedBaseDir}${path.sep}`) &&
       fs.existsSync(flatImagePath)
     ) {
       // Fallback found
@@ -883,6 +891,7 @@ app.use('/api/v2/recipe-imports', recipeImportRoutesV2);
 app.use('/api/v2/run-program', runProgramRoutesV2);
 app.use('/api/v2/fitness-tests', fitnessTestRoutesV2);
 app.use('/api/v2/run-goals', runGoalRoutesV2);
+app.use('/api/v2/coaches', coachRoutesV2);
 app.use('/api/v2/shoes', shoeRoutesV2);
 app.use('/api/v2/plate-inventory', plateInventoryRoutesV2);
 app.use('/api/v2/action-tags', actionTagRoutesV2);

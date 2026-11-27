@@ -17,7 +17,7 @@ vi.mock('../utils/timezoneLoader.js', () => ({
 }));
 vi.mock('../integrations/liftosaur/liftosaurDataProcessor.js', () => ({
   default: {
-    processLiftosaurWorkouts: vi.fn().mockResolvedValue(undefined),
+    processLiftosaurWorkouts: vi.fn().mockResolvedValue({ workoutsFailed: 0 }),
   },
 }));
 vi.mock('../integrations/liftosaur/liftosaurMeasurementsService.js', () => ({
@@ -390,6 +390,45 @@ describe('liftosaurSync', () => {
       vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
         .calls[0]![4]
     ).toBeNull();
+  });
+
+  it('counts only saved workouts and leaves last_sync_at alone when one fails', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [
+            {
+              id: 1,
+              text: '2026-03-01T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+            },
+            {
+              id: 2,
+              text: '2026-03-02T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+            },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+    vi.mocked(
+      liftosaurDataProcessor.processLiftosaurWorkouts
+    ).mockResolvedValueOnce({ workoutsFailed: 1 });
+
+    const result = await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.workoutsImported).toBe(1);
+    expect(result.workoutsFailed).toBe(1);
+    expect(result.measurementsImported).toBe(3);
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('last_sync_at'),
+      expect.anything()
+    );
   });
 
   it('keeps imported workouts but leaves last_sync_at alone when measurements fail', async () => {

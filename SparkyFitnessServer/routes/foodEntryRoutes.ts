@@ -1531,7 +1531,10 @@ router.post(
       } catch (persistError) {
         // The files are already out of staging, so cleanupStagedImages can no
         // longer reach them; remove them here or they leak permanently.
-        await removeOrphanedImages(uploadedPaths, []);
+        await removeOrphanedImages(uploadedPaths, [], {
+          domain: 'food_entries',
+          entityId: id,
+        });
         throw persistError;
       }
 

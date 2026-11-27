@@ -973,7 +973,8 @@
     "sleepingWristTemperature": "睡眠時手腕溫度",
     "overnightBodyTemperature": "夜間體溫",
     "toothbrushing": "刷牙",
-    "exercise": "運動"
+    "exercise": "運動",
+    "waistCircumference": "腰圍"
   },
   "settings": {
     "app": "應用設定",
@@ -1170,7 +1171,8 @@
       "ongoingWorkout": "進行中的訓練",
       "moodCheckin": "心情簽到",
       "oralCare": "刷牙提醒",
-      "mindfulness": "冥想計時器"
+      "mindfulness": "冥想計時器",
+      "challenges": "挑戰"
     },
     "actions": {
       "completeSet": "完成該組",
@@ -1228,6 +1230,12 @@
     "meditationTimer": {
       "title": "冥想完成",
       "body": "開啟 SparkyFitness 儲存您的時段。"
+    },
+    "challengeWeek": {
+      "body": "{{leader}} 以 {{total}} 領先。本週今晚結束。",
+      "bodyWithOwn": "{{leader}} 以 {{total}} 領先。您排第 {{rank}}，共 {{ownTotal}}。本週今晚結束。",
+      "bodyYouLead": "您以 {{total}} 領先。本週今晚結束。",
+      "title": "{{name}}：本週誰領先"
     }
   },
   "activeWorkout": {
@@ -1489,7 +1497,9 @@
     "checkIn": "每日簽到",
     "checkInHint": "習慣",
     "oralCare": "口腔護理",
-    "oralCareHint": "刷牙、牙線"
+    "oralCareHint": "刷牙、牙線",
+    "copyFromYesterday": "從昨天複製",
+    "copyFromYesterdayHint": "重複餐點"
   },
   "screens": {
     "foods": "食物",
@@ -1585,7 +1595,9 @@
       "trainingCalendar": "訓練行事曆",
       "trainingCalendarSubtitle": "計畫與已完成的運動，以及依運動種類的負荷",
       "labResults": "檢驗結果",
-      "labResultsSubtitle": "抽血檢驗與其他指標隨時間變化"
+      "labResultsSubtitle": "抽血檢驗與其他指標隨時間變化",
+      "challenges": "挑戰",
+      "challengesSubtitle": "與朋友家人一起玩群組排行榜"
     },
     "sleep": "睡眠",
     "healthTrendsSettings": "健康趨勢",
@@ -1995,7 +2007,10 @@
       "adaptive": "目標 − 攝取",
       "fixed": "目標 − 攝取",
       "dynamicActivitySeparated": "目標 − 已食 + 活動",
-      "tdeeWeekly": "推估 TDEE + 每週目標調整 − 已食"
+      "tdeeWeekly": "推估 TDEE + 每週目標調整 − 已食",
+      "burnedAdaptive": "僅供參考。您的自適應目標已包含您的活動量。",
+      "netAdaptive": "不會用於「剩餘」。請在下方開啟「另外計算活動熱量」，才會計入今天的活動。",
+      "netAdaptivePercentage": "不會用於「剩餘」。若要計入今天的活動，請選擇「動態」並開啟「另外計算活動熱量」。"
     },
     "notes": {
       "dynamic": "目標隨你的活動增長",
@@ -2104,7 +2119,9 @@
       "customShort": "自訂",
       "chartHintTrainingShort": "點選長條查看當天。點選下方的日子切換訓練與休息。",
       "chartHintCustomHandle": "點選長條查看當天。拖曳長條頂端的把手即可修改。"
-    }
+    },
+    "adaptiveFallbackActivityLevel": "在自適應累積滿 {{days}} 天飲食紀錄之前，您的基準值是 BMR × 此活動等級，之後才套用目標模式；您的運動不會另外加上去。請選擇一個已納入您運動量的等級。",
+    "adaptiveFallbackActivitySeparated": "在自適應累積滿 {{days}} 天飲食紀錄之前，您的基準值是 BMR × 此活動等級，之後才套用目標模式。此等級只描述步數與運動以外的活動，因為這兩項會另外計算。"
   },
   "dashboardSettings": {
     "updateFailed": "更新設定失敗。",
@@ -2151,13 +2168,14 @@
     "trainingLoad": "訓練負荷",
     "trainingLoadSubtitle": "顯示本週與你平時訓練的比較，並提醒你休息",
     "wellness": "健康",
-    "offInFeatures": "未顯示：已在「功能」關閉",
     "bloodAlcohol": "酒精濃度估算",
     "bloodAlcoholSubtitle": "在首頁顯示依已記錄飲酒推算的粗略酒精濃度估算",
     "labResults": "檢驗結果",
     "labResultsSubtitle": "顯示最新檢驗結果與哪些超出範圍",
     "oralCare": "口腔護理",
-    "oralCareSubtitle": "顯示刷牙對比目標與連續紀錄"
+    "oralCareSubtitle": "顯示刷牙對比目標與連續紀錄",
+    "challenges": "挑戰",
+    "challengesSubtitle": "顯示您在所參加挑戰中的排名"
   },
   "diarySettings": {
     "updateFailed": "更新設定失敗。",
@@ -2235,7 +2253,10 @@
     "oralCareReminderTime": "提醒 {{number}}",
     "oralCareReminderTimeAccessibility": "刷牙提醒 {{number}}，{{time}}",
     "oralCareRemoveReminder": "移除刷牙提醒 {{number}}",
-    "oralCareAddReminder": "新增提醒"
+    "oralCareAddReminder": "新增提醒",
+    "challengeWeek": "每週領先",
+    "challengeWeekSubtitle": "每個挑戰週的最後一晚：通知您所參加的每週挑戰誰領先",
+    "challenges": "挑戰"
   },
   "workoutSettings": {
     "title": "訓練設定",
@@ -2887,7 +2908,8 @@
       "lookupBarcode": "無法查詢此條形碼。請重試。",
       "timeout": "請求超時。請檢查你的伺服器連線。",
       "retryOnDevice": "此 iPhone 無法讀取標籤。",
-      "restartApp": "無法開啟相簿。請重新啟動應用程式。"
+      "restartApp": "無法開啟相簿。請重新啟動應用程式。",
+      "offlineBarcode": "沒有連線。此條碼不在您手機已儲存的食物中。"
     },
     "permission": {
       "camera": "我們需要你的許可權才能顯示相機",
@@ -4099,7 +4121,9 @@
       "result": "= {{raw}} {{unit}} 生 · {{energy}}",
       "incomplete": "請輸入重量以計算生重。",
       "enterEaten": "請輸入您吃掉的熟重。"
-    }
+    },
+    "queued": "已儲存在這支手機",
+    "queuedMessage": "連線到您的伺服器時就會上傳。"
   },
   "exerciseSearch": {
     "title": "動作",
@@ -4259,7 +4283,13 @@
       "selectAll": "全選",
       "selected_other": "已選擇 {{count}} 項",
       "limitReached": "最多可選擇 {{limit}} 項食物",
-      "foodCheckbox": "選擇 {{name}}"
+      "foodCheckbox": "選擇 {{name}}",
+      "needsConnection": "一次新增多項食物需要連線",
+      "needsConnectionHint": "請逐項新增，才能保留在這支手機。"
+    },
+    "foodResultCard": {
+      "tapForFullNutrition": "點選查看完整營養",
+      "tapForNutrition": "點選查看營養"
     }
   },
   "editBarcode": {
@@ -4539,7 +4569,9 @@
     "errors": {
       "permission": "你沒有許可權編輯此條目。",
       "saveFailed": "儲存更改失敗",
-      "deleteFailed": "刪除失敗"
+      "deleteFailed": "刪除失敗",
+      "uploadingNow": "目前正在上傳。請稍後再試。",
+      "alreadyUploaded": "剛剛已上傳。請等日記重新整理後再試。"
     },
     "deleteConfirm": "確定要刪除此食物條目嗎？",
     "entryNotes": "此條目的備註",
@@ -5132,7 +5164,8 @@
     "healthUnavailable": {
       "title": "健康資料不可用",
       "message": "無法初始化健康資料訪問。請在設定中檢查你的許可權。"
-    }
+    },
+    "configureForCopy": "請在設定中設定好伺服器連線，才能從昨天複製。"
   },
   "announcementModal": {
     "title": "公告",
@@ -5589,10 +5622,14 @@
     "customConfirm": "設為自訂範圍？"
   },
   "foodEntryMeal": {
-    "failed": "新增餐點失敗"
+    "failed": "新增餐點失敗",
+    "queued": "已儲存在這支手機",
+    "queuedMessage": "連線到您的伺服器時就會上傳。"
   },
   "foodSave": {
-    "failed": "儲存食物失敗"
+    "failed": "儲存食物失敗",
+    "queued": "已儲存在這支手機",
+    "queuedMessage": "連線到您的伺服器時就會上傳。"
   },
   "favorites": {
     "updateFailed": "更新收藏失敗"
@@ -5923,7 +5960,9 @@
     "configure": "請在伺服器上配置一個飲水容器以追蹤飲水。",
     "multipleNoPrimaryMobile": "你有多個水容器，但沒有標記為主要容器。點按以選擇一個。",
     "configureMobile": "新增水容器以開始追蹤水分。",
-    "defaultContainer": "預設"
+    "defaultContainer": "預設",
+    "queued": "已儲存在這支手機",
+    "queuedMessage": "連線到您的伺服器時就會上傳。"
   },
   "activeWorkoutAutosave": {
     "failedTitle": "訓練未儲存",
@@ -6771,7 +6810,19 @@
     "countdownOff": "關閉",
     "countdownSeconds": "{{seconds}} 秒",
     "holdCountdownTitle": "保持前倒數",
-    "holdCountdownSubtitle": "計時保持開始前有 3、2、1「準備」畫面，讓您就位。點一下可略過。"
+    "holdCountdownSubtitle": "計時保持開始前有 3、2、1「準備」畫面，讓您就位。點一下可略過。",
+    "mediaControlsTitle": "媒體控制",
+    "mediaAccessTitle": "正在播放曲目資訊",
+    "mediaAccessEnabledSubtitle": "您的手錶在運動期間控制手機媒體時，會顯示目前播放的歌曲與歌手。",
+    "mediaAccessDisabledSubtitle": "播放、跳歌與音量控制會自動生效。允許通知存取後，您的手錶即可同時顯示目前播放的歌曲與歌手，其他通知一律忽略。",
+    "mediaAccessEnabled": "已開啟",
+    "mediaAccessSetup": "設定",
+    "mediaAccessA11yLabel": "{{title}}，{{status}}",
+    "mediaAccessDisclosureTitle": "允許通知存取？",
+    "mediaAccessDisclosureBody": "Android 需要通知存取權限，Wear OS 手錶才能讀取目前播放的歌曲與歌手。SparkyFitness 只會讀取使用中的媒體工作階段，不會理會您的訊息與其他通知。",
+    "mediaAccessOpenSettings": "開啟設定",
+    "mediaAccessOpenErrorTitle": "無法開啟設定",
+    "mediaAccessOpenErrorBody": "前往 Android 設定 → 通知 → 通知讀取、回覆與控制，然後開啟 SparkyFitness 媒體控制。"
   },
   "guidedWorkout": {
     "cue": {
@@ -9114,7 +9165,6 @@
     "mapSatellite": "衛星圖",
     "mapStandard": "地圖",
     "mapUnavailable": "此版本無法在地圖繪製路線。",
-    "osmAttribution": "© OpenStreetMap",
     "redo": "重做",
     "findingRoute": "正在尋找路線",
     "turns": "轉向",
@@ -9152,7 +9202,8 @@
       "arrive": "抵達"
     },
     "goBack": "返回",
-    "followRoadsTooMany": "跟隨道路最多 {{max}} 個點。請復原部分點，或關閉「跟隨道路」再儲存。"
+    "followRoadsTooMany": "跟隨道路最多 {{max}} 個點。請復原部分點，或關閉「跟隨道路」再儲存。",
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9502,7 +9553,9 @@
     "labResults": {
       "title": "檢驗結果",
       "description": "記錄抽血檢驗並隨時間追蹤每個指標。"
-    }
+    },
+    "someOff": "有些功能已關閉",
+    "manage": "管理"
   },
   "addMenuSettings": {
     "reorder": "重排 {{name}}",
@@ -9515,7 +9568,6 @@
     "previewTitle": "預覽",
     "previewDescription": "您選擇後「快速操作」的樣子。",
     "lineNumber": "第 {{number}} 行",
-    "offInFeatures": "未顯示：已在「功能」關閉",
     "showAs": "顯示為",
     "showAsValue": "顯示為{{style}}",
     "styleList": "清單",
@@ -9527,7 +9579,8 @@
     "buttonsDescription": "在面板底部並排顯示。",
     "chooseCard": "選擇一個圖磚",
     "slotLabel": "圖磚 {{number}}：{{name}}",
-    "slotHint": "開啟清單以選擇要放的項目"
+    "slotHint": "開啟清單以選擇要放的項目",
+    "emptySlot": "空"
   },
   "calorieLink": {
     "action": "連結已同步運動",
@@ -10697,7 +10750,7 @@
     "presetUpdateQueued": "連線後就會更新已儲存運動",
     "presetUpdateSkipped": "已儲存運動「{{name}}」未更新，因為已在他處變更",
     "presetUpdated": "已儲存運動「{{name}}」已更新",
-    "diaryNote": "離線僅有運動可用。食物與其他紀錄需要連線。",
+    "diaryNote": "離線時可查看上週的食物與運動。睡眠與其他紀錄需要連線。",
     "diaryNothingSaved": "這天沒有儲存任何內容",
     "finishedTitle": "已儲存在這支手機",
     "finishedMessage": "連線到您的伺服器時就會上傳。",
@@ -10709,7 +10762,7 @@
     "notReadyMessage": "請先連線一次您的伺服器，這支手機才能儲存運動所需內容。",
     "banner": "離線：顯示儲存在這支手機的資料",
     "bannerHint": "再次檢查連線",
-    "intro": "不連線也能開始與記錄運動。會保留在這支手機，連線到伺服器時上傳。",
+    "intro": "沒有連線也能記錄運動、食物、餐點、新食物與飲品。這些會保留在這支手機，連線到伺服器時上傳。",
     "waitingHeading": "等待上傳",
     "nothingWaiting": "沒有內容等待",
     "nothingWaitingSubtitle": "這支手機的所有內容都已上傳。",
@@ -10723,7 +10776,7 @@
     "storageValue": "{{size}} MB",
     "refreshRow": "立即重新整理",
     "refreshing": "正在重新整理…",
-    "neverRefreshed": "尚未下載。請先連線一次您的伺服器以準備離線運動。",
+    "neverRefreshed": "尚未下載。請連線您的伺服器一次，以準備離線使用。",
     "lastRefreshed": "上次重新整理 {{when}}",
     "refreshDone": "已儲存資料為最新",
     "refreshFailed": "無法重新整理",
@@ -10731,7 +10784,7 @@
     "clearRow": "清除離線資料",
     "clearRowSubtitle": "仍在等待上傳的會保留",
     "clearTitle": "清除離線資料？",
-    "clearMessage": "為離線使用而儲存的運動、動作與其他資料會從這支手機移除，下次再下載。仍在等待上傳的會保留。",
+    "clearMessage": "為離線使用而儲存的運動、動作、食物、餐點與其他資料會從這支手機移除，下次再下載。仍在等待上傳的內容會保留。",
     "clearConfirm": "清除",
     "status": {
       "pending": "等待上傳",
@@ -10754,8 +10807,151 @@
     },
     "kind": {
       "workout": "運動",
-      "other": "已儲存變更"
+      "other": "已儲存變更",
+      "food": "食物紀錄",
+      "water": "飲品"
     },
-    "libraryNote": "離線僅有運動與動作可用。圖庫其他內容需要連線。"
+    "libraryNote": "儲存在這支手機的運動、動作、食物與餐點，離線也能使用。圖庫其他內容需要連線。",
+    "ownerless": {
+      "title": "沒有記錄帳戶",
+      "message": "此次上傳是在手機還不知道屬於哪個帳戶前儲存的，因此不會送出。您可以捨棄它。",
+      "discard": "捨棄此次上傳",
+      "subtitle": "沒有記錄帳戶。點選以捨棄。"
+    },
+    "foodHeading": "離線保留的食物與水分",
+    "foodIntro": "您最近與最常用的食物、您自己的食物（最多 2,000 項）、已儲存的餐點、您的餐點類型與水分容器都會保留，連同日記與上週的總計。每次連線都會更新。",
+    "foodsKeptTitle": "食物",
+    "foodsKeptValue_other": "{{count}} 項食物",
+    "mealsKeptTitle": "已儲存的餐點",
+    "mealsKeptValue_other": "{{count}} 個餐點",
+    "diaryDaysKeptTitle": "日記天數",
+    "diaryDaysKeptValue_other": "{{count}} 天食物"
+  },
+  "copyFromYesterday": {
+    "title": "從昨天複製",
+    "subtitle": "將昨天的餐點帶到這一天",
+    "emptySource": "昨天沒有可複製的內容。",
+    "copySelected": "複製選取項目",
+    "copyAll": "全部複製",
+    "copying": "複製中…",
+    "success": "已從昨天複製",
+    "failed": "從昨天複製失敗",
+    "loadError": "無法載入昨天的餐點。"
+  },
+  "challenges": {
+    "card": {
+      "a11y": "挑戰",
+      "leader": "{{name}} 以 {{total}} 領先",
+      "noScore": "尚無分數",
+      "refreshFailed": "無法重新整理，顯示上次載入的",
+      "youLead": "您領先",
+      "yourPlace": "#{{rank}} / {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "從 {{start}} 開始，沒有結束日期",
+      "range": "{{start}} 至 {{end}}"
+    },
+    "detailLoadFailed": "無法載入此挑戰。",
+    "emptySubtitle": "用朋友的邀請碼加入，或在網頁自行發起一個。",
+    "emptyTitle": "尚無挑戰",
+    "format": {
+      "groupGoal": "群組目標",
+      "hitGoal": "達標",
+      "leaderboard": "排行榜",
+      "race": "競速達標"
+    },
+    "hostOnWeb": "您是此挑戰的主辦人。請在網頁變更其規則與邀請碼。",
+    "join": {
+      "closed": "目前無法加入此挑戰。",
+      "codeLabel": "邀請碼",
+      "codePlaceholder": "貼上邀請碼或連結",
+      "ended": "此挑戰已經結束。",
+      "failed": "無法加入挑戰。",
+      "full": "此挑戰已額滿。",
+      "invalidCode": "此邀請碼無效或已過期。",
+      "joined": "已加入 {{name}}",
+      "lateJoinClosed": "已經開始，不接受中途加入。",
+      "nameLabel": "您在其中的名稱",
+      "namePlaceholder": "例如您的名字",
+      "nameRequired": "請輸入其他成員會看到的名稱。",
+      "notACode": "貼上他人寄給您的邀請碼或連結。",
+      "privacy": "成員只會看到此名稱與您的分數，永遠看不到您的日記或電子郵件。您隨時可以退出。",
+      "submit": "加入",
+      "submitting": "加入中…",
+      "title": "加入挑戰",
+      "tooMany": "嘗試次數過多。請等幾分鐘再試。",
+      "withCode": "用邀請碼加入"
+    },
+    "leave": {
+      "action": "退出挑戰",
+      "confirm": "退出",
+      "failed": "無法退出挑戰",
+      "message": "您在此挑戰的分數會被刪除。您可以用新邀請碼再次加入。",
+      "title": "退出此挑戰？"
+    },
+    "listRefreshFailed": "無法重新整理您的挑戰，顯示上次載入的。",
+    "loadFailed": "無法載入您的挑戰。",
+    "memberCount_other": "{{count}} 位成員",
+    "metric": {
+      "activeCalories": "活動熱量",
+      "activeMinutes": "活動分鐘",
+      "distance": "距離",
+      "elevation": "爬升",
+      "hrZoneMinutes": "心率區間分鐘",
+      "points": "分數",
+      "steps": "步數",
+      "workoutDays": "運動天數"
+    },
+    "moreActions": "更多操作",
+    "period": {
+      "challenge": "整個挑戰",
+      "day": "每日",
+      "month": "每月",
+      "next": "下一個計分期",
+      "previous": "上一個計分期",
+      "week": "每週"
+    },
+    "refreshFailed": "無法重新整理此挑戰，顯示上次載入的內容。",
+    "standings": {
+      "daysHit": "{{eligible}} 天中 {{hit}} 天達標",
+      "empty": "此計分期尚無人得分。",
+      "final": "最終結果",
+      "find": "尋找成員",
+      "finished": "於 {{date}} 結束",
+      "groupTotal": "全組合計：{{total}}（目標 {{target}}）",
+      "live": "截至目前；較晚同步的手錶資料仍會計入",
+      "loadFailed": "無法載入排名。",
+      "minutes": "{{value}} 活動分鐘",
+      "noMatch": "找不到符合「{{query}}」的成員。",
+      "refreshFailed": "無法重新整理排名，顯示上次載入的。",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "贏家",
+      "you": "{{name}}（您）"
+    },
+    "state": {
+      "active": "進行中",
+      "daysLeft_other": "還剩 {{count}} 天",
+      "ended": "已結束",
+      "lastDay": "最後一天",
+      "running": "進行中",
+      "startsIn_other": "{{count}} 天後開始",
+      "startsOn": "{{date}} 開始",
+      "startsTomorrow": "明天開始"
+    },
+    "target": "目標：{{target}}",
+    "title": "挑戰",
+    "unavailableSubtitle": "您的伺服器已關閉挑戰功能，或需要更新。請聯絡伺服器管理員。",
+    "unavailableTitle": "挑戰無法使用",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} 分鐘",
+      "points": "{{value}} 分",
+      "steps": "{{value}} 步",
+      "workoutDays_other": "{{count}} 天"
+    },
+    "youHost": "您是主辦"
   }
 }

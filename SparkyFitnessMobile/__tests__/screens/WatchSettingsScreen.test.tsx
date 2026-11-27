@@ -37,8 +37,16 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
 }));
 
+let mockIsConnected = true;
 jest.mock('../../src/hooks/useServerConnection', () => ({
-  useServerConnection: () => ({ isConnected: true }),
+  useServerConnection: () => ({ isConnected: mockIsConnected }),
+}));
+
+let mockOffFeatures: string[] = [];
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => !mockOffFeatures.includes(key),
+  }),
 }));
 
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
@@ -81,6 +89,8 @@ describe('WatchSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+    mockIsConnected = true;
+    mockOffFeatures = [];
   });
 
   test('lists every watch page in the saved order, adding ones it lacks', () => {
@@ -258,6 +268,81 @@ describe('WatchSettingsScreen', () => {
     );
   });
 
+  describe('with Medications turned off in Settings → Features', () => {
+    beforeEach(() => {
+      mockOffFeatures = ['medications'];
+    });
+
+    test('leaves its page out and says some features are off', () => {
+      renderScreen();
+
+      expect(orderedRowKeys()).not.toContain('medications');
+      expect(orderedRowKeys()).toHaveLength(WATCH_PAGE_KEYS.length - 1);
+      fireEvent.press(screen.getByTestId('features-off-manage'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    test('offers no Manage link while offline', () => {
+      mockIsConnected = false;
+      renderScreen();
+
+      expect(screen.getByTestId('features-off-notice')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-manage')).toBeNull();
+    });
+
+    test('a drag keeps the hidden page where it was', () => {
+      renderScreen();
+
+      fireEvent(
+        screen.getByTestId('watch-page-drag-handle-water'),
+        'accessibilityAction',
+        { nativeEvent: { actionName: 'increment' } }
+      );
+
+      expect(useAppPreferencesStore.getState().watchPageOrder).toEqual([
+        'goals',
+        'entry',
+        'medications',
+        'water',
+        'trend',
+        'workout',
+        'fasting',
+        'steps',
+      ]);
+    });
+
+    test('the last page shown that is not Medications cannot be turned off', () => {
+      useAppPreferencesStore.setState({
+        hiddenWatchPages: [
+          'goals',
+          'water',
+          'entry',
+          'trend',
+          'fasting',
+          'steps',
+        ],
+      });
+
+      renderScreen();
+
+      expect(
+        screen.getByTestId('watch-page-switch-workout').props.disabled
+      ).toBe(true);
+    });
+
+    test('does not change the stored pages', () => {
+      renderScreen();
+
+      expect(useAppPreferencesStore.getState().hiddenWatchPages).toEqual([]);
+    });
+  });
+
+  test('shows no notice while every feature is on', () => {
+    renderScreen();
+
+    expect(screen.queryByTestId('features-off-notice')).toBeNull();
+  });
+
   describe('Goals page nutrients', () => {
     const nutrientRowKeys = (): string[] =>
       screen
@@ -433,6 +518,29 @@ describe('WatchSettingsScreen', () => {
       });
     } finally {
       alertSpy.mockRestore();
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
+  });
+
+  test('has a row that opens the complications screen on iOS and Android', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('watch-complications-row'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+
+    navigation.navigate.mockClear();
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      fireEvent.press(screen.getAllByTestId('watch-complications-row')[0]);
+      expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+    } finally {
       Object.defineProperty(Platform, 'OS', {
         value: originalOs,
         configurable: true,

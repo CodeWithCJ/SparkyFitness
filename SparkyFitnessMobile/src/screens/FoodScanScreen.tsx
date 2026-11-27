@@ -888,7 +888,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           key={`${scanMode}-${cameraSession}`}
           ref={cameraRef}
           facing="back"
-          autofocus="on"
           onCameraReady={() => {
             if (
               appActiveRef.current &&

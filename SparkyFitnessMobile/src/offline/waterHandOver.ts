@@ -150,6 +150,92 @@ export async function queueWaterCustomAmount(
   }
 }
 
+/**
+ * Cancels one queued offline water drink by its replay key (`entityId`) before
+ * upload begins. Returns `'cancelled'` when deleted untouched, `'uploading'`
+ * when an attempt has already started or was tried, and `'none'` when no
+ * unconfirmed outbox row exists for that replay key.
+ */
+export async function cancelQueuedWaterDrink(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<'cancelled' | 'uploading' | 'none' | 'unreadable'> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return 'none';
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return 'none';
+  const outcome = await deleteUnconfirmedUnlessSending(
+    db,
+    serverConfigId,
+    cleanKey,
+    (row) => isOwnedBy(row, userId),
+    (row) => row.attempts > 0
+  );
+  if (outcome === 'deleted') {
+    notifyOutboxChanged();
+    return 'cancelled';
+  }
+  return outcome;
+}
+
+/**
+ * Checks whether a queued offline water drink is still actively pending/retrying
+ * in the outbox, has permanently failed, or is no longer unconfirmed.
+ */
+export async function getQueuedWaterDrinkStatus(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<'active' | 'failed' | 'none' | 'unreadable'> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return 'none';
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return 'none';
+  const row = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (entry) =>
+      entry.kind === WATER_ADD &&
+      entry.entityId === cleanKey &&
+      isOwnedBy(entry, userId)
+  );
+  if (!row) return 'none';
+  return row.status === 'failed' ? 'failed' : 'active';
+}
+
+/**
+ * Looks up the calendar day (`entryDate`) of a queued offline water drink
+ * from the outbox when a legacy cancellation marker lacked an embedded date.
+ */
+export async function getQueuedWaterDrinkEntryDate(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<string | 'unreadable' | null> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return null;
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return null;
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return null;
+  const row = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (entry) =>
+      entry.kind === WATER_ADD &&
+      entry.entityId === cleanKey &&
+      isOwnedBy(entry, userId)
+  );
+  return row?.entryDate ?? null;
+}
+
 /** The removal of one drink the server already has, waiting to upload. */
 export const WATER_REMOVE = 'water.remove';
 

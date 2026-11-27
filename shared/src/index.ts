@@ -311,6 +311,7 @@ export * from './utils/guidedWorkoutCues.ts';
 export * from './utils/dropSetCalculator.ts';
 export * from './utils/weightRamp.ts';
 export * from './utils/runningTrends.ts';
+export * from './utils/exerciseTrends.ts';
 export * from './utils/raceTimePredictions.ts';
 export * from './utils/weightTrend.ts';
 export * from './utils/workoutFeedbackForm.ts';
@@ -396,6 +397,7 @@ export {
 } from './utils/measurementTimeline.ts';
 export {
   GLUCOSE_CONTEXT_KINDS,
+  GLUCOSE_CONTEXT_KIND_FEATURES,
   loadGlucoseContext,
   glucoseContextForDay,
   type GlucoseContextKind,
@@ -404,5 +406,11 @@ export {
 } from './glucose/context.ts';
 
 export * from './schemas/api/Chat.api.zod.ts';
+export * from './schemas/api/Coaches.api.zod.ts';
+export * from './schemas/database/CoachProfile.zod.ts';
+export * from './schemas/database/UserCoaches.zod.ts';
+export * from './schemas/database/CoachNudges.zod.ts';
+export * from './coaches/index.ts';
+export * from './utils/loggingStreak.ts';
 
 export * from './utils/chatTools.ts';

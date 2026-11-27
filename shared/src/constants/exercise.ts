@@ -288,3 +288,66 @@ export function isUserOriginatedSource(
     (source ?? '').trim().toLowerCase()
   );
 }
+
+/** What `isPlannedEntryRow` reads from a diary row. */
+export interface PlannedEntryRowInput {
+  /** The row's stored source ('Workout Plan', 'Manual', ...). */
+  source: string | null;
+  /** updated_at after created_at: the member changed the row. */
+  edited: boolean;
+  sets:
+    | readonly {
+        completed_at?: string | null;
+        started_at?: string | null;
+      }[]
+    | null;
+  /** The grouped session the row belongs to, when it has one. */
+  session: {
+    source: string | null;
+    finished_at: string | null;
+    /** The session or one of its exercises was changed after it was created. */
+    edited: boolean;
+    /** Whether any exercise of the session is linked to a plan assignment. */
+    has_plan_assignment: boolean;
+    /** Every set of the session, for its lifecycle status. */
+    sets: readonly {
+      completed_at?: string | null;
+      started_at?: string | null;
+    }[];
+  } | null;
+}
+
+/**
+ * A diary row that is only planned, so it counts for nothing yet: what a
+ * prefill plan generated and nobody has touched. A row in a grouped session is
+ * planned while the session's lifecycle status is 'planned' (no set checked
+ * off, not finished) and neither the session nor any of its exercises was
+ * edited. A single generated row is planned until the member edits it or
+ * starts or checks off a set. "Edited" is the test the plan regeneration
+ * uses before it removes generated rows (updated_at after created_at), so a
+ * workout the plan keeps as the member's own also counts. Challenges score
+ * and the exercise trend charts count by this one rule.
+ */
+export function isPlannedEntryRow(row: PlannedEntryRowInput): boolean {
+  if (row.session) {
+    return (
+      !row.session.edited &&
+      // A started set means the session is under way, though not checked off
+      !row.session.sets.some((s) => (s.started_at ?? null) !== null) &&
+      deriveWorkoutSessionStatus({
+        source: row.session.source,
+        finishedAt: row.session.finished_at,
+        hasPlanAssignment: row.session.has_plan_assignment,
+        sets: row.session.sets,
+      }) === 'planned'
+    );
+  }
+  return (
+    isWorkoutPlanGeneratedSource(row.source) &&
+    !row.edited &&
+    !(row.sets ?? []).some(
+      (s) =>
+        (s.completed_at ?? null) !== null || (s.started_at ?? null) !== null
+    )
+  );
+}

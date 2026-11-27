@@ -28,6 +28,7 @@ interface DashboardStatsView {
     goalType: string;
     targetMin?: number | null;
     targetMax?: number | null;
+    isDefault?: boolean;
   };
 }
 
@@ -60,7 +61,12 @@ export function buildDashboardTools(userId: string, tz: string) {
                 date
               )) as unknown as DashboardStatsView;
               const unit = stats.unit;
-              const goalTypeInfo = stats.calorieGoalType;
+              // The built-in default direction is 'minimum' for calories too;
+              // only a direction the user chose gets floor/limit wording.
+              // Otherwise show the plain goal and remaining, like the app.
+              const goalTypeInfo = stats.calorieGoalType?.isDefault
+                ? undefined
+                : stats.calorieGoalType;
               let goalLine = `- Goal: ${stats.goal} ${unit}`;
               let remainingLine = `- Remaining: ${stats.remaining} ${unit}`;
               const extraLines: string[] = [];

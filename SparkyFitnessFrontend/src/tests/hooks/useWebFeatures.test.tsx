@@ -172,6 +172,60 @@ describe('useWebFeatures', () => {
     }
   );
 
+  it.each([
+    ['no choice', {}, true],
+    ['turned off on the website', { web: { medications: false } }, false],
+    [
+      'turned off in the mobile app only',
+      { mobile: { medications: false } },
+      true,
+    ],
+  ] as const)(
+    'medications with %s',
+    async (_label, feature_choices, expected) => {
+      getMock.mockResolvedValue(null);
+      getChoicesMock.mockResolvedValue({ feature_choices });
+      const { result, client } = setup();
+      await waitFor(() =>
+        expect(client.getQueryState(['featureChoices'])?.status).toBe('success')
+      );
+      const { isEnabled, isShown, hiddenCustomCategories } =
+        result.current.features;
+      expect(isEnabled('medications')).toBe(expected);
+      expect(isShown('medications')).toBe(expected);
+      // The GLP-1 check-in answers hide only while it is off on purpose.
+      expect(hiddenCustomCategories.has('GLP Hunger')).toBe(!expected);
+    }
+  );
+
+  it('shows medications while the choices load', () => {
+    getMock.mockResolvedValue(null);
+    getChoicesMock.mockReturnValue(new Promise(() => {}));
+    const { result } = setup();
+    expect(result.current.features.isShown('medications')).toBe(true);
+    expect(result.current.features.hiddenCustomCategories.size).toBe(0);
+  });
+
+  it("ignores the owner's choices while acting for them", async () => {
+    mockActingOnBehalf = true;
+    getMock.mockResolvedValue(cycleRow({ enabled: false }));
+    getChoicesMock.mockResolvedValue({
+      feature_choices: { web: { medications: false, labResults: false } },
+    });
+    const { result, client } = setup();
+    await waitFor(() =>
+      expect(client.getQueryState(['featureChoices'])?.status).toBe('success')
+    );
+    await waitFor(() => expect(getMock).toHaveBeenCalled());
+    const { isEnabled, isShown, hiddenCustomCategories } =
+      result.current.features;
+    // The owner's own switch is unchanged; what the delegate sees is not.
+    expect(isEnabled('medications')).toBe(false);
+    expect(isShown('medications')).toBe(true);
+    expect(isShown('labResults')).toBe(true);
+    expect(hiddenCustomCategories.size).toBe(0);
+  });
+
   it('hides nothing while cycle settings load', () => {
     getMock.mockReturnValue(new Promise(() => {}));
     const { result } = setup();

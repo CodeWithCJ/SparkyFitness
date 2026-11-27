@@ -22,6 +22,7 @@ describe('healthTrends registry', () => {
       calories: 'Calories',
       vo2max: 'VO2 max',
       heartRate: 'Resting Heart Rate',
+      mood: 'Mood',
     };
 
     for (const key of HEALTH_TREND_KEYS) {
@@ -38,5 +39,12 @@ describe('healthTrends registry', () => {
   test('registers calories as the newest trend', () => {
     expect(HEALTH_TREND_KEYS).toContain('calories');
     expect(HEALTH_TREND_LABELS.calories(i18n.t)).toBe('Calories');
+  });
+
+  test('registers mood as the newest trend, after vo2max', () => {
+    expect(HEALTH_TREND_KEYS.indexOf('mood')).toBe(
+      HEALTH_TREND_KEYS.indexOf('vo2max') + 1
+    );
+    expect(HEALTH_TREND_LABELS.mood(i18n.t)).toBe('Mood');
   });
 });

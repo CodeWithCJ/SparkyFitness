@@ -2557,8 +2557,9 @@ describe('_createExerciseEntryWithClient id threading', () => {
     sets: [],
   };
 
-  // Base columns (31) + telemetry columns (42) + record_timezone = 74; the id
-  // column, when a client uuid is supplied, is appended as the 75th placeholder.
+  // Base columns (31) + telemetry columns (42) + record_timezone,
+  // health_activity_type and shoe_id = 76; the id column, when a client uuid
+  // is supplied, is appended as the 77th placeholder.
   it('inserts the client-provided uuid into the id column as the last placeholder', async () => {
     const client = makeClient();
     await create(
@@ -2573,12 +2574,12 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).toContain('$76');
+    expect(insert!.sql).toContain('$77');
     expect(insert!.sql).toContain('modality');
     expect(insert!.sql).toContain(', id)');
-    // $76 is the last param — the client uuid (after health_activity_type).
-    expect(insert!.params).toHaveLength(76);
-    expect(insert!.params[75]).toBe('client-uuid-1');
+    // $77 is the last param — the client uuid (after shoe_id).
+    expect(insert!.params).toHaveLength(77);
+    expect(insert!.params[76]).toBe('client-uuid-1');
   });
 
   it('omits the id column when no id is provided (defaults to gen_random_uuid)', async () => {
@@ -2595,8 +2596,169 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).not.toContain('$76');
-    expect(insert!.sql).not.toMatch(/health_activity_type, id\)/);
-    expect(insert!.params).toHaveLength(75);
+    expect(insert!.sql).not.toContain('$77');
+    expect(insert!.sql).not.toMatch(/shoe_id, id\)/);
+    expect(insert!.params).toHaveLength(76);
+  });
+});
+
+describe('_createExerciseEntryWithClient default shoe', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let create: (...args: any[]) => Promise<unknown>;
+
+  beforeAll(async () => {
+    const mod = (await vi.importActual('../models/exerciseEntry.js')) as {
+      default?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const exports = (mod.default ?? mod) as Record<string, unknown>;
+    create = exports._createExerciseEntryWithClient as typeof create;
+  });
+
+  function makeClient(
+    exerciseName: string,
+    defaultShoe: string | null,
+    timezone: string | null = 'Europe/Berlin'
+  ) {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    return {
+      calls,
+      query: vi.fn((sql: string, params: unknown[]) => {
+        calls.push({ sql, params });
+        if (/FROM exercises\s+WHERE id = \$1/.test(sql)) {
+          return Promise.resolve({
+            rows: [{ name: exerciseName, category: 'Cardio' }],
+          });
+        }
+        if (/FROM user_preferences/.test(sql)) {
+          return Promise.resolve({ rows: [{ timezone }] });
+        }
+        if (/FROM shoes/.test(sql)) {
+          return Promise.resolve({
+            rows: defaultShoe ? [{ id: defaultShoe }] : [],
+          });
+        }
+        return Promise.resolve({ rows: [{ id: 'server-entry-id' }] });
+      }),
+    };
+  }
+
+  const entry = {
+    exercise_id: 'exercise-1',
+    entry_date: '2026-11-20',
+    duration_minutes: 30,
+    sets: [],
+  };
+  const insertOf = (client: ReturnType<typeof makeClient>) =>
+    client.calls.find(({ sql }) => /INSERT INTO exercise_entries/.test(sql))!;
+  const shoeQueryOf = (client: ReturnType<typeof makeClient>) =>
+    client.calls.find(({ sql }) => /FROM shoes/.test(sql));
+
+  it('links a new run to the default pair', async () => {
+    const client = makeClient('Running', 'shoe-1');
+    await create(
+      client,
+      'user-1',
+      entry,
+      'actor-1',
+      'HealthConnect',
+      'preset-entry-1'
+    );
+
+    expect(insertOf(client).sql).toContain('health_activity_type, shoe_id)');
+    expect(insertOf(client).params[75]).toBe('shoe-1');
+    const shoeQuery = shoeQueryOf(client)!;
+    // Only a pair the run could have been worn in: on or after its start.
+    expect(shoeQuery.sql).toMatch(
+      /is_default AND status = 'active'[\s\S]*COALESCE\(purchase_date, \(created_at AT TIME ZONE \$3\)::date\)/
+    );
+    expect(shoeQuery.params).toEqual(['user-1', '2026-11-20', 'Europe/Berlin']);
+    // The timezone is read over the creation's own connection.
+    expect(
+      client.calls.some(({ sql }) => /FROM user_preferences/.test(sql))
+    ).toBe(true);
+  });
+
+  it('uses UTC for a missing or invalid stored timezone', async () => {
+    const client = makeClient('Running', 'shoe-1', 'Not/AZone');
+    await create(
+      client,
+      'user-1',
+      entry,
+      'actor-1',
+      'HealthConnect',
+      'preset-entry-1'
+    );
+
+    expect(shoeQueryOf(client)!.params[2]).toBe('UTC');
+  });
+
+  it('recognises a run by its provider notes when the name says nothing', async () => {
+    const client = makeClient('Lunch tempo', 'shoe-1');
+    await create(
+      client,
+      'user-1',
+      { ...entry, notes: 'Synced from Strava. Type: Run. Moving time: 30m' },
+      'actor-1',
+      'Strava',
+      'preset-entry-1'
+    );
+
+    expect(insertOf(client).params[75]).toBe('shoe-1');
+  });
+
+  it('gives no shoe to an entry that is not a run', async () => {
+    const client = makeClient('Bench Press', 'shoe-1');
+    await create(
+      client,
+      'user-1',
+      entry,
+      'actor-1',
+      'manual',
+      'preset-entry-1'
+    );
+
+    expect(shoeQueryOf(client)).toBeUndefined();
+    expect(insertOf(client).params[75]).toBeNull();
+  });
+
+  it('keeps the shoe the caller chose, including none', async () => {
+    const chosen = makeClient('Running', 'shoe-1');
+    await create(
+      chosen,
+      'user-1',
+      { ...entry, shoe_id: 'shoe-2' },
+      'actor-1',
+      'manual',
+      'preset-entry-1'
+    );
+    expect(shoeQueryOf(chosen)).toBeUndefined();
+    expect(insertOf(chosen).params[75]).toBe('shoe-2');
+
+    const none = makeClient('Running', 'shoe-1');
+    await create(
+      none,
+      'user-1',
+      { ...entry, shoe_id: null },
+      'actor-1',
+      'manual',
+      'preset-entry-1'
+    );
+    expect(shoeQueryOf(none)).toBeUndefined();
+    expect(insertOf(none).params[75]).toBeNull();
+  });
+
+  it('leaves a run without a shoe when there is no eligible default pair', async () => {
+    const client = makeClient('Running', null);
+    await create(
+      client,
+      'user-1',
+      entry,
+      'actor-1',
+      'Garmin',
+      'preset-entry-1'
+    );
+
+    expect(shoeQueryOf(client)).toBeDefined();
+    expect(insertOf(client).params[75]).toBeNull();
   });
 });

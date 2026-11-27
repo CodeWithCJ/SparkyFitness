@@ -16,10 +16,18 @@ import exerciseStatsService from '../../services/exerciseStatsService.js';
 import preferenceService from '../../services/preferenceService.js';
 import runReviewService from '../../services/runReviewService.js';
 import trainingReviewService from '../../services/trainingReviewService.js';
-import { ERRORS, formatZodError } from './errors.js';
+import { ERRORS } from './errors.js';
+import {
+  changedKeys,
+  dropTodayDates,
+  formatActionZodError,
+  rangeToWindow,
+  windowToRange,
+} from './crossActionKeys.js';
 import { formatList } from './formatting.js';
 import {
   EXERCISE_STATS_ACTIONS,
+  REVIEW_WINDOW_DAYS,
   exerciseStatsSchema,
   exerciseStatsInput,
   type ExerciseStatsInput,
@@ -199,6 +207,40 @@ function formatRunReview(
   return lines.join('\n');
 }
 
+/**
+ * The flat input schema lists start_date, end_date and window_days for every
+ * action, but the reviews take a trailing window and the summaries a date
+ * range (#3713). The two are converted where they mean the same thing: a range
+ * ending today is a window, and a window is a range ending today. A value that
+ * would change the answer is left for validation to reject with the accepted
+ * keys.
+ */
+function reconcileCrossActionKeys(args: Record<string, unknown>, tz: string) {
+  const before = { ...args };
+  switch (args.action) {
+    case 'training_review':
+    case 'run_review':
+      rangeToWindow(args, tz, REVIEW_WINDOW_DAYS);
+      break;
+    case 'stats_summary':
+    case 'query_activities':
+      windowToRange(args, tz);
+      break;
+    case 'personal_records':
+    case 'matched_courses':
+      // All-time results: a range ending today is the same as no range.
+      if (!('start_date' in args)) dropTodayDates(args, ['end_date'], tz);
+      break;
+  }
+  const changed = changedKeys(before, args);
+  if (changed.length > 0) {
+    log(
+      'info',
+      `[exerciseStatsTools] Reconciled cross-action keys for ${String(args.action)}: ${changed.join(', ')}`
+    );
+  }
+}
+
 export function buildExerciseStatsTools(userId: string, tz: string) {
   return {
     sparky_get_exercise_stats: tool({
@@ -213,9 +255,15 @@ export function buildExerciseStatsTools(userId: string, tz: string) {
           inferAction
         );
 
+        reconcileCrossActionKeys(normalized as Record<string, unknown>, tz);
         const parsed = exerciseStatsSchema.safeParse(normalized);
         if (!parsed.success) {
-          return formatZodError(parsed.error);
+          return formatActionZodError(
+            parsed.error,
+            exerciseStatsSchema,
+            (normalized as Record<string, unknown>).action,
+            tz
+          );
         }
         const args: ExerciseStatsInput = parsed.data;
 

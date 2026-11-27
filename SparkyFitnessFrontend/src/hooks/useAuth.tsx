@@ -58,6 +58,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export function clearBirthPrepLocalStorage(ownerId?: string) {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (ownerId) {
+        if (
+          key === `cycle.birthPlan:${ownerId}` ||
+          key === `cycle.hospitalBag:${ownerId}`
+        ) {
+          keysToRemove.push(key);
+        }
+      } else if (
+        key.startsWith('cycle.birthPlan') ||
+        key.startsWith('cycle.hospitalBag')
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    /* ignore privacy/storage errors */
+  }
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -91,6 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const clearCacheOnAccountChange = useCallback(
     (previousId: string | undefined, nextId: string) => {
       if (previousId !== undefined && previousId !== nextId) {
+        clearBirthPrepLocalStorage(previousId);
         queryClient.clear();
       }
     },
@@ -289,6 +318,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const signOut = useCallback(async () => {
+    // Read before setUser(null) clears it: clearing only this owner's keys
+    // keeps a shared/family browser's other signed-out owners' lists intact.
+    const signingOutUserId = currentUserRef.current?.id;
     try {
       const { error } = await authClient.signOut();
       if (error) {
@@ -301,6 +333,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     identityLookupRef.current = null;
     clearDemoRestrictions();
     clearPendingInvite();
+    clearBirthPrepLocalStorage(signingOutUserId);
     queryClient.clear();
     window.location.href = '/';
   }, [queryClient]);

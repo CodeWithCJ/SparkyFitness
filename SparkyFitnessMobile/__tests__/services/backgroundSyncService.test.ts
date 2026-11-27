@@ -15,6 +15,26 @@ import * as telemetryBudget from '../../src/services/shared/telemetryBudget';
 import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
 import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
+import { fetchFeatureChoices } from '../../src/services/api/featureChoicesApi';
+import {
+  listEntries,
+  listMedications,
+} from '../../src/services/api/medicationsApi';
+import {
+  cancelMedicationRemindersOfOtherServers,
+  reconcileMedicationReminders,
+} from '../../src/services/medicationReminderService';
+import { retryPendingMedicationActions } from '../../src/services/medicationNotificationHandler';
+import { queryClient } from '../../src/hooks/queryClient';
+import {
+  accountGeneration,
+  bumpAccountGeneration,
+} from '../../src/offline/accountGeneration';
+import { featureChoicesQueryKey } from '../../src/hooks/queryKeys';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -43,6 +63,24 @@ jest.mock('../../src/services/CalorieWidgetBridge', () => ({
     reloadWaterWidget: jest.fn(() => Promise.resolve()),
     isAvailable: true,
   },
+}));
+
+jest.mock('../../src/services/api/featureChoicesApi', () => ({
+  fetchFeatureChoices: jest.fn(() => Promise.resolve({ feature_choices: {} })),
+}));
+
+jest.mock('../../src/services/api/medicationsApi', () => ({
+  listMedications: jest.fn(() => Promise.resolve([])),
+  listEntries: jest.fn(() => Promise.resolve([])),
+}));
+
+jest.mock('../../src/services/medicationReminderService', () => ({
+  reconcileMedicationReminders: jest.fn(() => Promise.resolve()),
+  cancelMedicationRemindersOfOtherServers: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('../../src/services/medicationNotificationHandler', () => ({
+  retryPendingMedicationActions: jest.fn(() => Promise.resolve(false)),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -1616,6 +1654,190 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).not.toHaveBeenCalled();
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Medication reminders and the Medications switch (#3487)', () => {
+    const mockFetchChoices = jest.mocked(fetchFeatureChoices);
+    const mockListMedications = jest.mocked(listMedications);
+    const mockListEntries = jest.mocked(listEntries);
+    const mockReconcile = jest.mocked(reconcileMedicationReminders);
+    const mockCancelOtherServers = jest.mocked(
+      cancelMedicationRemindersOfOtherServers
+    );
+    const mockRetryPresses = jest.mocked(retryPendingMedicationActions);
+    const medications = [{ id: 'med-1' }] as never;
+    const entries = [{ id: 'entry-1' }] as never;
+    const medicationsOn = { feature_choices: {} };
+    const medicationsOff = {
+      feature_choices: { mobile: { medications: false } },
+    };
+
+    // The app's own read of the choices landing in its query cache while the
+    // background run is between its read and its reconcile.
+    const appReadsChoicesMeanwhile = (data: typeof medicationsOn) => {
+      jest.setSystemTime(Date.now() + 1_000);
+      queryClient.setQueryData(featureChoicesQueryKey, data);
+    };
+
+    beforeEach(() => {
+      __resetAppPreferencesStoreForTests();
+      queryClient.clear();
+      storage.loadLastSyncedTime.mockResolvedValue(
+        new Date('2024-01-15T08:00:00Z').toISOString()
+      );
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isStepsSyncEnabled')
+      );
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      mockListMedications.mockResolvedValue(medications);
+      mockListEntries.mockResolvedValue(entries);
+      mockReconcile.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      queryClient.clear();
+    });
+
+    test('schedules from fresh server data while Medications is on', async () => {
+      mockFetchChoices.mockResolvedValue({
+        feature_choices: { web: { medications: false } },
+      });
+
+      await triggerManualSync();
+
+      expect(mockListMedications).toHaveBeenCalledWith({ activeOnly: true });
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+      expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+        active: true,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
+      });
+      expect(mockCancelOtherServers).not.toHaveBeenCalled();
+      expect(mockRetryPresses).not.toHaveBeenCalled();
+    });
+
+    test('cancels the reminders without reading medications while Medications is off in the app', async () => {
+      mockFetchChoices.mockResolvedValue(medicationsOff);
+
+      await triggerManualSync();
+
+      expect(mockListMedications).not.toHaveBeenCalled();
+      expect(mockListEntries).not.toHaveBeenCalled();
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+      // Bound to the server read at the start, so a switch made meanwhile
+      // cannot cancel another server's reminders.
+      expect(mockReconcile).toHaveBeenCalledWith([], [], {
+        active: false,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
+      });
+      expect(mockCancelOtherServers).not.toHaveBeenCalled();
+      expect(mockRetryPresses).not.toHaveBeenCalled();
+    });
+
+    test('uses the default, on, with a server older than Features', async () => {
+      // fetchFeatureChoices answers null for the 404 such a server sends.
+      mockFetchChoices.mockResolvedValue(null);
+
+      await triggerManualSync();
+
+      expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+        active: true,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
+      });
+    });
+
+    test.each([
+      ['the read fails', () => Promise.reject(new Error('offline'))],
+      ['the answer is empty', () => Promise.resolve(undefined as never)],
+    ])(
+      "leaves the active server's reminders as they are when %s",
+      async (_label, answer) => {
+        mockFetchChoices.mockImplementation(answer);
+
+        await triggerManualSync();
+
+        expect(mockReconcile).not.toHaveBeenCalled();
+        expect(mockListMedications).not.toHaveBeenCalled();
+        // Those of a server switched away from still stop, and the Taken /
+        // Skip presses the skipped reconcile would have flushed are replayed.
+        expect(mockCancelOtherServers).toHaveBeenCalledTimes(1);
+        expect(mockRetryPresses).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    test('still cancels with reminders off, without reading the choices', async () => {
+      useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
+
+      await triggerManualSync();
+
+      expect(mockFetchChoices).not.toHaveBeenCalled();
+      expect(mockListMedications).not.toHaveBeenCalled();
+      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      expect(mockCancelOtherServers).not.toHaveBeenCalled();
+      expect(mockRetryPresses).not.toHaveBeenCalled();
+    });
+
+    test('binds its passes to the account signed in when it started reading', async () => {
+      const startedUnder = accountGeneration();
+      mockFetchChoices.mockResolvedValue(medicationsOn);
+      mockListMedications.mockImplementation(async () => {
+        // The person signs in to another account while the reads run.
+        bumpAccountGeneration();
+        return medications;
+      });
+
+      await triggerManualSync();
+
+      expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+        active: true,
+        serverId: 'test-config-id',
+        accountGeneration: startedUnder,
+      });
+      expect(accountGeneration()).not.toBe(startedUnder);
+    });
+
+    describe('a newer read by the app wins', () => {
+      test('does not schedule when the app learned Medications is off while the medications loaded', async () => {
+        mockFetchChoices.mockResolvedValue(medicationsOn);
+        mockListMedications.mockImplementation(async () => {
+          appReadsChoicesMeanwhile(medicationsOff);
+          return medications;
+        });
+
+        await triggerManualSync();
+
+        expect(mockReconcile).not.toHaveBeenCalled();
+      });
+
+      test('does not cancel when the app learned Medications is on while the choices were read', async () => {
+        mockFetchChoices.mockImplementation(async () => {
+          appReadsChoicesMeanwhile(medicationsOn);
+          return medicationsOff;
+        });
+
+        await triggerManualSync();
+
+        expect(mockReconcile).not.toHaveBeenCalled();
+      });
+
+      test("ignores the app's read from before this run started", async () => {
+        queryClient.setQueryData(featureChoicesQueryKey, medicationsOff, {
+          updatedAt: Date.now() - 60_000,
+        });
+        mockFetchChoices.mockResolvedValue(medicationsOn);
+
+        await triggerManualSync();
+
+        expect(mockReconcile).toHaveBeenCalledTimes(1);
+        expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+          active: true,
+          serverId: 'test-config-id',
+          accountGeneration: accountGeneration(),
+        });
+      });
     });
   });
 });

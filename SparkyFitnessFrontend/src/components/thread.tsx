@@ -5,12 +5,15 @@ import {
 } from '@/components/attachment';
 import { MarkdownText } from '@/components/markdown-text';
 import { Reasoning } from '@/components/reasoning';
-import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { ASK_USER_TOOL_NAME, readChatCoachMessage } from '@workspace/shared';
 import { AskUserToolUI } from '@/components/ai/AskUserToolUI';
 import { FoodPhotoEstimateToolUI } from '@/components/ai/FoodPhotoEstimateToolUI';
 import { ToolFallback } from '@/components/tool-fallback';
 import { ApprovalCard } from '@/components/ai/ApprovalCard';
 import { OutsideSourceLine } from '@/components/ai/OutsideSourceLine';
+import { CoachMessageHeader } from '@/components/ai/CoachMessageHeader';
+import { CoachMessageFooter } from '@/components/ai/CoachMessageFooter';
+import { useCoachTemplateText } from '@/hooks/Coaches/useCoachTemplateText';
 import { TooltipIconButton } from '@/components/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -58,20 +61,26 @@ interface ThreadProps {
   runtime?: AssistantRuntime;
   onClearChat?: () => void;
   welcome?: { message?: string };
+  /** Shows the messages without a composer (no AI provider to answer with). */
+  readOnly?: boolean;
 }
 
-export const Thread: FC<ThreadProps> = ({ runtime, onClearChat }) => {
+export const Thread: FC<ThreadProps> = ({ runtime, onClearChat, readOnly }) => {
   if (runtime) {
     return (
       <AssistantRuntimeProvider runtime={runtime}>
-        <ThreadInner onClearChat={onClearChat} />
+        <ThreadInner onClearChat={onClearChat} readOnly={readOnly} />
       </AssistantRuntimeProvider>
     );
   }
-  return <ThreadInner onClearChat={onClearChat} />;
+  return <ThreadInner onClearChat={onClearChat} readOnly={readOnly} />;
 };
 
-const ThreadInner: FC<{ onClearChat?: () => void }> = ({ onClearChat }) => {
+const ThreadInner: FC<{ onClearChat?: () => void; readOnly?: boolean }> = ({
+  onClearChat,
+  readOnly,
+}) => {
+  const { t } = useTranslation();
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
@@ -103,7 +112,16 @@ const ThreadInner: FC<{ onClearChat?: () => void }> = ({ onClearChat }) => {
           <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer bg-background sticky bottom-0 mt-auto flex flex-col gap-4 overflow-visible pb-4 md:pb-6">
             <ThreadScrollToBottom />
             <SessionTokenUsage />
-            <Composer />
+            {readOnly ? (
+              <p className="rounded-md border p-3 text-sm text-muted-foreground">
+                {t(
+                  'coaches.thread.readOnly',
+                  'Add an AI provider in Settings to reply to your coaches.'
+                )}
+              </p>
+            ) : (
+              <Composer />
+            )}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -503,6 +521,7 @@ const ApprovalToolFallback: ToolCallMessagePartComponent = (props) =>
 const AssistantMessage: FC<{ onClearChat?: () => void }> = ({
   onClearChat,
 }) => {
+  const templateText = useCoachTemplateText();
   return (
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
@@ -513,25 +532,31 @@ const AssistantMessage: FC<{ onClearChat?: () => void }> = ({
         data-slot="aui_assistant-message-content"
         className="text-foreground px-2 leading-relaxed wrap-break-word"
       >
-        <MessagePrimitive.Parts
-          components={{
-            Text: MarkdownText,
-            Reasoning: Reasoning,
-            Source: FoodResearchSource,
-            tools: {
-              by_name: {
-                [ASK_USER_TOOL_NAME]: AskUserToolUI,
-                sparky_analyze_food_image: (props) =>
-                  props.approval ? (
-                    <ApprovalCard {...props} />
-                  ) : (
-                    <FoodPhotoEstimateToolUI {...props} />
-                  ),
+        <CoachMessageHeader />
+        {templateText ? (
+          <p>{templateText}</p>
+        ) : (
+          <MessagePrimitive.Parts
+            components={{
+              Text: MarkdownText,
+              Reasoning: Reasoning,
+              Source: FoodResearchSource,
+              tools: {
+                by_name: {
+                  [ASK_USER_TOOL_NAME]: AskUserToolUI,
+                  sparky_analyze_food_image: (props) =>
+                    props.approval ? (
+                      <ApprovalCard {...props} />
+                    ) : (
+                      <FoodPhotoEstimateToolUI {...props} />
+                    ),
+                },
+                Fallback: ApprovalToolFallback,
               },
-              Fallback: ApprovalToolFallback,
-            },
-          }}
-        />
+            }}
+          />
+        )}
+        <CoachMessageFooter />
         <OutsideSourceLine onClearChat={onClearChat} />
         <MessageError />
       </div>
@@ -550,6 +575,10 @@ const AssistantMessage: FC<{ onClearChat?: () => void }> = ({
 
 const AssistantActionBar: FC = () => {
   const { t } = useTranslation();
+  // A coach's message answers a check-in, so asking the model to redo it makes no sense.
+  const isCoachMessage = useAuiState(
+    (s) => readChatCoachMessage(s.message.metadata) !== null
+  );
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -566,11 +595,13 @@ const AssistantActionBar: FC = () => {
           </AuiIf>
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
-      <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip={t('thread.refresh', 'Refresh')}>
-          <RefreshCwIcon />
-        </TooltipIconButton>
-      </ActionBarPrimitive.Reload>
+      {!isCoachMessage && (
+        <ActionBarPrimitive.Reload asChild>
+          <TooltipIconButton tooltip={t('thread.refresh', 'Refresh')}>
+            <RefreshCwIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.Reload>
+      )}
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton

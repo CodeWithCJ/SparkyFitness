@@ -1,4 +1,7 @@
-import { isDestructiveToolCall } from '../ai/chatToolApproval.js';
+import {
+  isDestructiveToolCall,
+  DESTRUCTIVE_ACTIONS,
+} from '../ai/chatToolApproval.js';
 import { asSchema } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -41,6 +44,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_daily_exercise_totals',
   'sparky_get_daily_report',
   'sparky_get_dashboard',
+  'sparky_get_day_status',
   'sparky_get_exercise_details',
   'sparky_get_exercise_diary',
   'sparky_get_exercise_progress',
@@ -97,6 +101,7 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_get_blood_alcohol',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
+  'sparky_get_day_status',
   'sparky_get_exercise_details',
   'sparky_get_exercise_diary',
   'sparky_get_exercise_progress',
@@ -677,7 +682,9 @@ describe('destructive chat tool coverage', () => {
           if (
             typeof value === 'string' &&
             ((field === 'action' &&
-              /^(delete|remove|clear|reset)/.test(value)) ||
+              /^(delete|remove|clear|reset|cancel|forget|purge|truncate|drop)/.test(
+                value
+              )) ||
               (field === 'mode' && /^delete/.test(value)))
           ) {
             expect(
@@ -697,5 +704,16 @@ describe('destructive chat tool coverage', () => {
       visit(schema);
     }
     expect(checked).toBeGreaterThan(10);
+  });
+
+  it('covers all actions explicitly listed in DESTRUCTIVE_ACTIONS', () => {
+    for (const [toolName, actions] of Object.entries(DESTRUCTIVE_ACTIONS)) {
+      for (const action of actions) {
+        expect(
+          isDestructiveToolCall(toolName, { action }),
+          `Expected ${toolName} action ${action} to be destructive`
+        ).toBe(true);
+      }
+    }
   });
 });

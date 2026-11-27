@@ -14,6 +14,49 @@ import java.util.TimeZone
 object ContextPayloadMapper {
 
   /**
+   * The context JSON kept for a restart, where it is parsed again against an empty context. Keys the
+   * phone leaves out while it does not know them (the page layout, `offFeatures`) are filled in from
+   * the context they were carried forward into, so a restart does not bring back a page the phone hid.
+   */
+  fun persistableContextJson(rawJson: String, ctx: WatchContext): String {
+    val obj = try {
+      JSONObject(rawJson)
+    } catch (_: Throwable) {
+      return rawJson
+    }
+    var changed = false
+    fun carry(key: String, value: List<String>?) {
+      if (!obj.has(key) && value != null) {
+        obj.put(key, JSONArray(value))
+        changed = true
+      }
+    }
+    carry("pageOrder", ctx.pageOrder)
+    carry("hiddenPages", ctx.hiddenPages)
+    carry("offFeatures", ctx.offFeatures)
+    if (obj.optStringOrNull("timeFormat").isNullOrBlank() && !ctx.timeFormat.isNullOrBlank()) {
+      obj.put("timeFormat", ctx.timeFormat)
+      changed = true
+    }
+    if (!obj.has("bodyFatHistory") && ctx.bodyFatHistory.isNotEmpty()) {
+      val bfArr = JSONArray()
+      for (pt in ctx.bodyFatHistory) {
+        val bf = pt.bodyFatPercentage ?: continue
+        val item = JSONObject()
+          .put("day", pt.day)
+          .put("bodyFatPercentage", bf)
+        if (pt.weightKg > 0.0) {
+          item.put("weightKg", pt.weightKg)
+        }
+        bfArr.put(item)
+      }
+      obj.put("bodyFatHistory", bfArr)
+      changed = true
+    }
+    return if (changed) obj.toString() else rawJson
+  }
+
+  /**
    * Parses an incoming phone-to-watch JSON context payload into a [WatchContext],
    * carrying forward sticky preferences from [previous] when omitted.
    */
@@ -25,8 +68,14 @@ object ContextPayloadMapper {
       todayBodyFatPercentage = obj.optDoubleOrNull("todayBodyFatPercentage"),
       lastWeightKg = obj.optDoubleOrNull("lastWeightKg"),
       lastBodyFatPercentage = obj.optDoubleOrNull("lastBodyFatPercentage"),
+      lastBodyFatDate = obj.optStringOrNull("lastBodyFatDate"),
       lastEntryDate = obj.optStringOrNull("lastEntryDate"),
       history = parseHistory(obj.optJSONArray("history")),
+      bodyFatHistory = if (obj.has("bodyFatHistory")) {
+        parseBodyFatHistory(obj.optJSONArray("bodyFatHistory"))
+      } else {
+        previous.bodyFatHistory
+      },
       ackedClientIds = obj.optStringList("ackedClientIds"),
       failedClientIds = obj.optStringList("failedClientIds"),
       updatedAtMs = System.currentTimeMillis(),
@@ -41,6 +90,8 @@ object ContextPayloadMapper {
       restAlertsEnabled = obj.optBooleanOrNull("restAlertsEnabled") ?: previous.restAlertsEnabled,
       pageOrder = if (obj.has("pageOrder")) obj.optStringList("pageOrder") else previous.pageOrder,
       hiddenPages = if (obj.has("hiddenPages")) obj.optStringList("hiddenPages") else previous.hiddenPages,
+      // Carried forward like the page layout: the phone leaves it out while it does not know its choices.
+      offFeatures = if (obj.has("offFeatures")) obj.optStringList("offFeatures") else previous.offFeatures,
       setInputStyle = obj.optStringOrNull("setInputStyle") ?: previous.setInputStyle,
       startableWorkouts = parseStartableWorkouts(obj) ?: previous.startableWorkouts,
       scheduledWorkouts = parseScheduledWorkouts(obj) ?: previous.scheduledWorkouts,
@@ -48,6 +99,11 @@ object ContextPayloadMapper {
       workoutServerId = if (obj.has("workoutServerId")) obj.optStringOrNull("workoutServerId") else previous.workoutServerId,
       distanceUnit = obj.optStringOrNull("distanceUnit") ?: previous.distanceUnit,
       energyUnit = obj.optStringOrNull("energyUnit") ?: previous.energyUnit,
+      timeFormat = if (obj.has("timeFormat")) {
+        obj.optStringOrNull("timeFormat")?.takeIf { it.isNotBlank() }
+      } else {
+        previous.timeFormat
+      },
       doubleTapEnabled = obj.optBooleanOrNull("doubleTapEnabled") ?: previous.doubleTapEnabled,
       rpeEnabled = obj.optBooleanOrNull("rpeEnabled") ?: previous.rpeEnabled,
       newWorkout = obj.optBooleanOrNull("newWorkout") ?: previous.newWorkout,
@@ -93,6 +149,24 @@ object ContextPayloadMapper {
           day = day,
           weightKg = weightKg,
           bodyFatPercentage = item.optDoubleOrNull("bodyFatPercentage")
+        )
+      )
+    }
+    return list
+  }
+
+  private fun parseBodyFatHistory(arr: JSONArray?): List<HistoryPoint> {
+    if (arr == null) return emptyList()
+    val list = mutableListOf<HistoryPoint>()
+    for (i in 0 until arr.length()) {
+      val item = arr.optJSONObject(i) ?: continue
+      val day = item.optStringOrNull("day") ?: continue
+      val bf = item.optDoubleOrNull("bodyFatPercentage")?.takeIf { it > 0.0 } ?: continue
+      list.add(
+        HistoryPoint(
+          day = day,
+          weightKg = item.optDoubleOrNull("weightKg") ?: 0.0,
+          bodyFatPercentage = bf
         )
       )
     }
@@ -166,7 +240,11 @@ object ContextPayloadMapper {
         val name = entry.optStringOrNull("name") ?: continue
         val volumeMl = entry.optDoubleOrNull("volumeMl") ?: continue
         val time = entry.optStringOrNull("time") ?: continue
-        log.add(WaterLogEntry(id = id, name = name, volumeMl = volumeMl, time = time))
+        val loggedAtMs = entry.optLong("loggedAtMs", 0L).takeIf { it > 0L }
+          ?: entry.optLong("loggedAt", 0L).takeIf { it > 0L }
+          ?: parseIsoMs(entry.optStringOrNull("logged_at"))
+          ?: parseIsoMs(entry.optStringOrNull("loggedAt"))
+        log.add(WaterLogEntry(id = id, name = name, volumeMl = volumeMl, time = time, loggedAtMs = loggedAtMs))
       }
     }
     return WaterSnapshot(
@@ -178,8 +256,12 @@ object ContextPayloadMapper {
   }
 
   private fun parseContainers(obj: JSONObject): List<WaterContainer>? {
-    if (!obj.has("containers")) return null
-    val arr = obj.optJSONArray("containers") ?: return null
+    val key = when {
+      obj.has("containers") -> "containers"
+      obj.has("waterContainers") -> "waterContainers"
+      else -> return null
+    }
+    val arr = obj.optJSONArray(key) ?: return null
     val out = mutableListOf<WaterContainer>()
     for (i in 0 until arr.length()) {
       val item = arr.optJSONObject(i) ?: continue
@@ -187,7 +269,16 @@ object ContextPayloadMapper {
       val name = item.optStringOrNull("name") ?: continue
       val servingVolumeMl = item.optDoubleOrNull("servingVolumeMl") ?: continue
       val unit = item.optStringOrNull("unit") ?: "ml"
-      out.add(WaterContainer(id = id, name = name, servingVolumeMl = servingVolumeMl, unit = unit))
+      out.add(
+        WaterContainer(
+          id = id,
+          name = name,
+          servingVolumeMl = servingVolumeMl,
+          unit = unit,
+          isPrimary = item.optBoolean("isPrimary", false),
+          isQuickAdd = item.optBoolean("isQuickAdd", false)
+        )
+      )
     }
     return out
   }
@@ -219,14 +310,15 @@ object ContextPayloadMapper {
     return MedicationSnapshot(day = day, doses = doses)
   }
 
-  private fun parseFast(obj: JSONObject?): WatchFast? {
+  internal fun parseFast(obj: JSONObject?): WatchFast? {
     if (obj == null) return null
     val startedAt = obj.optDoubleOrNull("startedAt")?.toLong() ?: return null
     val targetEndAt = obj.optDoubleOrNull("targetEndAt")?.toLong()
     return WatchFast(
       startedAtMs = startedAt,
       targetEndAtMs = targetEndAt,
-      label = obj.optStringOrNull("label")
+      label = obj.optStringOrNull("label"),
+      id = obj.optStringOrNull("id")?.takeIf { it.isNotEmpty() }
     )
   }
 
@@ -708,6 +800,9 @@ object OutboundPayloads {
     put("clientId", clientId)
     put("entryDate", entryDate)
     put("containerId", containerId)
+    ComplicationModels.endOfLocalDayInstant(entryDate)?.toEpochMilli()?.let {
+      put("expiresAtMs", it)
+    }
     if (!ownerId.isNullOrEmpty()) put("ownerId", ownerId)
   }
 
@@ -739,21 +834,46 @@ object OutboundPayloads {
     if (!ownerId.isNullOrEmpty()) put("ownerId", ownerId)
   }
 
-  fun fastStart(presetId: String, clientId: String, ownerId: String? = null): JSONObject = JSONObject().apply {
+  fun fastStart(
+    presetId: String,
+    clientId: String,
+    ownerId: String? = null,
+    startedAtMs: Long? = null
+  ): JSONObject = JSONObject().apply {
     put("type", "fastStart")
     put("presetId", presetId)
     put("clientId", clientId)
+    if (startedAtMs != null && startedAtMs > 0L) put("startedAt", startedAtMs)
     if (!ownerId.isNullOrEmpty()) put("ownerId", ownerId)
   }
 
-  fun fastEnd(clientId: String, ownerId: String? = null): JSONObject = JSONObject().apply {
+  fun fastEnd(
+    clientId: String,
+    ownerId: String? = null,
+    startedAtMs: Long? = null,
+    fastId: String? = null,
+    endedAtMs: Long? = null
+  ): JSONObject = JSONObject().apply {
     put("type", "fastEnd")
     put("clientId", clientId)
+    if (!fastId.isNullOrEmpty()) put("fastId", fastId)
+    if (startedAtMs != null && startedAtMs > 0L) put("startedAt", startedAtMs)
+    if (endedAtMs != null && endedAtMs > 0L) put("endedAt", endedAtMs)
     if (!ownerId.isNullOrEmpty()) put("ownerId", ownerId)
   }
 
-  fun contextRequest(): JSONObject = JSONObject().apply {
+  fun contextRequest(needsCredentials: Boolean = false): JSONObject = JSONObject().apply {
     put("type", "requestContext")
+    if (needsCredentials) {
+      put("needsCredentials", true)
+    }
+  }
+
+  fun credentialsAck(generation: Long, transportRevision: Long, ownerId: String): JSONObject = JSONObject().apply {
+    put("type", "credentialsAck")
+    put("generation", generation)
+    put("transportRevision", transportRevision)
+    put("ownerId", ownerId)
   }
 
   fun workoutStartRequest(presetId: String, serverId: String?): JSONObject = JSONObject().apply {
@@ -1031,6 +1151,15 @@ object OutboundPayloads {
       }
       if (visitId != null && visitId > 0L) {
         put("visitId", visitId.toDouble())
+      }
+    }
+
+  fun waterTapCancel(clientId: String, ownerId: String? = null): JSONObject =
+    JSONObject().apply {
+      put("type", "waterTapCancel")
+      put("clientId", clientId)
+      if (!ownerId.isNullOrEmpty()) {
+        put("ownerId", ownerId)
       }
     }
 }

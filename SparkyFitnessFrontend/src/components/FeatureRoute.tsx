@@ -8,9 +8,10 @@ import { choiceFeatureLabel } from '@/constants/webTabs';
 import { FeatureOffNotice } from './FeatureOffNotice';
 
 /**
- * The page of a feature switched per platform (#3487). While the person turned
- * it off on this website, a link or bookmark to it shows a notice to turn it
- * back on instead of the page; tabs and menus already leave it out. While the
+ * The page of a feature switched per platform (#3487), or its tab on a shared
+ * page (Reports > Medications). While the person turned it off on this
+ * website, a link or bookmark to it shows a notice to turn it back on instead
+ * of the page; tabs and menus already leave it out. While the
  * choices load, or when they could not be read, the default applies.
  *
  * Someone acting for the person sees the page as their permissions allow: the

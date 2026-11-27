@@ -14,7 +14,8 @@
     "foodLog": "Journal alimentaire",
     "symptoms": "Symptômes",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
-    "labs": "Résultats d'analyses"
+    "labs": "Résultats d'analyses",
+    "challenges": "Défis"
   },
   "settings": {
     "profileInformation": {
@@ -829,7 +830,10 @@
       "adaptiveWeightIntervalTip": "Pesez-vous réellement, à heure régulière, et gardez vos saisies alimentaires sur toute la période observée.",
       "adaptiveFoodIntervalTip": "Saisissez votre alimentation aussi complètement que possible ; un jour retenu peut tout de même être partiel.",
       "adaptiveGoalMatchedEvidence": "<span>Objectif adaptatif :</span> estime la dépense à partir de vos saisies alimentaires et de vos pesées sur des périodes d'observation correspondantes. Les nouvelles données sont intégrées progressivement ; des données antérieures incertaines ou plafonnées peuvent encore influer sur le résultat. Les saisies alimentaires manquantes et les fluctuations de la balance ajoutent de l'incertitude.",
-      "adaptivePlausibilityBandHint": "💡 En mode adaptatif, ce réglage fixe la base de la formule et la plage de plausibilité de ±{{band}} {{unit}} de chaque estimation complète. L'estimation affichée évolue progressivement et revient vers la base de la formule à mesure que les données vieillissent : un niveau d'activité sous-estimé peut donc la tirer vers le bas."
+      "adaptivePlausibilityBandHint": "💡 En mode adaptatif, ce réglage fixe la base de la formule et la plage de plausibilité de ±{{band}} {{unit}} de chaque estimation complète. L'estimation affichée évolue progressivement et revient vers la base de la formule à mesure que les données vieillissent : un niveau d'activité sous-estimé peut donc la tirer vers le bas.",
+      "dynamicGoalAdaptiveMethod": "<span>Objectif dynamique :</span> avec la méthode de calcul Adaptative, votre objectif est appris à partir de vos saisies alimentaires et de la tendance de votre poids ; il inclut donc déjà votre activité habituelle, et le reste à consommer correspond à l'objectif moins ce que vous avez consommé. Activez <span>Compter les calories d'activité séparément</span> ci-dessous pour ajouter les pas et les séances de chaque jour à une base qui les exclut.",
+      "adaptiveFallbackActivityLevel": "Tant que l'Adaptatif n'a pas {{days}} jours de saisies alimentaires, votre base est le BMR × ce niveau, avant application du mode d'objectif, et vos séances ne s'y ajoutent pas. Choisissez un niveau qui inclut vos séances.",
+      "adaptiveFallbackActivitySeparated": "Tant que l'Adaptatif n'a pas {{days}} jours de saisies alimentaires, votre base est le BMR × ce niveau, avant application du mode d'objectif. Décrivez votre activité en dehors des pas et des séances comptés séparément."
     },
     "mfa": {
       "confirmPassword": "Confirmer le mot de passe pour continuer",
@@ -911,7 +915,10 @@
       "remainingActivitySeparated": "Objectif quotidien - Consommé + Activité (pas et séances, sans BMR)",
       "activitySeparatedFootnote": "Après l'enregistrement, la base adaptative exclut l'activité passée ; les pas et les séances du jour sont crédités une seule fois, sans BMR. Les valeurs d'aperçu calculées par le serveur utilisent vos paramètres enregistrés.",
       "remainingTdeeWeekly": "TDEE projeté + ajustement hebdomadaire − Consommé",
-      "adaptiveEstimateFootnote": "* Ajuste progressivement votre objectif quotidien à partir d'estimations tirées de vos saisies alimentaires et de vos pesées. Les fluctuations de poids et les saisies incomplètes ajoutent de l'incertitude."
+      "adaptiveEstimateFootnote": "* Ajuste progressivement votre objectif quotidien à partir d'estimations tirées de vos saisies alimentaires et de vos pesées. Les fluctuations de poids et les saisies incomplètes ajoutent de l'incertitude.",
+      "burnedAdaptive": "Affiché à titre indicatif. Votre objectif Adaptatif inclut déjà votre activité.",
+      "netAdaptive": "Non utilisé pour le reste à consommer. Activez « Compter les calories d'activité séparément » ci-dessous pour prendre en compte l'activité du jour.",
+      "netAdaptivePercentage": "Non utilisé pour le reste à consommer. Pour prendre en compte l'activité du jour, choisissez Dynamique et activez « Compter les calories d'activité séparément »."
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Très actif (×1,725)",
@@ -945,7 +952,8 @@
       "cardPercentage": "Récupération en pourcentage",
       "cardPercentageSummary": "Rajoute une partie de vos calories d'exercice",
       "cardDevice": "Projection de l'appareil",
-      "cardDeviceSummary": "Projette la dépense totale de votre appareil jusqu'à minuit"
+      "cardDeviceSummary": "Projette la dépense totale de votre appareil jusqu'à minuit",
+      "cardDynamicAdaptiveSummary": "L'activité est déjà comprise dans votre objectif Adaptatif"
     },
     "breakdown": {
       "goalSurplusLabel": "Surplus visé :",
@@ -1515,12 +1523,13 @@
       "title": "Onglets",
       "description": "Choisissez les onglets principaux affichés sur le site",
       "cycleOn": "Activé",
-      "cycleOff": "Désactivé",
       "cycleHint": "{{name}} s'active ou se désactive dans Fonctionnalités, ci-dessus.",
       "footnote": "Journal et Paramètres sont toujours affichés. Masquer un onglet ne change que ce site : rien n'est supprimé, et l'app mobile garde ses propres réglages.",
       "saveError": "Impossible d'enregistrer votre choix d'onglets. Veuillez réessayer.",
       "loadError": "Impossible de charger vos choix d'onglets.",
-      "actingOnBehalf": "Vous ne pouvez modifier les onglets que de votre propre compte."
+      "actingOnBehalf": "Vous ne pouvez modifier les onglets que de votre propre compte.",
+      "someFeaturesOff": "Certaines fonctionnalités sont désactivées",
+      "manageFeatures": "Gérer"
     },
     "features": {
       "title": "Fonctionnalités",
@@ -1539,6 +1548,20 @@
         "scope": "Un seul interrupteur pour le site web et l'application mobile.",
         "setupHint": "Répondez à quelques questions pour terminer la configuration.",
         "setupAction": "Configurer"
+      },
+      "open": "Ouvrir Fonctionnalités",
+      "webOnly": "Ce site uniquement. L'application mobile a son propre interrupteur.",
+      "serverTooOld": "Mettez à jour votre serveur SparkyFitness pour modifier ce réglage.",
+      "off": {
+        "title": "{{name}} est désactivé",
+        "description": "Votre historique est conservé. Réactivez la fonctionnalité pour le retrouver ici.",
+        "turnOn": "Activer"
+      },
+      "labResults": {
+        "description": "Enregistrez vos analyses de sang et suivez chaque marqueur dans le temps."
+      },
+      "medications": {
+        "description": "Suivi des médicaments, des compléments et des GLP-1. Les nutriments des compléments restent comptés dans vos totaux."
       }
     },
     "chatMcp": {
@@ -1596,6 +1619,36 @@
       "goneSummary_one": "{{count}} outil n'est plus sur le serveur.",
       "goneSummary_many": "{{count}} outils ne sont plus sur le serveur.",
       "goneSummary_other": "{{count}} outils ne sont plus sur le serveur."
+    },
+    "foodProviders": {
+      "common": {
+        "getApiKey": "Obtenir une clé API",
+        "terms": "Conditions"
+      },
+      "cooktool": {
+        "help": "L'offre gratuite inclut 1 000 recherches par jour. Acceptez les conditions de CookTool avec votre propre clé. Les recherches sont mises en cache pendant 24 h.",
+        "portalLabel": "Documentation CookTool"
+      },
+      "nutrientgraph": {
+        "help": "L'offre gratuite inclut 2 500 unités par mois. Couvre l'USDA, la table CIQUAL française et les produits de marque américains, en cinq langues. Les recherches sont mises en cache pendant 24 h.",
+        "portalLabel": "Documentation NutrientGraph"
+      },
+      "food-info": {
+        "help": "L'offre gratuite inclut 100 requêtes par jour. Donne accès aux aliments de référence de plusieurs bases nationales. Les recherches sont mises en cache pendant 24 h.",
+        "portalLabel": "Portail développeur Food Info"
+      }
+    },
+    "zeppBridgeProvider": {
+      "warningTitle": "Intégration tierce : nécessite ZeppBridge",
+      "warningInstall": "ZeppBridge est un projet open source indépendant. Il n'est ni conçu, ni maintenu, ni pris en charge par SparkyFitness. Cette intégration ne fonctionne que si vous installez et exécutez vous-même ZeppBridge. Consultez <repo>le projet ZeppBridge sur GitHub</repo> pour savoir ce que c'est et comment l'installer.",
+      "warningDueDiligence": "ZeppBridge se connecte à votre compte Zepp et garde une copie de vos données de santé sur votre propre machine. Faites vos propres vérifications avant de l'installer : lisez sa documentation et ses <privacy>informations sur la confidentialité</privacy>, regardez les accès qu'il demande et décidez si vous lui faites confiance. Utilisez-le à vos risques et périls.",
+      "warningExperimental": "Cette intégration est expérimentale. Elle a été construite à partir de l'API publiée par ZeppBridge et n'a été que peu testée avec de vrais appareils.",
+      "baseUrlLabel": "URL de ZeppBridge",
+      "tokenLabel": "Jeton de récupération",
+      "tokenPlaceholder": "Le jeton défini dans ZEPPBRIDGE_PULL_TOKEN",
+      "overviewNote": "SparkyFitness lit uniquement votre propre serveur ZeppBridge (lancé avec `zeppbridge-cli serve`). Il ne contacte jamais Zepp et ne voit jamais vos identifiants Zepp.",
+      "urlNote": "Saisissez l'adresse complète, http:// (ou https://) compris. Sous Docker, placez les deux conteneurs sur un même réseau et utilisez le nom du conteneur, par exemple http://zeppbridge-serve:43921.",
+      "privateNetworkNote": "Une adresse privée ou de réseau local fonctionne pour les comptes administrateur. Sur un serveur à plusieurs utilisateurs, un administrateur doit d'abord autoriser les fournisseurs en réseau privé."
     }
   },
   "aboutDialog": {
@@ -2451,7 +2504,7 @@
       "mcpOAuthAccessWarning": "Approuver une application lui donne un accès MCP complet, y compris aux outils qui peuvent modifier ou supprimer des données. N'approuvez que des applications de confiance.",
       "mcpOAuthHttpsRequired": "L'OAuth MCP distant exige un accès HTTPS public. Le HTTP simple n'est accepté que pour le développement en boucle locale.",
       "mcpOAuthRedirectAllowlist": "URI de redirection OAuth autorisées",
-      "mcpOAuthRedirectAllowlistDescription": "Saisissez une URI exacte ou un motif de boucle locale par ligne. Utilisez http://localhost:*, http://127.0.0.1:* ou http://[::1]:* pour autoriser les clients de bureau sur n'importe quel port de rappel local.",
+      "mcpOAuthRedirectAllowlistDescription": "Saisissez une URI exacte ou un motif par ligne. Utilisez http://localhost:*, http://127.0.0.1:* ou http://[::1]:* pour autoriser les clients de bureau sur n'importe quel port de rappel local. Une URI HTTPS se terminant par /* autorise tous les chemins situés en dessous sur cet hôte, comme l'exige Gemini (https://oauth-redirect.googleusercontent.com/r/*).",
       "saveMcpOAuthRedirects": "Enregistrer la liste des redirections OAuth",
       "mcpOAuthRedirectsUpdated": "Liste des redirections OAuth mise à jour avec succès.",
       "mcpOAuthRedirectsFailed": "Échec de l'enregistrement de la liste des redirections OAuth.",
@@ -2627,6 +2680,11 @@
       "automaticallySyncedWithYourCurrent": "✓ Synchronisé automatiquement avec votre URL actuelle. Le suffixe du chemin est verrouillé pour la sécurité du routage.",
       "expertEnsureYourBaseURL": "⚠️ Expert : assurez-vous que votre URL de base est accessible depuis Internet pour que le fournisseur OIDC puisse renvoyer les données.",
       "none": "aucun"
+    },
+    "challenges": {
+      "title": "Défis",
+      "label": "Autoriser les défis et les classements de groupe sur ce serveur",
+      "help": "Les utilisateurs peuvent lancer des défis, inviter d'autres personnes avec un code et voir les scores des autres, jamais leur journal. Désactivés, les défis sont masqués et le calcul des points s'arrête ; rien n'est supprimé."
     }
   },
   "goals": {
@@ -3392,7 +3450,9 @@
     "editFoodDatabase": "Modifier dans la base d'aliments",
     "editFoodDatabaseDescription": "Modifiez les informations nutritionnelles de cet aliment dans votre base.",
     "editingTemporarilyUnavailable": "La modification des détails de l'aliment est temporairement indisponible en raison de changements de schéma.",
-    "copyFood": "Copier l'aliment"
+    "copyFood": "Copier l'aliment",
+    "fromTime": "à partir de {{time}}",
+    "nothingLogged": "Rien d'enregistré pour l'instant, ajoutez un aliment"
   },
   "checkIn": {
     "neutral": "Neutre",
@@ -4146,7 +4206,7 @@
       "caloriesBurned": "Calories brûlées",
       "sets": "Séries",
       "reps": "Répétitions",
-      "weight": "Poids",
+      "weight": "Poids ({{unit}})",
       "notes": "Notes",
       "category": "Catégorie",
       "equipment": "Équipement",
@@ -5314,12 +5374,12 @@
     "basedOn": "Basé sur {{days}} jours",
     "sleepNeedTonight": "Besoin de sommeil",
     "baseline": "Ligne de base",
-    "strain": "Souche",
+    "strain": "Effort",
     "debtLow": "Faible",
     "debtLowDesc": "Votre dette de sommeil est minime. Bravo pour votre rétablissement !",
     "debtModerate": "Modéré",
-    "debtModerateDesc": "J'ai des dettes accumulées. J'essaie de rattraper mon sommeil.",
-    "debtHigh": "Haut",
+    "debtModerateDesc": "Une certaine dette s'est accumulée. Essayez de rattraper votre sommeil.",
+    "debtHigh": "Élevé",
     "debtHighDesc": "Important déficit de sommeil. Priorisez le repos.",
     "debtCritical": "Critique",
     "debtCriticalDesc": "Déficit de sommeil critique. Besoin immédiat de repos.",
@@ -5358,7 +5418,13 @@
     "baselineError": "Échec du calcul des besoins de sommeil de base",
     "method2": "Méthode : {{method}}",
     "workdays2": "Jours ouvrables : {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Jours libres : {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Jours libres : {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Excédent de sommeil",
+    "debtSurplus": "Excédent",
+    "debtSurplusDesc": "Vous avez de l'avance sur votre sommeil. Votre besoin de cette nuit est un peu plus faible.",
+    "trainingLoad": "Charge d'entraînement",
+    "recovery": "Récupération",
+    "recoveryScore": "{{score}}/100"
   },
   "medications": {
     "common": {
@@ -5711,7 +5777,7 @@
       "multivitaminPanel": "Panneau multivitamine",
       "nutrientCount_one": "{{count}} nutriment",
       "nutrientCount_many": "{{count}} nutriments",
-      "nutrientCount_other": "nutriments",
+      "nutrientCount_other": "{{count}} nutriments",
       "customIsOral": "Administration orale",
       "notes": "Notes",
       "showAdvanced": "Afficher les options avancées",
@@ -7749,7 +7815,18 @@
     "intervalsRemoveTitle": "Données nutritionnelles envoyées supprimées",
     "intervalsRemoveDetails": "Jours effacés : {{cleared}} · conservés car modifiés par une autre app : {{kept}} · en échec : {{failed}}.",
     "intervalsRemoveError": "Impossible de supprimer les données nutritionnelles envoyées. Veuillez réessayer.",
-    "intervalsPushToggleError": "Impossible d'enregistrer le réglage d'envoi de la nutrition vers Intervals.icu."
+    "intervalsPushToggleError": "Impossible d'enregistrer le réglage d'envoi de la nutrition vers Intervals.icu.",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge synchronisé avec succès",
+    "zeppbridgeSyncDetails": "Synchronisé : {{sleepImported}} nuits de sommeil, {{workoutsImported}} séances ({{workoutDetailsImported}} avec parcours ou fréquence cardiaque), {{metricDays}} jours de mesures ({{failed}} en échec, {{workoutDetailsFailed}} détails de séance manquants).",
+    "zeppbridgeSyncIncompleteTitle": "Synchronisation ZeppBridge incomplète",
+    "zeppbridgeSyncError": "Échec de la synchronisation ZeppBridge. Vérifiez l'URL de ZeppBridge et le jeton de récupération dans les paramètres, et que le serveur ZeppBridge est bien lancé.",
+    "zeppbridgeTestSuccessTitle": "La connexion à ZeppBridge fonctionne",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} a répondu.",
+    "zeppbridgeTestError": "Impossible de se connecter à ZeppBridge. Vérifiez l'URL (avec http://) et le jeton de récupération.",
+    "zeppbridgeTestButton": "Tester la connexion",
+    "zeppbridgeDisconnectConfirm": "Voulez-vous vraiment déconnecter ZeppBridge ? L'intégration sera désactivée jusqu'à ce que vous la réactiviez. Les données déjà importées sont conservées.",
+    "zeppbridgeThirdPartyNote": "Intégration tierce : elle nécessite <repo>ZeppBridge</repo>, un projet indépendant non pris en charge par SparkyFitness, exécuté sur votre propre machine.",
+    "zeppbridgeDuplicateNote": "Si l'app Zepp écrit aussi dans Apple Health ou Health Connect et que vous synchronisez aussi ces données ici, la même nuit ou la même séance peut apparaître deux fois. Utilisez l'une des deux sources."
   },
   "fasting": {
     "checklistTitle": "Minuteur de jeûne",
@@ -9279,7 +9356,9 @@
       "loadingCameraModule": "Chargement du module caméra…"
     },
     "foodResultCard": {
-      "gi": "IG : {{glycemic_index}}"
+      "gi": "IG : {{glycemic_index}}",
+      "tapForFullNutrition": "Touchez pour le détail complet",
+      "tapForNutrition": "Touchez pour le détail"
     },
     "searchingBarcode": "Recherche du code-barres",
     "lookingUp": "Recherche : {{barcode}}…",
@@ -10462,9 +10541,9 @@
     },
     "verdict": {
       "question": "Y a-t-il un lien entre votre {{a}} et votre {{b}} {{timing}} ?",
-      "days_one": "{{count}} j",
-      "days_many": "",
-      "days_other": "",
+      "days_one": "{{count}} jour",
+      "days_many": "{{count}} jours",
+      "days_other": "{{count}} jours",
       "weeks_one": "{{count}} semaine",
       "weeks_many": "{{count}} semaines",
       "weeks_other": "{{count}} semaines",
@@ -11221,5 +11300,380 @@
     "underwater_diving": "Plongée sous-marine",
     "paragliding": "Parapente",
     "other": "Autre"
+  },
+  "challenges": {
+    "title": "Défis",
+    "dates": "Du {{start}} au {{end}}",
+    "datesOpen": "À partir du {{start}}",
+    "memberCount_one": "{{count}} membre",
+    "memberCount_many": "{{count}} membres",
+    "memberCount_other": "{{count}} membres",
+    "state": {
+      "active": "En cours",
+      "startsTomorrow": "Commence demain",
+      "startsIn_one": "Commence dans {{count}} jour",
+      "startsIn_many": "Commence dans {{count}} jours",
+      "startsIn_other": "Commence dans {{count}} jours",
+      "lastDay": "Dernier jour",
+      "daysLeft_one": "{{count}} jour restant",
+      "daysLeft_many": "{{count}} jours restants",
+      "daysLeft_other": "{{count}} jours restants"
+    },
+    "host": "Organisateur",
+    "ended": "Terminé",
+    "rules": {
+      "edit": "Modifier les règles",
+      "noPeriodLeft": "Il ne reste aucune période à laquelle appliquer une modification.",
+      "fromNext": "La modification s'applique à partir du {{day}} : la période en cours garde ses règles. Tous les membres la voient dans l'historique des règles.",
+      "beforeStart": "Le défi n'a pas commencé : la modification s'applique dès le début.",
+      "save": "Enregistrer les règles",
+      "everyDay": "Tous les jours",
+      "dayRange": "Du {{from}} au {{to}}",
+      "saved": "Règles enregistrées. Tous les participants du défi voient la modification."
+    },
+    "leave": {
+      "button": "Quitter",
+      "title": "Quitter ce défi ?",
+      "last": "Vous êtes le dernier membre : le défi sera supprimé.",
+      "host": "Vos scores dans ce défi seront supprimés, et l'organisation passera au membre inscrit le plus tôt.",
+      "member": "Vos scores dans ce défi seront supprimés. Vous pourrez le rejoindre à nouveau avec une nouvelle invitation.",
+      "done": "Vous avez quitté le défi"
+    },
+    "tabs": {
+      "standings": "Classement",
+      "how": "Calcul des points",
+      "log": "Modifications des règles",
+      "members": "Membres"
+    },
+    "how": {
+      "upcoming": "À partir du {{day}} :",
+      "exampleTitle": "Exemple de journée",
+      "example": "Une séance de {{minutes}} minutes en zone {{zone}} rapporte {{effort}}, et {{steps}} pas ajoutent {{stepPoints}} : {{total}} points.",
+      "exampleCapped": "Une séance de {{minutes}} minutes en zone {{zone}} rapporte {{effort}}, et {{steps}} pas ajoutent {{stepPoints}} : {{uncapped}} points, ramenés au plafond quotidien de {{total}}.",
+      "what": "{{format}} : {{metric}}, décompte {{period}}.",
+      "race": "Le premier à atteindre {{target}} gagne ; les suivants sont classés selon le jour où ils l'ont atteint.",
+      "hitGoalDay": "Tous ceux qui atteignent {{target}} chaque jour pris en compte gagnent.",
+      "hitGoalPeriod": "Tous ceux qui atteignent {{target}} sur la période gagnent.",
+      "groupGoal": "Chacun contribue à un total commun ; le groupe gagne à {{target}}.",
+      "target": "Objectif : {{target}}.",
+      "leaderboard": "Le total le plus élevé gagne.",
+      "days": "Jours pris en compte : {{days}}.",
+      "window": "Seules les séances commençant entre {{start}} et {{end}} comptent.",
+      "bestDays_one": "Seul votre meilleur jour de chaque semaine compte.",
+      "bestDays_many": "Seuls vos {{count}} meilleurs jours de chaque semaine comptent.",
+      "bestDays_other": "Seuls vos {{count}} meilleurs jours de chaque semaine comptent.",
+      "dailyCap": "Une journée rapporte au plus {{cap}}.",
+      "zoneFrom": "Les minutes passées en zone de fréquence cardiaque {{zone}} et au-dessus comptent, selon vos propres zones.",
+      "zones": "Effort, selon vos propres zones de fréquence cardiaque : {{rates}} points par minute dans les zones 1 à 5.",
+      "noHr": "Sous la zone 1 : {{below}} par minute. Sans aucune fréquence cardiaque : {{none}} par minute.",
+      "strength": "La musculation rapporte au moins {{rate}} par minute, car le repos entre les séries fait baisser la fréquence cardiaque.",
+      "tiers": "Jusqu'à {{full}} minutes par jour comptent entièrement, en commençant par les minutes les mieux notées ; les {{half}} suivantes comptent à {{pct}} %, le reste ne compte pas.",
+      "tiersFullOnly": "Jusqu'à {{full}} minutes par jour comptent, en commençant par les minutes les mieux notées ; le reste ne compte pas.",
+      "steps": "Pas : 1 point pour {{per}} pas, jusqu'à {{cap}} par jour.",
+      "pr": "Records personnels : +{{bonus}} chacun, au plus {{max}} par jour.",
+      "streak": "Série : +{{bonus}} par jour dès {{from}} jours consécutifs.",
+      "beatAverage": "Dépasser votre propre moyenne sur {{days}} jours : +{{bonus}}.",
+      "goal": "Votre objectif hebdomadaire personnel ({{pct}} % au-dessus de vos {{weeks}} dernières semaines) : jusqu'à +{{max}}, versé au prorata s'il n'est atteint qu'en partie.",
+      "include": "Seuls ces sports comptent : {{sports}}.",
+      "exclude": "Exclus : {{sports}}.",
+      "minMinutes": "Les séances de moins de {{minutes}} minutes ne comptent pas.",
+      "manualIgnore": "Les séances saisies à la main ne comptent pas.",
+      "manualCap": "Les séances saisies à la main comptent jusqu'à {{minutes}} minutes par jour.",
+      "merge": "Une séance synchronisée depuis deux sources ne compte qu'une fois.",
+      "prSome": "Records personnels ({{types}} uniquement) : +{{bonus}} chacun, au plus {{max}} par jour."
+    },
+    "leaderboard": {
+      "you": "Vous",
+      "previous": "Période précédente",
+      "final": "Final",
+      "live": "En cours",
+      "current": "Actuelle",
+      "next": "Période suivante",
+      "groupProgress": "Ensemble : {{total}} sur {{target}}",
+      "groupReached": "Objectif atteint !",
+      "empty": "Aucun score pour l'instant sur cette période.",
+      "member": "Membre",
+      "total": "Total",
+      "minutes": "Min actives",
+      "winner": "Gagnant",
+      "reachedOn": "Atteint le {{day}}",
+      "daysHit": "Objectif atteint {{hit}} jours sur {{eligible}}",
+      "leads": "En tête",
+      "find": "Rechercher un membre",
+      "noMatch": "Aucun membre ne correspond.",
+      "progress": "Progression",
+      "ofLeader": "{{percent}} % du meilleur total",
+      "ofTarget": "{{percent}} % de l'objectif",
+      "ofDays": "Objectif atteint {{percent}} % des jours"
+    },
+    "joined": "Inscrit le {{day}}",
+    "invite": {
+      "title": "Inviter des personnes",
+      "copied": "Copié",
+      "copyFailed": "Impossible de copier",
+      "active": "Un code d'invitation est valable jusqu'au {{when}}.",
+      "none": "Aucun code d'invitation n'est actif.",
+      "shownOnce": "Partagez ce lien ou ce code maintenant ; il n'est affiché qu'une seule fois.",
+      "link": "Lien d'invitation",
+      "copyLink": "Copier le lien",
+      "code": "Code d'invitation",
+      "copyCode": "Copier le code",
+      "newCode": "Créer un nouveau code",
+      "create": "Créer un code d'invitation",
+      "revoke": "Désactiver le code",
+      "revoked": "Code d'invitation désactivé"
+    },
+    "editor": {
+      "scoring": "Ce qui compte et qui gagne",
+      "metric": "Ce qui compte",
+      "format": "Format",
+      "period": "Décompte",
+      "target": "Objectif ({{unit}})",
+      "targetPer": "L'objectif s'applique à",
+      "targetPerDay": "Chaque jour",
+      "targetPerPeriod": "Au total de la période",
+      "periodLocked": "La période ne peut plus changer une fois le défi commencé.",
+      "targetRequired": "Ce format nécessite un objectif.",
+      "time": "Jours et horaires",
+      "days": "Jours pris en compte",
+      "timeWindow": "Seulement les séances commençant dans une plage horaire",
+      "windowStart": "De",
+      "windowEnd": "À",
+      "bestDays": "Seuls les meilleurs jours de chaque semaine comptent",
+      "bestDaysCount": "Meilleurs jours par semaine",
+      "dailyCap": "Plafonner ce qu'une journée peut rapporter",
+      "dailyCapValue": "Plafond quotidien ({{unit}})",
+      "zoneFrom": "Compter les minutes à partir de la zone de FC",
+      "points": "Calcul des points",
+      "zoneRates": "Points par minute dans les zones de FC 1 à 5",
+      "zoneN": "Zone {{zone}}",
+      "belowZoneRate": "Sous la zone 1 (par minute)",
+      "noHrRate": "Sans fréquence cardiaque (par minute)",
+      "strengthFloor": "Plancher musculation",
+      "strengthFloorValue": "Au moins (par minute)",
+      "minuteTiers": "Paliers de minutes quotidiens",
+      "tierFull": "Minutes comptées entièrement",
+      "tierHalf": "Puis minutes au taux réduit",
+      "tierRate": "Taux réduit (%)",
+      "steps": "Points pour les pas",
+      "stepsPerPoint": "Pas pour 1 point",
+      "stepsCap": "Maximum de points de pas par jour",
+      "pr": "Bonus de record personnel",
+      "prBonus": "Points par record",
+      "prMax": "Maximum de records par jour",
+      "streak": "Bonus de série",
+      "streakFrom": "À partir du jour",
+      "streakBonus": "Points par jour",
+      "beatAverage": "Bonus « dépasser sa moyenne »",
+      "beatAverageBonus": "Points",
+      "goal": "Bonus d'objectif hebdomadaire auto-ajusté",
+      "goalNeedsWeek": "L'objectif hebdomadaire nécessite un défi décompté à la semaine ou plus.",
+      "goalMax": "Maximum de points",
+      "goalStretch": "Au-dessus de sa moyenne (%)",
+      "activities": "Séances prises en compte",
+      "includeSports": "Seulement ces sports (aucun coché : tous les sports)",
+      "excludeSports": "Exclure ces sports",
+      "minMinutes": "Durée minimale d'une séance (minutes)",
+      "manualEntries": "Séances saisies à la main",
+      "manualCap": "Maximum de minutes saisies à la main par jour",
+      "mergeDuplicates": "Ne compter qu'une fois une séance synchronisée depuis deux sources",
+      "notAllowed": "Non autorisé ici. La valeur reste {{value}}."
+    },
+    "join": {
+      "button": "Rejoindre avec un code",
+      "displayName": "Votre nom dans ce défi",
+      "goalType": "Votre objectif hebdomadaire",
+      "errors": {
+        "invalid": "Ce code d'invitation n'est pas valide ou a expiré. Demandez-en un nouveau à l'organisateur.",
+        "ended": "Ce défi est terminé.",
+        "lateJoinClosed": "Ce défi a commencé et n'accepte plus de nouveaux participants.",
+        "full": "Ce défi est complet.",
+        "rateLimited": "Trop de tentatives. Patientez quelques minutes et réessayez.",
+        "generic": "Impossible de rejoindre le défi. Réessayez."
+      },
+      "title": "Rejoindre un défi",
+      "description": "Collez le lien ou le code d'invitation. Les membres voient votre nom affiché et vos scores, jamais votre journal ni votre adresse e-mail.",
+      "code": "Lien ou code d'invitation",
+      "badCode": "Cela ne ressemble pas à un code d'invitation.",
+      "submit": "Rejoindre"
+    },
+    "create": {
+      "button": "Nouveau défi",
+      "endBeforeStart": "La fin ne peut pas précéder le début.",
+      "tooLong": "Un défi dure au plus {{days}} jours.",
+      "endNeeded": "Un défi décompté sur une seule période nécessite une date de fin.",
+      "title": "Lancer un défi",
+      "description": "Choisissez un modèle, puis modifiez ce que vous voulez. Les membres voient vos règles et chaque modification ultérieure.",
+      "presets": "Modèles",
+      "name": "Nom",
+      "emoji": "Emoji",
+      "descriptionLabel": "Description (facultative)",
+      "start": "Début",
+      "end": "Fin",
+      "endOptional": "Fin (facultative)",
+      "timeZone": "Les journées se terminent à minuit, fuseau {{zone}}.",
+      "memberLimit": "Nombre maximal de membres",
+      "lateJoin": "Autoriser l'inscription après le début",
+      "rules": "Règles",
+      "submit": "Créer le défi",
+      "created": "Défi créé",
+      "startOutOfRange": "Le début doit être compris entre le {{earliest}} et le {{latest}}.",
+      "errors": {
+        "invalidDates": "Un défi peut commencer au plus tôt il y a {{back}} jours et au plus tard dans {{ahead}} jours, et dure au plus {{length}} jours.",
+        "generic": "Impossible de créer le défi. Réessayez.",
+        "rateLimited": "Trop de nouveaux défis. Patientez quelques minutes et réessayez."
+      },
+      "rulesInvalid": "Un réglage de règle est vide ou hors limites.",
+      "memberLimitRange": "Le nombre maximal de membres doit être compris entre 2 et {{max}}."
+    },
+    "ownOnly": "Les défis sont personnels. Revenez à votre propre compte pour voir les vôtres.",
+    "disabled": "Les défis sont désactivés sur ce serveur. Un administrateur peut les activer dans les paramètres d'administration.",
+    "notFound": "Ce défi est introuvable, ou vous n'en êtes pas membre.",
+    "empty": "Aucun défi pour l'instant. Lancez-en un et invitez vos amis ou votre famille, ou rejoignez-en un avec un code d'invitation.",
+    "goalTypes": {
+      "lose_weight": "Perdre du poids (minutes actives)",
+      "build_muscle": "Prendre du muscle (musculation)",
+      "endurance": "Endurance (distance)",
+      "stay_active": "Rester actif (jours d'entraînement)"
+    },
+    "member": {
+      "days": "Ses derniers jours dans ce défi.",
+      "periods": "Ses dernières périodes dans ce défi.",
+      "place": "Rang {{rank}}",
+      "none": "Aucun score"
+    },
+    "log": {
+      "removed": "Supprimé : {{rule}}",
+      "empty": "Aucune modification des règles.",
+      "changed": "{{name}} a modifié les règles le {{when}}",
+      "formerMember": "Un ancien membre",
+      "created": "Règles fixées à la création du défi",
+      "effective": "S'applique à partir du {{day}}"
+    },
+    "presets": {
+      "all_rounder": {
+        "name": "Polyvalent",
+        "description": "Des points pour l'effort selon la fréquence cardiaque, les pas, les records et les séries. Hebdomadaire, les 5 meilleurs jours comptent."
+      },
+      "workweek_hustle": {
+        "name": "Semaine active",
+        "description": "Le plus de pas du lundi au vendredi."
+      },
+      "weekend_warrior": {
+        "name": "Guerrier du week-end",
+        "description": "Le plus de pas le samedi et le dimanche."
+      },
+      "daily_showdown": {
+        "name": "Duel du jour",
+        "description": "Le plus de pas en une journée."
+      },
+      "race_to_100k_steps": {
+        "name": "Course aux 100 000 pas",
+        "description": "Le premier à atteindre 100 000 pas gagne."
+      },
+      "most_km_this_month": {
+        "name": "Le plus de km ce mois-ci",
+        "description": "La plus grande distance sur un mois civil."
+      },
+      "consistency_30_day": {
+        "name": "Régularité sur 30 jours",
+        "description": "Le plus de jours avec une séance de 20 minutes ou plus, sur 30 jours."
+      }
+    },
+    "metrics": {
+      "points": "Points",
+      "steps": "Pas",
+      "active_minutes": "Minutes actives",
+      "hr_zone_minutes": "Minutes en zones de FC",
+      "distance": "Distance",
+      "workout_days": "Jours d'entraînement",
+      "active_calories": "Calories actives",
+      "elevation": "Dénivelé positif"
+    },
+    "formats": {
+      "leaderboard": "Classement",
+      "race": "Course à l'objectif",
+      "hit_goal": "Atteindre l'objectif",
+      "group_goal": "Objectif collectif"
+    },
+    "periods": {
+      "day": "Quotidien",
+      "week": "Hebdomadaire",
+      "month": "Mensuel",
+      "challenge": "Sur tout le défi"
+    },
+    "manualEntries": {
+      "count": "Compter",
+      "cap": "Compter jusqu'à un plafond",
+      "ignore": "Ignorer"
+    },
+    "sports": {
+      "running": "Course à pied",
+      "cycling": "Vélo",
+      "walking": "Marche",
+      "hiking": "Randonnée",
+      "swimming": "Natation",
+      "rowing": "Aviron",
+      "fitness_equipment": "Machines de salle",
+      "strength": "Musculation",
+      "other": "Autre"
+    },
+    "weekdays": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mer",
+      "thu": "Jeu",
+      "fri": "Ven",
+      "sat": "Sam",
+      "sun": "Dim"
+    },
+    "values": {
+      "points": "{{value}} pts",
+      "steps": "{{value}} pas",
+      "minutes": "{{value}} min",
+      "miles": "{{value}} mi",
+      "km": "{{value}} km",
+      "days_one": "{{count}} jour",
+      "days_many": "{{count}} jours",
+      "days_other": "{{count}} jours",
+      "metres": "{{value}} m",
+      "feet": "{{value}} pi"
+    },
+    "units": {
+      "points": "points",
+      "steps": "pas",
+      "minutes": "minutes",
+      "miles": "miles",
+      "km": "km",
+      "days": "jours",
+      "metres": "mètres",
+      "feet": "pieds"
+    },
+    "periodRange": "{{start}} – {{end}}",
+    "widget": {
+      "title": "Classement des défis",
+      "all": "Tous les défis",
+      "place": "Rang {{rank}} sur {{members}} · {{total}}",
+      "noScore": "Aucun score pour l'instant",
+      "youLead": "Vous êtes en tête",
+      "youShareLead": "Vous partagez la tête",
+      "leader": "{{name}} est en tête avec {{total}}"
+    },
+    "retry": "Réessayer",
+    "errors": {
+      "load": "Impossible de charger vos défis.",
+      "loadOne": "Impossible de charger ce défi.",
+      "standings": "Impossible de charger le classement.",
+      "standingsRefresh": "Impossible d'actualiser le classement ; affichage du dernier chargé.",
+      "ruleChanges": "Impossible de charger les modifications des règles.",
+      "hostOnly": "Seul l'organisateur peut faire cela. L'organisation est peut-être passée à quelqu'un d'autre.",
+      "periodLocked": "La période ne peut plus changer une fois le défi commencé.",
+      "action": "L'opération n'a pas abouti. Réessayez."
+    },
+    "prTypes": {
+      "lift": "charges",
+      "distance": "distance",
+      "pace": "allure"
+    }
   }
 }

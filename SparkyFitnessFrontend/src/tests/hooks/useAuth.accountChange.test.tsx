@@ -126,4 +126,44 @@ describe('AuthProvider query cache across accounts', () => {
     expect(result.current.user?.id).toBe('b');
     expect(queryClient.getQueryData(CACHED_KEY)).toBeUndefined();
   });
+
+  it('clears birth plan localStorage on account change and sign-out', async () => {
+    localStorage.setItem(
+      'cycle.birthPlan:a',
+      JSON.stringify({ question1: 'yes' })
+    );
+    localStorage.setItem(
+      'cycle.hospitalBag:a',
+      JSON.stringify({ bagItem1: true })
+    );
+    localStorage.setItem(
+      'cycle.birthPlan:b',
+      JSON.stringify({ question1: 'no' })
+    );
+
+    const { result } = renderProvider();
+
+    act(() => {
+      result.current.signIn('a', 'a', 'a@example.com', 'user', false);
+    });
+    // Changing from 'a' to 'b' clears 'a' keys
+    act(() => {
+      result.current.signIn('b', 'b', 'b@example.com', 'user', false);
+    });
+    expect(localStorage.getItem('cycle.birthPlan:a')).toBeNull();
+    expect(localStorage.getItem('cycle.hospitalBag:a')).toBeNull();
+    expect(localStorage.getItem('cycle.birthPlan:b')).not.toBeNull();
+
+    // On a shared/family browser another owner's list can still be around;
+    // signing out as the current owner ('b') must remove only their own keys.
+    localStorage.setItem(
+      'cycle.birthPlan:a',
+      JSON.stringify({ question1: 'yes' })
+    );
+    await act(async () => {
+      await result.current.signOut();
+    });
+    expect(localStorage.getItem('cycle.birthPlan:b')).toBeNull();
+    expect(localStorage.getItem('cycle.birthPlan:a')).not.toBeNull();
+  });
 });

@@ -32,6 +32,8 @@ import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
 import { rotateChatConversationId } from '@/utils/chatConversationId';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useCoachesAvailable } from '@/hooks/Coaches/useCoaches';
+import { CoachThreadPicker } from '@/components/ai/CoachThreadPicker';
 
 import { useTranslation } from 'react-i18next';
 const SparkyChat = () => {
@@ -39,6 +41,7 @@ const SparkyChat = () => {
   const { isChatOpen, closeChat } = useChatbotVisibility();
   const { user } = useAuth();
   const { activeUserId, isActingOnBehalf } = useActiveUser();
+  const coachesAvailable = useCoachesAvailable();
   const { data: services } = useAIServices();
   const { data: activeService } = useActiveAIService(!!user);
   const { data: preferences } = useUserAIPreferences();
@@ -66,7 +69,9 @@ const SparkyChat = () => {
 
   const hasEnabledServices = usableServices.length > 0;
 
-  if (!hasEnabledServices) {
+  // Without an AI provider the chat has nothing to answer with, but coaches
+  // can still leave messages to read, so the panel stays while they are on.
+  if (!hasEnabledServices && !coachesAvailable) {
     return null;
   }
 
@@ -225,6 +230,7 @@ const SparkyChat = () => {
                     </Button>
                   </div>
                 </div>
+                {!isMinimized && coachesAvailable && <CoachThreadPicker />}
               </div>
 
               {/* Keep the interface mounted when minimized so the conversation

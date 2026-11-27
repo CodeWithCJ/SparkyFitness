@@ -217,6 +217,9 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     food_assistant_preferences: 'owner',
     food_assistant_tasks: 'owner',
     food_assistant_operations: 'owner',
+    coach_profile: 'owner',
+    user_coaches: 'owner',
+    coach_nudges: 'owner',
     plate_inventories: 'owner',
     action_tags: 'owner',
     // diary

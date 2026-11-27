@@ -1,10 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import type { ActionTagResponse } from '@workspace/shared';
 import StatusView from '../components/StatusView';
+import {
+  ConfirmAmountPicker,
+  type ScanConfirmOptions,
+} from '../components/actionTags';
 import { useServerConnection } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { ApiError } from '../services/api/errors';
@@ -24,11 +34,6 @@ type Phase =
 
 const UNDO_VISIBLE_MS = 7000;
 
-/**
- * Opened by a tag link (a tap on a sticker, or the Scan button). The server
- * runs the action; this screen only shows how it went. A logged action goes
- * back to where the person was, with a message that offers Undo.
- */
 const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   navigation,
   route,
@@ -38,8 +43,10 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   const { code } = route.params;
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const [phase, setPhase] = useState<Phase>({ kind: 'running' });
-  // One run per opening: a re-render or a refocus must never log a second time.
+  const lastTagRef = useRef<ActionTagResponse | null>(null);
   const startedRef = useRef(false);
+
+  const entryDate = useMemo(() => toLocalDateString(new Date()), []);
 
   const leave = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -50,18 +57,24 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   }, [navigation]);
 
   const run = useCallback(
-    async (confirmed: boolean) => {
-      const date = toLocalDateString(new Date());
+    async (confirmed: boolean, options?: ScanConfirmOptions) => {
       try {
         const result = await scanActionTag({
           tag_code: code,
-          entry_date: date,
+          entry_date: entryDate,
           confirmed: confirmed || undefined,
+          ...(confirmed && options?.override ? options.override : undefined),
+          ...(confirmed && options?.mealTypeId
+            ? { meal_type_id: options.mealTypeId }
+            : undefined),
+          ...(confirmed && options?.entryTime
+            ? { entry_time: options.entryTime }
+            : undefined),
         });
         switch (result.status) {
           case 'done': {
             const tag = result.tag;
-            if (tag) refreshAfterTagAction(queryClient, tag.action, date);
+            if (tag) refreshAfterTagAction(queryClient, tag.action, entryDate);
             Toast.show({
               type: 'success',
               text1: t('actionTags.scan.logged', {
@@ -75,9 +88,9 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
               onPress: () => {
                 Toast.hide();
                 if (!tag) return;
-                undoTagAction(tag.action, date, result.logged)
+                undoTagAction(tag.action, entryDate, result.logged)
                   .then(() =>
-                    refreshAfterTagAction(queryClient, tag.action, date)
+                    refreshAfterTagAction(queryClient, tag.action, entryDate)
                   )
                   .catch(() =>
                     Toast.show({
@@ -92,7 +105,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
             leave();
             return;
           }
-          case 'too_soon':
+          case 'too_soon': {
             Toast.show({
               type: 'info',
               text1: t('actionTags.scan.tooSoon', {
@@ -101,8 +114,12 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
             });
             leave();
             return;
+          }
           case 'needs_confirmation':
-            if (result.tag) setPhase({ kind: 'confirm', tag: result.tag });
+            if (result.tag) {
+              lastTagRef.current = result.tag;
+              setPhase({ kind: 'confirm', tag: result.tag });
+            }
             return;
           case 'target_missing':
             if (result.tag) setPhase({ kind: 'missing', tag: result.tag });
@@ -118,15 +135,13 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
         });
       }
     },
-    [code, leave, queryClient, t]
+    [code, entryDate, leave, queryClient, t]
   );
 
-  // The screen starts in the running state, so only a repeat run (a confirm or
-  // a retry) needs to bring the spinner back.
   const retry = useCallback(
-    (confirmed: boolean) => {
+    (confirmed: boolean, options?: ScanConfirmOptions) => {
       setPhase({ kind: 'running' });
-      void run(confirmed);
+      void run(confirmed, options);
     },
     [run]
   );
@@ -134,8 +149,15 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   useEffect(() => {
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
-    // `run` only sets state after the server has answered, never synchronously.
-    void run(false);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void run(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [isConnected, run]);
 
   const header = useScreenHeader({
@@ -163,10 +185,28 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
         return (
           <StatusView
             loading
-            title={t('actionTags.scan.running', { defaultValue: 'Logging…' })}
+            title={t('actionTags.scan.running', {
+              defaultValue: 'Logging\u2026',
+            })}
           />
         );
-      case 'confirm':
+      case 'confirm': {
+        const showPicker = Boolean(
+          phase.tag.allow_amount_adjustment || phase.tag.allow_custom_timestamp
+        );
+        if (showPicker) {
+          return (
+            <ConfirmAmountPicker
+              tag={phase.tag}
+              entryDate={entryDate}
+              onOpenSettings={() =>
+                navigation.navigate('ActionTagForm', { tagId: phase.tag.id })
+              }
+              onConfirm={(options) => retry(true, options)}
+              onCancel={leave}
+            />
+          );
+        }
         return (
           <StatusView
             icon="nfc"
@@ -183,6 +223,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
             }}
           />
         );
+      }
       case 'unknown':
         return (
           <StatusView

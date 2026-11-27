@@ -20,7 +20,7 @@ import { FoodImageSourceProvider } from './src/components/FoodImageSourceProvide
 import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
-import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchComplicationSync, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
 import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
 import { useAddMenuItemAvailable } from './src/hooks/useAddMenuItemAvailable';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
@@ -140,7 +140,10 @@ import {
   SafeAllergenSettings,
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
+  SafeCoachSettings,
   SafeWatchSettings,
+  SafeWatchComplications,
+  SafeWatchComplicationEdit,
   SafeAddMenuSettings,
   SafeDiarySettings,
   SafeOfflineSettings,
@@ -221,6 +224,7 @@ import ActiveWorkoutBar, {
   notifyActiveWorkoutBarSwipeProgress,
 } from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
+import { ReadableWidthLayout } from './src/components/ReadableWidthLayout';
 import PendingPresetUpdatePrompt from './src/components/PendingPresetUpdatePrompt';
 import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateStore';
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
@@ -257,6 +261,9 @@ function WatchCheckInGate() {
   const { isConnected: isServerConnected } = useServerConnection();
   useWatchCheckInBridge(isServerConnected);
   useWatchFastingBridge(isServerConnected);
+  // Custom complications live on the phone and need no server, so they are
+  // sent whether or not it is reachable.
+  useWatchComplicationSync(true);
   return null;
 }
 
@@ -583,8 +590,12 @@ function AppContent() {
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <HorizontalInsetsFrame>
         <Stack.Navigator
-          screenLayout={usesLiquidGlassNavigation
-            ? ({ children, route }) => (
+          screenLayout={({ children, route }) => {
+            // Centres the screen in a readable column on wide windows (iPad).
+            const content = (
+              <ReadableWidthLayout routeName={route.name}>{children}</ReadableWidthLayout>
+            );
+            return usesLiquidGlassNavigation ? (
               <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
                 {/* View-level safe area: keeps pushed screens clear of the
                     vertical bar iPhone Duo presents on one side. Not for
@@ -592,15 +603,15 @@ function AppContent() {
                     system stops presenting its bar vertically; each tab's
                     own stack insets its screens instead. */}
                 {route.name === 'Tabs' ? (
-                  children
+                  content
                 ) : (
                   <SafeAreaView edges={['left', 'right']} style={{ flex: 1 }}>
-                    {children}
+                    {content}
                   </SafeAreaView>
                 )}
               </ActiveWorkoutTransitionScreenLayout>
-            )
-            : undefined}
+            ) : content;
+          }}
           screenListeners={usesLiquidGlassNavigation
             ? {
               transitionStart: (event) => {
@@ -1339,6 +1350,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="CoachSettings"
+            component={SafeCoachSettings}
+            options={createStackScreenOptions(t('coaches.settings.title', { defaultValue: 'Coaches' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
             name="HealthTrendsSettings"
             component={SafeHealthTrendsSettings}
             options={createStackScreenOptions(t('screens.healthTrendsSettings', { defaultValue: 'Health Trends' }), { headerBackTitle: t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }) })}
@@ -1362,6 +1378,16 @@ function AppContent() {
             name="WatchSettings"
             component={SafeWatchSettings}
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="WatchComplications"
+            component={SafeWatchComplications}
+            options={createStackScreenOptions(t('watchComplications.title', { defaultValue: 'Complications' }), { headerBackTitle: t('screens.watchSettings', { defaultValue: 'Apple Watch' }) })}
+          />
+          <Stack.Screen
+            name="WatchComplicationEdit"
+            component={SafeWatchComplicationEdit}
+            options={createStackScreenOptions(t('watchComplications.editTitle', { defaultValue: 'Edit complication' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
             name="AddMenuSettings"

@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 vi.mock('../services/sleepScienceService.js', () => ({
   default: {
@@ -18,6 +26,7 @@ vi.mock('../config/logging.js', () => ({
 
 import sleepScienceService from '../services/sleepScienceService.js';
 import { buildSleepScienceTools } from '../ai/tools/sleepScienceTools.js';
+import { addDays } from '@workspace/shared';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 const opts = toolOpts;
@@ -217,5 +226,91 @@ describe('sparky_get_sleep_science', () => {
     svc.calculateSleepDebt.mockRejectedValue(new Error('boom'));
     const result = await getTool().execute!({ action: 'sleep_debt' }, opts);
     expect(result).toBe(DB_ERROR_TEXT);
+  });
+});
+
+// #3713: the tool publishes one flat schema (date, window_days for every
+// action) while each action's runtime schema is strict. A key from another
+// action is read for what it means: dropped when it cannot change the answer,
+// otherwise rejected with the keys the chosen action does accept.
+describe('sparky_get_sleep_science cross-action keys', () => {
+  // Pinned so a run that straddles midnight cannot flake.
+  const today = '2026-06-15';
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'));
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+  const debt = {
+    currentDebt: 1,
+    debtCategory: 'low',
+    sleepNeed: 8,
+    paybackTime: 1,
+    trend: { direction: 'stable', change7d: 0 },
+    last14Days: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    svc.calculateSleepDebt.mockResolvedValue(debt);
+  });
+
+  it("drops today's date on an action that always answers for today", async () => {
+    const result = await getTool().execute!(
+      { action: 'sleep_debt', date: today },
+      opts
+    );
+    expect(svc.calculateSleepDebt).toHaveBeenCalledWith('user-1');
+    expect(result).toContain('# Sleep Debt');
+  });
+
+  it("drops window_days equal to sleep debt's fixed 14-day window", async () => {
+    const result = await getTool().execute!(
+      { action: 'sleep_debt', window_days: 14 },
+      opts
+    );
+    expect(svc.calculateSleepDebt).toHaveBeenCalledWith('user-1');
+    expect(result).toContain('# Sleep Debt');
+  });
+
+  it('rejects a past date and says the action takes no other parameters', async () => {
+    const result = (await getTool().execute!(
+      { action: 'sleep_debt', date: addDays(today, -3) },
+      opts
+    )) as string;
+    expect(svc.calculateSleepDebt).not.toHaveBeenCalled();
+    expect(result).toContain('Error [VALIDATION]');
+    expect(result).toContain('"date"');
+    expect(result).toContain(
+      "Action 'sleep_debt' takes no parameters besides action."
+    );
+  });
+
+  it('rejects a different window and names what the action accepts', async () => {
+    const result = (await getTool().execute!(
+      { action: 'sleep_debt', window_days: 30 },
+      opts
+    )) as string;
+    expect(svc.calculateSleepDebt).not.toHaveBeenCalled();
+    expect(result).toContain('"window_days"');
+  });
+
+  it('keeps the date on daily_need, which takes one', async () => {
+    svc.getDailyNeed.mockRejectedValue(new Error('stop'));
+    await getTool().execute!({ action: 'daily_need', date: today }, opts);
+    expect(svc.getDailyNeed).toHaveBeenCalledWith('user-1', today);
+  });
+
+  it('lists the accepted keys for an action that has some', async () => {
+    const result = (await getTool().execute!(
+      { action: 'recalculate_baseline', date: addDays(today, -3) },
+      opts
+    )) as string;
+    expect(svc.calculateBaseline).not.toHaveBeenCalled();
+    expect(result).toContain(
+      "Action 'recalculate_baseline' accepts only: window_days."
+    );
   });
 });

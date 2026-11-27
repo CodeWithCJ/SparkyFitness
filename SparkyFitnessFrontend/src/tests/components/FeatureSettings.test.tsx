@@ -121,9 +121,48 @@ describe('FeatureSettings', () => {
     const toggle = screen.getByRole('switch', { name: 'Lab results' });
     expect(toggle).toBeChecked();
     expect(toggle).toBeEnabled();
+    // One line per feature switched on this website only.
     expect(
-      screen.getByText('Only this website. The mobile app has its own switch.')
+      screen.getAllByText(
+        'Only this website. The mobile app has its own switch.'
+      )
+    ).toHaveLength(3);
+  });
+
+  it('lists medications under Health, on by default, for this website only', () => {
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Medications' });
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeEnabled();
+    expect(
+      screen.getByText(
+        'Medications, supplements and GLP-1 tracking. Supplement nutrients still count in your totals.'
+      )
     ).toBeInTheDocument();
+  });
+
+  it('turns medications off on this website, and back on', () => {
+    const { unmount } = renderSettings();
+    fireEvent.click(screen.getByRole('switch', { name: 'Medications' }));
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('medications', false);
+    unmount();
+
+    mockFeaturesOff = new Set<FeatureKey>(['medications']);
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Medications' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(mockSetFeatureOn).toHaveBeenLastCalledWith('medications', true);
+  });
+
+  it('lists AI coaches under Wellbeing, for this website only, and turns them on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['aiCoaches']);
+    renderSettings();
+    expect(screen.getByText('Wellbeing')).toBeInTheDocument();
+    const toggle = screen.getByRole('switch', { name: 'Coaches' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('aiCoaches', true);
   });
 
   it('turns lab results off on this website', () => {
@@ -155,9 +194,10 @@ describe('FeatureSettings', () => {
     renderSettings();
     // The defaults on an older server are covered in useWebFeatures.test.
     expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Medications' })).toBeDisabled();
     expect(
-      screen.getByText('Update your SparkyFitness server to change this.')
-    ).toBeInTheDocument();
+      screen.getAllByText('Update your SparkyFitness server to change this.')
+    ).toHaveLength(3);
     expect(
       screen.queryByRole('button', { name: 'Retry' })
     ).not.toBeInTheDocument();
@@ -167,7 +207,10 @@ describe('FeatureSettings', () => {
     mockChoice = { state: 'loadFailed', isPending: false };
     renderSettings();
     expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(screen.getByRole('switch', { name: 'Medications' })).toBeDisabled();
+    const retries = screen.getAllByRole('button', { name: 'Retry' });
+    expect(retries).toHaveLength(3);
+    fireEvent.click(retries[0]!);
     expect(mockReloadChoices).toHaveBeenCalledTimes(1);
   });
 

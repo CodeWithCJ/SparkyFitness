@@ -53,12 +53,19 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 let mockCycleOn = false;
+let mockMedicationsOn = true;
 let mockLabResultsOn = true;
 let mockDiscreet = false;
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
     isEnabled: (key: string) =>
-      key === 'cycle' ? mockCycleOn : mockLabResultsOn,
+      key === 'cycle'
+        ? mockCycleOn
+        : key === 'medications'
+          ? mockMedicationsOn
+          : key === 'labResults'
+            ? mockLabResultsOn
+            : true,
   }),
 }));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
@@ -103,6 +110,7 @@ describe('DashboardSettingsScreen', () => {
       isLoading: false,
     } as ReturnType<typeof useServerConnection>);
     mockCycleOn = false;
+    mockMedicationsOn = true;
     mockLabResultsOn = true;
     mockDiscreet = false;
   });
@@ -136,6 +144,37 @@ describe('DashboardSettingsScreen', () => {
     const state = useAppPreferencesStore.getState();
     expect(state.cycleCardVisible).toBe(true);
     expect(state.labResultsCardVisible).toBe(true);
+  });
+
+  test('leaves out the Medications card while medications are off, and keeps its choices', () => {
+    mockCycleOn = true;
+    mockMedicationsOn = false;
+    renderScreen();
+
+    expect(orderedRowKeys()).toEqual(
+      DASHBOARD_CARD_KEYS.filter((key) => key !== 'medications')
+    );
+    expect(screen.getAllByText('Some features are turned off')).toHaveLength(1);
+    const state = useAppPreferencesStore.getState();
+    expect(state.medicationsCardVisible).toBe(true);
+    expect(state.dashboardCardOrder.indexOf('medications')).toBe(
+      DASHBOARD_CARD_KEYS.indexOf('medications')
+    );
+  });
+
+  test('the Medications card keeps its place while the cards around it move', () => {
+    mockCycleOn = true;
+    mockMedicationsOn = false;
+    renderScreen();
+
+    // Medications sits between Cycle and Symptoms, and is off.
+    moveRow('symptoms', 'decrement');
+
+    const order = useAppPreferencesStore.getState().dashboardCardOrder;
+    expect(order.indexOf('medications')).toBe(
+      DASHBOARD_CARD_KEYS.indexOf('medications')
+    );
+    expect(order.indexOf('symptoms')).toBeLessThan(order.indexOf('cycle'));
   });
 
   test('opens Features from the line while connected', () => {

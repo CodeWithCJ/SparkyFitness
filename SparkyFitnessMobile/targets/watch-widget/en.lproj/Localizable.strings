@@ -1,3 +1,12 @@
+"watch.calories.accessibility" = "Calories %lld%% of goal.";
+"watch.custom.accessibility" = "%@ %@";
+"watch.custom.left" = "%@ left";
+"watch.custom.leftOnly" = "left";
+"watch.custom.ofGoal" = "of %@";
+"watch.custom.starter.caloriesRemaining" = "Calories left";
+"watch.custom.starter.macros" = "Macros";
+"watch.custom.starter.sleepScore" = "Sleep score";
+"watch.custom.starter.weight" = "Weight";
 "watch.energy.accessibility" = "Calories %@ of goal. Fat %@, carbs %@, protein %@ of their goals.";
 "watch.fasting.noFast" = "No fast";
 "watch.fasting.notFasting" = "Not fasting";

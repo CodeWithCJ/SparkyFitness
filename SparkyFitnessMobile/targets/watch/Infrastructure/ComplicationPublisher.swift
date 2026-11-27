@@ -52,7 +52,77 @@ enum ComplicationPublisher {
             "proteinGoalComplication",
             "carbsGoalComplication",
             "fatGoalComplication",
+            CalorieGoal.kind,
         ]
+    }
+
+    /// The calories-only complication reads the Energy snapshot above, so it
+    /// has no key of its own — only a kind to reload.
+    private enum CalorieGoal {
+        static let kind = "calorieGoalComplication"
+    }
+
+    /// The user-defined complication. The wearer's definitions live under
+    /// `key` (sent by the phone as `complicationConfig`); the numbers they can
+    /// show live under `metricsKey`. `revisionKey` keeps the newest list when
+    /// queued copies arrive out of order.
+    private enum Custom {
+        static let key = "customComplicationDefinitions"
+        static let metricsKey = "customMetricsSnapshot"
+        static let revisionKey = "customComplicationRevision"
+        static let kind = "customComplication"
+    }
+
+    /// The colour and icon the wearer chose for each built-in complication,
+    /// stored under `key` for the widgets (`BuiltInStyle.swift`).
+    private enum BuiltIn {
+        static let key = "builtInComplicationStyles"
+        /// Every complication a style can change, so a change reloads them all.
+        static let kinds = [
+            "calorieGoalComplication", "proteinGoalComplication", "carbsGoalComplication",
+            "fatGoalComplication", "waterGoalComplication", "fastingComplication",
+            "stepsComplication", "energyGoalComplication",
+        ]
+    }
+
+    /// One built-in complication's look. `key` is the phone's built-in key
+    /// (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
+    /// `steps`), or one of Daily Energy Goal's four colours (`energyCalories`,
+    /// `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+    /// the wearer changed are set. Field names are
+    /// decoded by `BuiltInStyle.swift` in targets/watch-widget.
+    struct BuiltInStyle: Codable, Equatable {
+        let key: String
+        let color: String?
+        let icon: String?
+    }
+
+    /// Field names here are decoded by `CustomComplication`; the strings are
+    /// the phone's wire values (`src/utils/watchComplications.ts`).
+    struct CustomDefinition: Codable, Equatable {
+        let id: String
+        let name: String
+        let source: String
+        let format: String
+        let gauge: Bool
+        let color: String
+        let icon: String
+        /// The second and third values, shown with the first. Nil for a
+        /// complication with one value, and for a list saved before this existed.
+        let extras: [CustomItem]?
+    }
+
+    /// One more value of a custom complication, with its own look.
+    struct CustomItem: Codable, Equatable {
+        let source: String
+        let format: String
+        let color: String
+        let icon: String
+    }
+
+    /// Field names here are decoded by `CustomComplication`.
+    private struct CustomMetricsPayload: Codable, Equatable {
+        let metrics: [CustomMetric]
     }
 
     private enum Water {
@@ -130,7 +200,81 @@ enum ComplicationPublisher {
                 fatGoal: goals.fatGrams?.goal
             ),
             forKey: Energy.key,
-            reloading: Energy.kinds
+            reloading: Energy.kinds + [Custom.kind]
+        )
+    }
+
+    /// Publishes the wearer's custom complications, for the watch-face picker.
+    /// Ignores a list older than the one already held, since queued copies can
+    /// arrive out of order.
+    ///
+    /// `reload` is the phone's Reload button: the picker and every face slot
+    /// refresh even when the list is the one already held, which is how a picker
+    /// that cached an old answer is put right.
+    ///
+    /// `builtInStyles` rides in the same message (nil from a phone that does not
+    /// send them, which leaves the saved ones alone) and is held to the same
+    /// revision rule.
+    static func publish(
+        customDefinitions: [CustomDefinition],
+        revision: Double,
+        reload: Bool = false,
+        builtInStyles: [BuiltInStyle]? = nil
+    ) {
+        guard let defaults = sharedDefaults() else { return }
+        guard revision >= defaults.double(forKey: Custom.revisionKey) else { return }
+        defaults.set(revision, forKey: Custom.revisionKey)
+
+        let previous = defaults.data(forKey: Custom.key)
+            .flatMap { try? JSONDecoder().decode([CustomDefinition].self, from: $0) }
+        write(customDefinitions, forKey: Custom.key, reloading: [Custom.kind])
+
+        // The picker is built from the widget's recommendations, which watchOS
+        // caches until told they changed. Only what the picker lists (the ids
+        // and names) needs it, as in Home Assistant's watch app; a format or
+        // colour change shows up through the normal reload above.
+        if reload
+            || previous?.map(\.id) != customDefinitions.map(\.id)
+            || previous?.map(\.name) != customDefinitions.map(\.name) {
+            invalidateCustomRecommendations()
+        }
+        if reload {
+            WidgetCenter.shared.reloadTimelines(ofKind: Custom.kind)
+        }
+        if let builtInStyles {
+            publish(builtInStyles: builtInStyles, force: reload, defaults: defaults)
+        }
+    }
+
+    /// Saves the wearer's looks for the built-in complications and reloads them
+    /// when they changed (or when `force`, the phone's Reload button).
+    private static func publish(builtInStyles: [BuiltInStyle], force: Bool, defaults: UserDefaults) {
+        let previous = defaults.data(forKey: BuiltIn.key)
+            .flatMap { try? JSONDecoder().decode([BuiltInStyle].self, from: $0) }
+        guard force || previous != builtInStyles else { return }
+        guard let data = try? JSONEncoder().encode(builtInStyles) else { return }
+        defaults.set(data, forKey: BuiltIn.key)
+        for kind in BuiltIn.kinds {
+            WidgetCenter.shared.reloadTimelines(ofKind: kind)
+        }
+    }
+
+    /// Makes watchOS ask the Custom Complication for its choices again. Apple:
+    /// call this "when your app receives new data for preconfigured widgets
+    /// you'd like to appear in the list of available watch complications". Also
+    /// called at launch, so a picker that cached an empty answer before there
+    /// was a list (or starters) asks again.
+    static func invalidateCustomRecommendations() {
+        WidgetCenter.shared.invalidateConfigurationRecommendations()
+    }
+
+    /// Publishes the numbers a custom complication can show. Each carries its
+    /// own day, so unlike the snapshots above this isn't gated on `day`.
+    static func publish(customMetrics: [CustomMetric]) {
+        write(
+            CustomMetricsPayload(metrics: customMetrics),
+            forKey: Custom.metricsKey,
+            reloading: [Custom.kind]
         )
     }
 
@@ -143,7 +287,7 @@ enum ComplicationPublisher {
                 progress: max(0, min(1, waterProgress))
             ),
             forKey: Water.key,
-            reloading: [Water.kind]
+            reloading: [Water.kind, Custom.kind]
         )
     }
 
@@ -153,7 +297,7 @@ enum ComplicationPublisher {
         write(
             StepsSnapshotPayload(date: day, count: max(0, steps), goal: max(1, goal)),
             forKey: Steps.key,
-            reloading: [Steps.kind]
+            reloading: [Steps.kind, Custom.kind]
         )
     }
 

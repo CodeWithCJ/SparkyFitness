@@ -1,6 +1,8 @@
 import type { FastingLog } from '../types/fasting';
 
 export interface WatchFastPayload {
+  /** Server fast row id for manual fasts; omitted for calculated fasts. */
+  id?: string | null;
   /** Epoch ms. */
   startedAt: number;
   /** Epoch ms, or null for an open-ended fast. */
@@ -26,7 +28,14 @@ export function toWatchFast(
   const target = fast.target_end_time
     ? new Date(fast.target_end_time).getTime()
     : null;
+  const manualId =
+    !fast.is_auto_calculated &&
+    typeof fast.id === 'string' &&
+    fast.id.trim() !== ''
+      ? fast.id.trim()
+      : undefined;
   return {
+    ...(manualId ? { id: manualId } : {}),
     startedAt,
     targetEndAt: target != null && Number.isFinite(target) ? target : null,
     label: fast.fasting_type ?? null,

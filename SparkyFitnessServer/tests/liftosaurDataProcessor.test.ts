@@ -125,9 +125,9 @@ describe('processLiftosaurWorkouts', () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
-  it('rolls back transaction and releases client when an error occurs', async () => {
+  it('rolls back transaction and releases client when the cleanup fails', async () => {
     const workouts = parseSampleWorkouts();
-    vi.mocked(upsertLiftosaurSessionWithClient).mockRejectedValueOnce(
+    vi.mocked(deleteLiftosaurSessionsNotInWithClient).mockRejectedValueOnce(
       new Error('DB failure')
     );
 
@@ -137,7 +137,242 @@ describe('processLiftosaurWorkouts', () => {
 
     expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
     expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
     expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('skips a workout that cannot be saved and imports the others', async () => {
+    const [first] = parseSampleWorkouts();
+    const [second] = parseSampleWorkouts();
+    const workouts = [
+      { ...first!, id: 1 },
+      { ...second!, id: 2 },
+    ];
+    vi.mocked(upsertLiftosaurSessionWithClient).mockRejectedValueOnce(
+      new Error('DB failure')
+    );
+
+    const result = await processLiftosaurWorkouts(UID, CID, workouts);
+
+    expect(result).toEqual({ workoutsFailed: 1 });
+    expect(mockClient.query).toHaveBeenCalledWith(
+      'ROLLBACK TO SAVEPOINT liftosaur_workout'
+    );
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(mockClient.query).not.toHaveBeenCalledWith('ROLLBACK');
+    const created = vi
+      .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
+      .mock.calls.map((call) => call[2].source_id);
+    expect(created).toEqual(['2_Squat_0', '2_Bulgarian Split Squat_0']);
+    // The failed workout may have stored rows under ids this sync does
+    // not know, so nothing is deleted.
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).not.toHaveBeenCalled();
+    expect(deleteLiftosaurSessionsNotInWithClient).not.toHaveBeenCalled();
+  });
+
+  describe('assisted (negative-weight) sets', () => {
+    function assistedWorkouts() {
+      return parseLiftohistory(
+        [
+          '2026-07-13 05:52:14 +00:00 / exercises: {',
+          '  Pull Up / 3x5 -20kg',
+          '}',
+        ].join('\n')
+      ).workouts;
+    }
+
+    it('creates a new exercise with assisted sets as bodyweight', async () => {
+      vi.mocked(exerciseRepository.createExercise).mockResolvedValueOnce({
+        id: 'exercise-pull-up',
+        modality: 'bodyweight_reps',
+      } as any);
+
+      await processLiftosaurWorkouts(UID, CID, assistedWorkouts());
+
+      expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Pull Up',
+          modality: 'bodyweight_reps',
+        })
+      );
+      const entryData = vi.mocked(
+        exerciseEntryRepository._createExerciseEntryWithClient
+      ).mock.calls[0]![2];
+      expect(entryData.modality).toBe('bodyweight_reps');
+      expect(entryData.sets!.map((set) => set.weight)).toEqual([-20, -20, -20]);
+    });
+
+    it('does not make a new exercise without assisted sets bodyweight', async () => {
+      await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+      expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
+        expect.not.objectContaining({ modality: expect.anything() })
+      );
+    });
+
+    it('switches an exercise the import created to bodyweight', async () => {
+      vi.mocked(
+        exerciseRepository.findExerciseByNameAndUserId
+      ).mockImplementation(
+        (name: string) =>
+          Promise.resolve(
+            name === 'Pull Up'
+              ? {
+                  id: 'exercise-pull-up',
+                  user_id: UID,
+                  source: 'Liftosaur',
+                  modality: 'weight_reps',
+                  primary_muscles: ['lats'],
+                }
+              : null
+          ) as any
+      );
+      mockClient.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes('UPDATE exercises')
+            ? { rows: [], rowCount: 1 }
+            : { rows: [] }
+        )
+      );
+
+      await processLiftosaurWorkouts(UID, CID, assistedWorkouts());
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE exercises'),
+        ['bodyweight_reps', 'exercise-pull-up', UID, 'Liftosaur']
+      );
+      const entryData = vi.mocked(
+        exerciseEntryRepository._createExerciseEntryWithClient
+      ).mock.calls[0]![2];
+      expect(entryData.modality).toBe('bodyweight_reps');
+      expect(entryData.sets![0]!.weight).toBe(-20);
+      mockClient.query.mockImplementation(() => Promise.resolve({ rows: [] }));
+    });
+
+    it('switches a row once and applies it to every name that resolves to it', async () => {
+      // Each lookup returns a fresh copy of the stored row, as the database does.
+      vi.mocked(
+        exerciseRepository.findExerciseByNameAndUserId
+      ).mockImplementation(
+        (name: string) =>
+          Promise.resolve(
+            name === 'Pull Up'
+              ? {
+                  id: 'exercise-pull-up',
+                  user_id: UID,
+                  source: 'Liftosaur',
+                  modality: 'weight_reps',
+                  primary_muscles: ['lats'],
+                }
+              : null
+          ) as any
+      );
+      mockClient.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes('UPDATE exercises')
+            ? { rows: [], rowCount: 1 }
+            : { rows: [] }
+        )
+      );
+      const workouts = parseLiftohistory(
+        [
+          '2026-07-13 05:52:14 +00:00 / exercises: {',
+          '  Pull Up / 3x5 -20kg',
+          '  Pull Up, Machine / 2x8 -30kg',
+          '}',
+        ].join('\n')
+      ).workouts;
+
+      await processLiftosaurWorkouts(UID, CID, workouts);
+
+      const updates = mockClient.query.mock.calls.filter((call) =>
+        String(call[0]).includes('UPDATE exercises')
+      );
+      expect(updates).toHaveLength(1);
+      const entries = vi
+        .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
+        .mock.calls.map((call) => call[2]);
+      expect(entries.map((entry) => entry.modality)).toEqual([
+        'bodyweight_reps',
+        'bodyweight_reps',
+      ]);
+      expect(entries[1]!.sets!.map((set) => set.weight)).toEqual([-30, -30]);
+      mockClient.query.mockImplementation(() => Promise.resolve({ rows: [] }));
+    });
+
+    it('uses the stored modality when the switch finds the row already changed', async () => {
+      vi.mocked(
+        exerciseRepository.findExerciseByNameAndUserId
+      ).mockImplementation(
+        (name: string) =>
+          Promise.resolve(
+            name === 'Pull Up'
+              ? {
+                  id: 'exercise-pull-up',
+                  user_id: UID,
+                  source: 'Liftosaur',
+                  modality: 'weight_reps',
+                  primary_muscles: ['lats'],
+                }
+              : null
+          ) as any
+      );
+      mockClient.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes('UPDATE exercises')
+            ? { rows: [], rowCount: 0 }
+            : sql.includes('SELECT modality FROM exercises')
+              ? { rows: [{ modality: 'bodyweight_reps' }] }
+              : { rows: [] }
+        )
+      );
+
+      await processLiftosaurWorkouts(UID, CID, assistedWorkouts());
+
+      const entryData = vi.mocked(
+        exerciseEntryRepository._createExerciseEntryWithClient
+      ).mock.calls[0]![2];
+      expect(entryData.modality).toBe('bodyweight_reps');
+      expect(entryData.sets![0]!.weight).toBe(-20);
+      mockClient.query.mockImplementation(() => Promise.resolve({ rows: [] }));
+    });
+
+    it('keeps the sets without their weight on an exercise it may not switch', async () => {
+      vi.mocked(
+        exerciseRepository.findExerciseByNameAndUserId
+      ).mockImplementation(
+        (name: string) =>
+          Promise.resolve(
+            name === 'Pull Up'
+              ? {
+                  id: 'exercise-pull-up',
+                  user_id: UID,
+                  source: 'custom',
+                  modality: 'weight_reps',
+                  primary_muscles: ['lats'],
+                }
+              : null
+          ) as any
+      );
+
+      await processLiftosaurWorkouts(UID, CID, assistedWorkouts());
+
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE exercises'),
+        expect.anything()
+      );
+      const entryData = vi.mocked(
+        exerciseEntryRepository._createExerciseEntryWithClient
+      ).mock.calls[0]![2];
+      expect(entryData.modality).toBeUndefined();
+      expect(entryData.sets!.map((set) => [set.weight, set.reps])).toEqual([
+        [null, 5],
+        [null, 5],
+        [null, 5],
+      ]);
+    });
   });
 
   it('lets getClient failure throw directly', async () => {

@@ -38,6 +38,12 @@ export interface WatchHistoryPoint {
   bodyFatPercentage?: number | null;
 }
 
+/** One dated body-fat reading relayed to the watch (including smart-scale days without weight). */
+export interface WatchBodyFatPoint {
+  day: string;
+  bodyFatPercentage: number;
+}
+
 /** A water container tap captured on the Apple Watch. */
 export interface WatchWaterIntakePayload {
   /** Stable id generated on the watch. Not acknowledged back like a check-in
@@ -56,6 +62,12 @@ export interface WatchWaterDeletePayload {
   clientId: string;
   /** The `water_intake_entries` row id, as relayed in `waterLog` below. */
   entryId: string;
+  ownerId?: string;
+}
+
+/** Wear OS cancellation notice when the wearer undoes a pending water tap before confirmation. */
+export interface WatchWaterTapCancelPayload {
+  clientId: string;
   ownerId?: string;
 }
 
@@ -121,6 +133,10 @@ export interface WatchContainerPayload {
   servingVolumeMl: number;
   /** Display only — `ml` | `oz` | `liter`. `servingVolumeMl` is always ml. */
   unit: string;
+  /** True when marked as the user's primary standard water container. */
+  isPrimary?: boolean;
+  /** True when configured as a one-tap Quick Add drink preset (e.g. Drip Coffee, Coke Zero). */
+  isQuickAdd?: boolean;
 }
 
 /** Today's sleep snapshot relayed to the watch for its Sleep Health tile. */
@@ -182,8 +198,10 @@ export interface WatchContextPayload {
   todayBodyFatPercentage?: number | null;
   lastWeightKg?: number | null;
   lastBodyFatPercentage?: number | null;
+  lastBodyFatDate?: string | null;
   lastEntryDate?: string | null;
   history: WatchHistoryPoint[];
+  bodyFatHistory?: WatchBodyFatPoint[];
   ackedClientIds: string[];
   /**
    * Client ids the phone tried to write and couldn't — check-ins and water
@@ -296,9 +314,18 @@ export interface WatchContextPayload {
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
    * with nothing hidden; the watch carries the last values forward.
+   * `hiddenPages` also holds the pages of features that are off in the app
+   * (`watchHiddenPagesForContext`), and is left out, with `offFeatures`,
+   * while the app does not know its feature choices.
    */
   pageOrder?: string[] | null;
   hiddenPages?: string[] | null;
+  /**
+   * Optional features (#3487) the watch has pages or tiles of that are off in
+   * the app (`medications`). Empty means none is off; missing means an older
+   * phone build or choices not known yet, and the watch keeps its last value.
+   */
+  offFeatures?: string[];
   /**
    * The rows the watch's Goals page lists under the calorie ring, in order
    * (Settings → Apple Watch). Day-scoped like the calorie figures: null when
@@ -366,6 +393,12 @@ export interface WatchContextPayload {
    * watch, same fallback the phone itself uses.
    */
   waterDisplayUnit?: 'ml' | 'oz' | 'liter' | null;
+  /**
+   * The user's configured clock format (`'HH:mm'` for 24-hour, `'h:mm A'` /
+   * `'h:mm a'` for 12-hour), so direct watch refreshes format drink times in
+   * the same 12/24-hour convention as the phone. Omitted when unset.
+   */
+  timeFormat?: 'HH:mm' | 'h:mm A' | 'h:mm a' | null;
   /**
    * Today's individual logged drinks, newest first, for the watch's water log
    * view. Rides the context push rather than being fetched on demand so the
@@ -441,6 +474,8 @@ export interface WatchContextPayload {
    */
   fastKnown?: boolean;
   fast?: {
+    /** Server fast row id for manual fasts; omitted for calculated fasts. */
+    id?: string | null;
     /** Epoch ms. */
     startedAt: number;
     /** Epoch ms, or null for an open-ended fast. */
@@ -848,6 +883,8 @@ export interface WatchWorkoutStartRequestedPayload {
   presetId: string;
   /** Active server the list was built for. Empty when an older watch omitted it. */
   serverId?: string;
+  /** Client-minted workout session id when replaying an unconfirmed direct-API start. */
+  sessionId?: string;
 }
 
 /**
@@ -926,12 +963,20 @@ export interface WatchFastStartRequestPayload {
   presetId: string;
   clientId: string;
   ownerId?: string;
+  /** Epoch ms when the wearer tapped Start on the watch, preserved across offline queueing. */
+  startedAt?: number;
 }
 
 /** The wearer asked to end the running fast from the watch. */
 export interface WatchFastEndRequestPayload {
   clientId: string;
   ownerId?: string;
+  /** Server fast row id on screen when End was tapped, so a late replay never ends a different fast. */
+  fastId?: string;
+  /** Epoch ms of the fast on screen when End was tapped, used when `fastId` was not yet synced. */
+  startedAt?: number;
+  /** Epoch ms when End was tapped on the watch. */
+  endedAt?: number;
 }
 
 /**
@@ -1081,6 +1126,37 @@ export interface WatchRouteSyncPayload {
 }
 
 /**
+ * The wearer's custom complications (`complicationConfig`): what each one
+ * shows and how it looks. Strings other than `name` are wire values; see
+ * `src/utils/watchComplications.ts`. `revision` is epoch ms; the watch keeps
+ * the newest.
+ */
+export interface WatchComplicationConfigPayload {
+  revision: number;
+  /** Refresh the watch's picker and faces even if the list is unchanged. */
+  reload?: boolean;
+  /**
+   * The colour and icon the wearer chose for each built-in complication
+   * (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
+   * `steps`) and for each part of Daily Energy Goal (`energyCalories`,
+   * `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+   * they changed. Empty puts them all back.
+   */
+  builtIns?: { key: string; color?: string; icon?: string }[];
+  definitions: {
+    id: string;
+    name: string;
+    source: string;
+    format: string;
+    gauge: boolean;
+    color: string;
+    icon: string;
+    /** The second and third values, shown with the first. */
+    extras: { source: string; format: string; color: string; icon: string }[];
+  }[];
+}
+
+/**
  * What the watch's route library holds (`routeLibrary`): each stored route
  * with the `updatedAt` it was stored at, the ids it turned away (`full` when
  * the library is at `capacity`, `storage` when the file could not be written)
@@ -1148,12 +1224,21 @@ export interface WatchRunControlPayload {
   controlId: string;
 }
 
+export interface WatchServerSyncedPayload {
+  domain: string;
+  ownerId?: string;
+  entryDate?: string;
+  clientId?: string;
+}
+
 export type WatchConnectivityEvents = {
   onReachabilityChange: (payload: { isReachable: boolean }) => void;
+  onWatchServerSynced: (payload: WatchServerSyncedPayload) => void;
   onCheckIn: (payload: WatchCheckInPayload) => void;
   onContextRequest: () => void;
   onWaterIntake: (payload: WatchWaterIntakePayload) => void;
   onWaterDelete: (payload: WatchWaterDeletePayload) => void;
+  onWaterTapCancel: (payload: WatchWaterTapCancelPayload) => void;
   onMedicationTaken: (payload: WatchMedicationTakenPayload) => void;
   onSetCompleted: (payload: WatchSetCompletedPayload) => void;
   onSetUncompleted: (payload: WatchSetUncompletedPayload) => void;
@@ -1186,6 +1271,17 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   updateContext(context: WatchContextPayload): Promise<void>;
   sendAck(clientId: string, ok: boolean): Promise<void>;
   /**
+   * Android / Wear OS fast-aware acknowledgement carrying the authoritative
+   * server fast state alongside the ack so stale replays never clear a newer
+   * running fast. Absent on iOS, where callers fall back to `sendAck`.
+   */
+  sendFastAck?(
+    clientId: string,
+    ok: boolean,
+    fastKnown: boolean,
+    fast: WatchContextPayload['fast']
+  ): Promise<void>;
+  /**
    * Live stats for a phone GPS recording. `durable` queues the message as
    * well (status changes); the periodic distance refresh is reachable-only.
    */
@@ -1214,6 +1310,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   sendRoute(sync: WatchRouteSyncPayload): Promise<void>;
   /** Takes a route out of the watch's library (queued). */
   removeRoute(routeId: string): Promise<void>;
+  /**
+   * Sends the wearer's custom complications and built-in style overrides to
+   * the watch (queued on iOS, DataClient + live message on Android / Wear OS).
+   * Only the newest list matters, so a copy still waiting is replaced.
+   */
+  sendComplicationConfig(config: WatchComplicationConfigPayload): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
   sendRunControl(control: WatchRunControlPayload): Promise<void>;
   /** Tells the watch the phone is saying cue `id`, so it stays quiet. */
@@ -1326,7 +1428,8 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   takeDroppedHeartRateBatchCount(): Promise<number>;
   setServerCredentials?(
     baseUrl: string,
-    headers: Record<string, string>
+    headers: Record<string, string>,
+    expectedOwnerId?: string
   ): Promise<void>;
   clearServerCredentials?(): Promise<void>;
   /**

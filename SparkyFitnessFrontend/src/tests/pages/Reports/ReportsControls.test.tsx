@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ReportsControls from '@/pages/Reports/ReportsControls';
+import { setWebFeatureChoices } from '@/tests/mocks/webFeatures';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -8,6 +9,23 @@ jest.mock('react-i18next', () =>
 jest.mock('@/components/ui/DateRangeWithPresets', () => ({
   DateRangePickerWithPresets: () => <div data-testid="date-range" />,
 }));
+jest.mock(
+  '@/hooks/Settings/useFeatureChoices',
+  () => jest.requireActual('@/tests/mocks/webFeatures').featureChoicesModule
+);
+jest.mock(
+  '@/hooks/useCycle',
+  () => jest.requireActual('@/tests/mocks/webFeatures').cycleModule
+);
+let mockActingOnBehalf = false;
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ isActingOnBehalf: mockActingOnBehalf }),
+}));
+
+beforeEach(() => {
+  mockActingOnBehalf = false;
+  setWebFeatureChoices({});
+});
 
 const baseProps = {
   startDate: '2026-10-01',
@@ -35,5 +53,41 @@ describe('ReportsControls', () => {
       />
     );
     expect(screen.queryByTestId('date-range')).not.toBeInTheDocument();
+  });
+
+  const medicationsPill = () =>
+    screen.queryByRole('button', { name: 'Medications' });
+  const controls = () => (
+    <ReportsControls
+      {...baseProps}
+      activeTab="medications-reports"
+      showDateRange
+    />
+  );
+
+  it('shows the Medications pill only while medications is on (or its choice is loading)', () => {
+    const { rerender } = render(controls());
+    expect(medicationsPill()).toBeInTheDocument();
+
+    setWebFeatureChoices(undefined);
+    rerender(controls());
+    expect(medicationsPill()).toBeInTheDocument();
+
+    setWebFeatureChoices({ medications: false });
+    rerender(controls());
+    expect(medicationsPill()).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Symptoms' })
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Medications pill to someone acting for the owner, whatever the owner's choice", () => {
+    setWebFeatureChoices({ medications: false });
+    const { rerender } = render(controls());
+    expect(medicationsPill()).not.toBeInTheDocument();
+
+    mockActingOnBehalf = true;
+    rerender(controls());
+    expect(medicationsPill()).toBeInTheDocument();
   });
 });

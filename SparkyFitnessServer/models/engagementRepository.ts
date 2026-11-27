@@ -65,7 +65,7 @@ async function getWeeklyLoggedDayCount(
 
 // All distinct days with any logged data, newest first. The streak walk over
 // these dates happens in the tool layer.
-async function getLoggedDates(userId: string) {
+async function getLoggedDates(userId: string, sinceDay?: string) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -77,8 +77,9 @@ async function getLoggedDates(userId: string) {
          UNION
          SELECT entry_date FROM check_in_measurements WHERE user_id = $1
        ) all_entries
+       WHERE $2::date IS NULL OR entry_date >= $2::date
        ORDER BY entry_date DESC`,
-      [userId]
+      [userId, sinceDay ?? null]
     );
     return result.rows;
   } finally {

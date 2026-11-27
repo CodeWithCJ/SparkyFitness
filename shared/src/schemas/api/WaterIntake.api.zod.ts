@@ -69,5 +69,6 @@ export const waterIntakeLogEntrySchema = z.object({
   // #2115: set when this drink was logged by a linked container.
   food_entry_id: z.string().nullable().optional(),
   hydration_factor: z.number().nullable().optional(),
+  client_id: z.string().nullable().optional(),
 });
 export type WaterIntakeLogEntry = z.infer<typeof waterIntakeLogEntrySchema>;

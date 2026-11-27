@@ -19,6 +19,18 @@ export const ACTION_TAG_LABEL_MAX = 120;
 /** Largest amount a food or meal tag logs per tap, in its own unit. */
 export const ACTION_TAG_MAX_QUANTITY = 10000;
 
+export const actionTagPresetAmountsSchema = z
+  .array(z.number().positive().max(ACTION_TAG_MAX_QUANTITY))
+  .min(1)
+  .max(8);
+export type ActionTagPresetAmounts = z.infer<
+  typeof actionTagPresetAmountsSchema
+>;
+
+export const entryTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/);
+
 /**
  * Which meal a food or meal tag logs into: the one for the time of the tap
  * (each meal type's default time, as for any other quick logging), or always
@@ -80,6 +92,13 @@ export const actionTagResponseSchema = z.object({
   label: z.string(),
   action: tagActionSchema,
   ask_before_running: z.boolean(),
+  allow_amount_adjustment: z.boolean(),
+  allow_custom_timestamp: z.boolean(),
+  tap_to_log: z.boolean(),
+  preset_amounts: actionTagPresetAmountsSchema
+    .nullable()
+    .optional()
+    .default(null),
   last_run_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -94,6 +113,10 @@ export const createActionTagBodySchema = z.object({
   label: z.string().trim().min(1).max(ACTION_TAG_LABEL_MAX),
   action: tagActionSchema,
   ask_before_running: z.boolean().optional(),
+  allow_amount_adjustment: z.boolean().optional(),
+  allow_custom_timestamp: z.boolean().optional(),
+  tap_to_log: z.boolean().optional(),
+  preset_amounts: actionTagPresetAmountsSchema.nullable().optional(),
 });
 export type CreateActionTagBody = z.infer<typeof createActionTagBodySchema>;
 
@@ -101,6 +124,10 @@ export const updateActionTagBodySchema = z.object({
   label: z.string().trim().min(1).max(ACTION_TAG_LABEL_MAX).optional(),
   action: tagActionSchema.optional(),
   ask_before_running: z.boolean().optional(),
+  allow_amount_adjustment: z.boolean().optional(),
+  allow_custom_timestamp: z.boolean().optional(),
+  tap_to_log: z.boolean().optional(),
+  preset_amounts: actionTagPresetAmountsSchema.nullable().optional(),
 });
 export type UpdateActionTagBody = z.infer<typeof updateActionTagBodySchema>;
 
@@ -108,8 +135,18 @@ export const scanActionTagBodySchema = z.object({
   tag_code: tagCodeSchema,
   /** The device's calendar day, as for other quick logging. */
   entry_date: z.iso.date(),
+  /** Optional HH:MM[:SS] time used only when `allow_custom_timestamp` is enabled on the tag. */
+  entry_time: entryTimeSchema.optional(),
+  /** Optional explicit meal type override from the scan screen context pills. */
+  meal_type_id: z.uuid().optional(),
   /** Sent after the person agreed to a `needs_confirmation` answer. */
   confirmed: z.boolean().optional(),
+  /** Optional quantity override when `allow_amount_adjustment` is enabled on a food/meal tag. */
+  quantity_override: tagQuantitySchema.optional(),
+  /** Optional drinks override when `allow_amount_adjustment` is enabled on a water tag. */
+  drinks_override: z.number().int().min(1).max(20).optional(),
+  /** Optional drink volume in ml when `allow_amount_adjustment` is enabled on a water tag. */
+  water_ml_override: z.number().positive().max(10000).optional(),
 });
 export type ScanActionTagBody = z.infer<typeof scanActionTagBodySchema>;
 
@@ -128,12 +165,12 @@ export const scanActionTagResponseSchema = z.object({
   /** What was logged, e.g. "1 x Stanley (1 L)". Set when status is `done`. */
   summary: z.string().nullable(),
   /**
-   * The diary row a food or meal tap created, so Undo removes exactly that
-   * row. Absent for water, which undoes by drinks, and from older servers.
+   * The diary row a food, meal, or exact-ml water tap created, so Undo removes
+   * exactly that row. Absent for drink-based water logs and from older servers.
    */
   logged: z
     .object({
-      kind: z.enum(['food_entry', 'food_entry_meal']),
+      kind: z.enum(['food_entry', 'food_entry_meal', 'water_intake_entry']),
       id: z.string(),
     })
     .nullable()

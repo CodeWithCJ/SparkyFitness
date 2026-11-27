@@ -17,6 +17,13 @@ enum class WatchPage(val key: String, val label: String) {
   FASTING("fasting", "Fasting"),
   STEPS("steps", "Steps");
 
+  /**
+   * The optional feature (#3487) the page belongs to, by its phone key (`WATCH_PAGE_FEATURES` in
+   * `src/constants/watchPages.ts`). While the phone lists it in `offFeatures`, the page does not show.
+   */
+  val feature: String?
+    get() = if (this == MEDICATIONS) "medications" else null
+
   companion object {
     val defaultOrder = listOf(
       GOALS, WATER, MEDICATIONS, ENTRY, TREND, WORKOUT, FASTING, STEPS
@@ -129,7 +136,9 @@ data class WaterContainer(
   val id: Int,
   val name: String,
   val servingVolumeMl: Double,
-  val unit: String
+  val unit: String,
+  val isPrimary: Boolean = false,
+  val isQuickAdd: Boolean = false
 ) {
   val displayVolume: String
     get() = when (unit.lowercase()) {
@@ -143,7 +152,8 @@ data class WaterLogEntry(
   val id: String,
   val name: String,
   val volumeMl: Double,
-  val time: String
+  val time: String,
+  val loggedAtMs: Long? = null
 )
 
 data class WaterSnapshot(
@@ -163,7 +173,8 @@ data class PendingWaterTap(
   val createdAtMs: Long,
   val day: String,
   val state: SyncState,
-  val ownerId: String = ""
+  val ownerId: String = "",
+  val logConfirmed: Boolean = false
 ) {
   val isToday: Boolean get() = day == CheckInDate.today()
 }
@@ -224,7 +235,8 @@ data class PendingMedicationTap(
 data class WatchFast(
   val startedAtMs: Long,
   val targetEndAtMs: Long?,
-  val label: String?
+  val label: String?,
+  val id: String? = null
 )
 
 data class StepsSnapshot(
@@ -346,8 +358,10 @@ data class WatchContext(
   val todayBodyFatPercentage: Double? = null,
   val lastWeightKg: Double? = null,
   val lastBodyFatPercentage: Double? = null,
+  val lastBodyFatDate: String? = null,
   val lastEntryDate: String? = null,
   val history: List<HistoryPoint> = emptyList(),
+  val bodyFatHistory: List<HistoryPoint> = emptyList(),
   val ackedClientIds: List<String> = emptyList(),
   val failedClientIds: List<String> = emptyList(),
   val updatedAtMs: Long = 0L,
@@ -362,6 +376,11 @@ data class WatchContext(
   val restAlertsEnabled: Boolean? = null,
   val pageOrder: List<String>? = null,
   val hiddenPages: List<String>? = null,
+  /**
+   * Optional features turned off in the phone app (`offFeatures`, such as `medications`): their pages
+   * and tiles say so. Null, from an older phone or before the phone knows its choices, reads as none off.
+   */
+  val offFeatures: List<String>? = null,
   val setInputStyle: String? = null,
   val startableWorkouts: List<StartableWorkout>? = null,
   val scheduledWorkouts: List<ScheduledWorkout>? = null,
@@ -370,6 +389,8 @@ data class WatchContext(
   val distanceUnit: String? = null,
   /** The phone's energy unit (`kcal` or `kJ`); energy numbers stay kcal. Null reads as kcal. */
   val energyUnit: String? = null,
+  /** User's preferred clock format (`HH:mm` or `h:mm A` / `h:mm a`); null falls back to locale short time. */
+  val timeFormat: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
   val newWorkout: Boolean? = null,
@@ -423,14 +444,15 @@ data class WatchContext(
   val daysSinceLastEntry: Int
     get() = CheckInDate.daysBetween(lastEntryDate ?: today)
 
-  fun formattedWater(ml: Double): String {
-    return when (waterDisplayUnit?.lowercase()) {
-      "oz" -> String.format(Locale.US, "%.1f oz", ml / 29.5735)
-      "liter", "l" -> String.format(Locale.US, "%.2fL", ml / 1000.0)
-      else -> "${ml.roundToInt()} ml"
-    }
-  }
+  fun formattedWater(ml: Double, locale: Locale = Locale.getDefault()): String =
+    formatWaterAmount(ml, waterDisplayUnit, locale)
 
+  fun isFeatureOff(key: String): Boolean = offFeatures?.contains(key) == true
+
+  /**
+   * The pages to swipe between. A page of a feature that is off never shows; the phone hides it in
+   * `hiddenPages` too, and keeps Goals when that page was the only one shown.
+   */
   fun visiblePages(workoutActive: Boolean): List<WatchPage> {
     val hidden = (hiddenPages ?: emptyList()).map { it.lowercase() }.toSet()
     val ordered = mutableListOf<WatchPage>()
@@ -442,6 +464,7 @@ data class WatchContext(
     for (p in WatchPage.defaultOrder) {
       if (!ordered.contains(p)) ordered.add(p)
     }
+    ordered.removeAll { page -> page.feature?.let { isFeatureOff(it) } == true }
     val filtered = ordered.filter { page ->
       if (workoutActive && page == WatchPage.WORKOUT) true
       else !hidden.contains(page.key)
@@ -931,4 +954,22 @@ object MediaControlLogic {
     }
     return incoming.updatedAtMs >= current.updatedAtMs
   }
+}
+
+fun formatWaterAmount(
+  ml: Double,
+  displayUnit: String?,
+  locale: Locale = Locale.getDefault()
+): String = when (displayUnit?.lowercase(Locale.US)) {
+  "oz" -> {
+    val oz = ml / 29.5735
+    val roundedTenth = (oz * 10.0).roundToInt() / 10.0
+    if (kotlin.math.abs(roundedTenth - roundedTenth.roundToInt()) < 0.001) {
+      String.format(locale, "%d oz", roundedTenth.roundToInt())
+    } else {
+      String.format(locale, "%.1f oz", oz)
+    }
+  }
+  "liter", "l" -> String.format(locale, "%.2fL", ml / 1000.0)
+  else -> String.format(locale, "%d ml", ml.roundToInt())
 }

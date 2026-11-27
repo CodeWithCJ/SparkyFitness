@@ -3085,13 +3085,13 @@
       "title": "Karty",
       "description": "Wybierz, które główne karty są widoczne na stronie",
       "cycleOn": "Wł.",
-      "cycleOff": "Wył.",
       "cycleHint": "{{name}} włącza się i wyłącza w sekcji Funkcje powyżej.",
       "footnote": "Karty Dziennik i Ustawienia są zawsze widoczne. Ukrycie karty zmienia tylko tę stronę: nic nie jest usuwane, a aplikacja mobilna ma własne ustawienia.",
       "saveError": "Nie udało się zapisać wyboru kart. Spróbuj ponownie.",
       "loadError": "Nie udało się wczytać wyboru kart.",
       "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie.",
-      "featureOff": "Nie pokazano: wyłączona w Funkcje."
+      "someFeaturesOff": "Niektóre funkcje są wyłączone",
+      "manageFeatures": "Zarządzaj"
     },
     "chatMcp": {
       "title": "Narzędzia zewnętrzne",
@@ -3178,6 +3178,36 @@
       "labResults": {
         "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
       }
+    },
+    "foodProviders": {
+      "common": {
+        "getApiKey": "Uzyskaj klucz API",
+        "terms": "Regulamin"
+      },
+      "cooktool": {
+        "help": "Darmowy plan obejmuje 1000 wyszukiwań dziennie. Zaakceptuj regulamin CookTool przy własnym kluczu. Wyszukiwania są buforowane przez 24 godziny.",
+        "portalLabel": "Dokumentacja CookTool"
+      },
+      "nutrientgraph": {
+        "help": "Darmowy plan obejmuje 2500 jednostek miesięcznie. Obejmuje USDA, francuską bazę CIQUAL i amerykańskie produkty markowe w pięciu językach. Wyszukiwania są buforowane przez 24 godziny.",
+        "portalLabel": "Dokumentacja NutrientGraph"
+      },
+      "food-info": {
+        "help": "Darmowy plan obejmuje 100 żądań dziennie. Dostęp do produktów referencyjnych z wielu krajowych baz danych żywności. Wyszukiwania są buforowane przez 24 godziny.",
+        "portalLabel": "Portal dewelopera Food Info"
+      }
+    },
+    "zeppBridgeProvider": {
+      "warningTitle": "Integracja zewnętrzna: wymaga ZeppBridge",
+      "warningInstall": "ZeppBridge to niezależny projekt open source. Nie jest tworzony, utrzymywany ani wspierany przez SparkyFitness. Ta integracja działa tylko wtedy, gdy sam zainstalujesz i uruchomisz ZeppBridge. Zobacz <repo>projekt ZeppBridge na GitHubie</repo>, żeby dowiedzieć się, czym jest i jak go skonfigurować.",
+      "warningDueDiligence": "ZeppBridge loguje się do Twojego konta Zepp i przechowuje kopię Twoich danych zdrowotnych na Twoim komputerze. Przed instalacją dokonaj własnej oceny: przeczytaj dokumentację i <privacy>notatkę o prywatności</privacy>, sprawdź, jakich uprawnień żąda, i zdecyduj, czy mu ufasz. Korzystasz na własne ryzyko.",
+      "warningExperimental": "Ta integracja jest eksperymentalna. Powstała na podstawie opublikowanego API ZeppBridge i przeszła ograniczone testy z prawdziwymi urządzeniami.",
+      "baseUrlLabel": "Adres URL ZeppBridge",
+      "tokenLabel": "Token pull",
+      "tokenPlaceholder": "Token ustawiony jako ZEPPBRIDGE_PULL_TOKEN",
+      "overviewNote": "SparkyFitness tylko odczytuje dane z Twojego własnego serwera ZeppBridge (uruchomionego przez `zeppbridge-cli serve`). Nigdy nie łączy się z Zepp i nie widzi Twojego loginu Zepp.",
+      "urlNote": "Wpisz pełny adres wraz z http:// (lub https://). W Dockerze umieść oba kontenery w jednej sieci i użyj nazwy kontenera, na przykład http://zeppbridge-serve:43921.",
+      "privateNetworkNote": "Adres prywatny lub z sieci lokalnej działa dla kont administratorów. Na serwerze z kilkoma użytkownikami administrator musi najpierw zezwolić na dostawców z sieci prywatnej."
     }
   },
   "admin": {
@@ -7790,7 +7820,18 @@
     "intervalsRemoveTitle": "Wysłane dane wartości odżywczych usunięte",
     "intervalsRemoveDetails": "Wyczyszczono {{cleared}} dni, pozostawiono {{kept}} dni zmienionych przez inną aplikację, nieudanych: {{failed}}.",
     "intervalsRemoveError": "Nie udało się usunąć wysłanych danych wartości odżywczych. Spróbuj ponownie.",
-    "intervalsPushToggleError": "Nie udało się zapisać ustawienia wysyłania wartości odżywczych do Intervals.icu."
+    "intervalsPushToggleError": "Nie udało się zapisać ustawienia wysyłania wartości odżywczych do Intervals.icu.",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge zostało zsynchronizowane",
+    "zeppbridgeSyncDetails": "Zsynchronizowano: {{sleepImported}} sesji snu, {{workoutsImported}} treningów ({{workoutDetailsImported}} z trasą lub tętnem), {{metricDays}} dni metryk (nieudane: {{failed}}, brakujące szczegóły treningów: {{workoutDetailsFailed}}).",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge zsynchronizowane z problemami",
+    "zeppbridgeSyncError": "Synchronizacja ZeppBridge nie powiodła się. Sprawdź adres URL i token pull w ustawieniach oraz czy serwer ZeppBridge działa.",
+    "zeppbridgeTestSuccessTitle": "Połączenie z ZeppBridge działa",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} odpowiedział.",
+    "zeppbridgeTestError": "Nie można połączyć się z ZeppBridge. Sprawdź adres URL (wraz z http://) i token pull.",
+    "zeppbridgeTestButton": "Testuj połączenie",
+    "zeppbridgeDisconnectConfirm": "Czy na pewno chcesz odłączyć ZeppBridge? To wyłączy integrację, aż włączysz ją ponownie. Już zaimportowane dane zostają zachowane.",
+    "zeppbridgeThirdPartyNote": "Integracja zewnętrzna: wymaga <repo>ZeppBridge</repo>, niezależnego projektu niewspieranego przez SparkyFitness, uruchomionego na Twoim komputerze.",
+    "zeppbridgeDuplicateNote": "Jeśli aplikacja Zepp zapisuje też dane w Apple Health lub Health Connect i synchronizujesz je tutaj, ta sama noc lub trening może pojawić się dwa razy. Używaj jednego z tych dwóch źródeł."
   },
   "mealCreation": {
     "convertToMeal": "Utwórz posiłek z dziennika",
@@ -9638,7 +9679,9 @@
       "loadingCameraModule": "Ładowanie modułu kamery…"
     },
     "foodResultCard": {
-      "gi": "IG: {{glycemic_index}}"
+      "gi": "IG: {{glycemic_index}}",
+      "tapForFullNutrition": "Dotknij, aby zobaczyć pełne wartości odżywcze",
+      "tapForNutrition": "Dotknij, aby zobaczyć wartości odżywcze"
     },
     "searchingBarcode": "Wyszukiwanie kodu kreskowego",
     "lookingUp": "Wyszukiwanie: {{barcode}}…",
@@ -11588,7 +11631,8 @@
       "days_one": "{{count}} dzień",
       "days_few": "{{count}} dni",
       "days_many": "{{count}} dni",
-      "metres": "{{value}} m"
+      "metres": "{{value}} m",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "punkty",
@@ -11597,7 +11641,8 @@
       "miles": "mile",
       "km": "km",
       "days": "dni",
-      "metres": "metry"
+      "metres": "metry",
+      "feet": "stopy"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

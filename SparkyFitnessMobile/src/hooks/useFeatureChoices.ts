@@ -2,15 +2,11 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import type {
-  ChoiceFeatureKey,
-  FeatureChoicesResponse,
-} from '@workspace/shared';
+import type { ChoiceFeatureKey } from '@workspace/shared';
 import {
   fetchFeatureChoices,
   updateFeatureChoices,
 } from '../services/api/featureChoicesApi';
-import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
 import type { ServerConfig } from '../services/storage';
 import { featureChoicesQueryKey } from './queryKeys';
@@ -27,14 +23,7 @@ import { serverOnScreen } from './serverOnScreen';
 export function useFeatureChoicesQuery() {
   return useQuery({
     queryKey: featureChoicesQueryKey,
-    queryFn: async (): Promise<FeatureChoicesResponse | null> => {
-      try {
-        return await fetchFeatureChoices();
-      } catch (error) {
-        if (error instanceof ApiError && error.statusCode === 404) return null;
-        throw error;
-      }
-    },
+    queryFn: fetchFeatureChoices,
   });
 }
 

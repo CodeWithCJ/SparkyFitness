@@ -74,6 +74,12 @@ class FreeExerciseDBService {
    * @returns {Promise<object|null>} The exercise data or null if not found.
    */
   async getExerciseById(exerciseId: string) {
+    // Every dataset id has this shape. Anything else (a path such as
+    // '../../owner/repo/...') would point the GitHub URL below at another
+    // repository, so it is treated as not in the dataset.
+    if (!REMEMBERABLE_EXERCISE_ID.test(exerciseId)) {
+      return null;
+    }
     const cacheKey = `exercise_${exerciseId}`;
     if (missingExerciseCache.has(cacheKey)) {
       return null;

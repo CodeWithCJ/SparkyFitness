@@ -107,13 +107,22 @@ const OFF_CORE_NUTRIENT_SERVING_KEYS = [
   'carbohydrates_serving',
   'fat_serving',
 ] as const;
-const OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_KEYS.map(
+// Search-a-licious rejects the whole query when it names a field missing from
+// its index, and the public index no longer has nutriments.energy_100g or any
+// nutriments.*_serving field. This clause is only a pre-filter on the fields
+// it still has; the exact per-document rule still runs in
+// hasUsableOffCoreNutrition after hydration.
+const OFF_CORE_NUTRIENT_100G_SEARCH_KEYS = [
+  'energy-kcal_100g',
+  'energy-kj_100g',
+  'proteins_100g',
+  'carbohydrates_100g',
+  'fat_100g',
+] as const;
+const OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_KEYS.map(
   (key) => `nutriments.${key}:*`
 ).join(' OR ')})`;
-const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KEYS.map(
-  (key) => `nutriments.${key}:*`
-).join(' OR ')})`;
-const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
+const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))`;
 const LEGACY_SEARCH_BATCH_SIZE = 100;
 const LEGACY_SEARCH_MAX_BATCHES = 10;
 
@@ -229,13 +238,16 @@ function hitSearchTokens(hit: SearchALiciousHit, language: string): string[] {
     ? hit.brands.join(' ')
     : hit.brands || '';
   const localizedName = hit[`product_name_${language}`];
+  // Decoded like the imported name, so "&amp;" doesn't add an "amp" token.
   return normalizeSearchText(
-    [
-      brand,
-      typeof localizedName === 'string' ? localizedName : '',
-      hit.product_name || '',
-      hit.product_name_en || '',
-    ].join(' ')
+    decodeHtmlEntities(
+      [
+        brand,
+        typeof localizedName === 'string' ? localizedName : '',
+        hit.product_name || '',
+        hit.product_name_en || '',
+      ].join(' ')
+    )
   )
     .split(' ')
     .filter(Boolean);
@@ -1144,6 +1156,78 @@ function getOffNutrient100g(
   return 0;
 }
 
+// OFF stores some names HTML-escaped ("Chocolate &amp; Topping"). Decoded in
+// one pass, so "&amp;lt;" becomes "&lt;" and not "<". A Map, so a name like
+// "&constructor;" cannot reach Object.prototype.
+const HTML_ENTITIES = new Map([
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+  ['nbsp', ' '],
+]);
+
+// A numeric reference to a control, format (bidi override, zero-width),
+// private-use or line/paragraph separator character, a lone surrogate or a
+// noncharacter is left as written rather than put into a food name.
+const NOT_NAME_CHAR = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Zl}\p{Zp}]/u;
+const isNameChar = (code: number) =>
+  code <= 0x10ffff &&
+  !(code >= 0xd800 && code <= 0xdfff) &&
+  !(code >= 0xfdd0 && code <= 0xfdef) &&
+  (code & 0xfffe) !== 0xfffe &&
+  !NOT_NAME_CHAR.test(String.fromCodePoint(code));
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(
+      /&(?:([a-z]+)|#(\d{1,7})|#x([0-9a-f]{1,6}));/gi,
+      (match, named?: string, decimal?: string, hex?: string) => {
+        if (named !== undefined)
+          return HTML_ENTITIES.get(named.toLowerCase()) ?? match;
+        const code =
+          decimal !== undefined ? Number(decimal) : parseInt(hex as string, 16);
+        return isNameChar(code) ? String.fromCodePoint(code) : match;
+      }
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// OFF's own factor: salt = sodium x 2.5.
+const SALT_PER_SODIUM = 2.5;
+
+// Sodium per 100 g can be at most pure salt: 100 g / SALT_PER_SODIUM = 40 g. More is a data-entry error on OFF, usually
+// milligrams typed into a gram field, and such a value would dominate every
+// day's sodium total, so it is treated like a missing one.
+const MAX_SODIUM_G_PER_100G = 40;
+
+// Sodium per 100 g in grams: OFF's sodium, or, when that is missing or
+// impossible, derived from salt. A declared 0 is kept.
+function getOffSodium100g(
+  nutriments: Record<string, unknown>,
+  declaredServingQuantity: number | null
+): number {
+  const sodium = getOffNutrient100g(
+    nutriments,
+    'sodium',
+    declaredServingQuantity
+  );
+  if (sodium >= 0 && sodium <= MAX_SODIUM_G_PER_100G) {
+    // A 0 counts as declared only when OFF states 0 itself, not when a
+    // per-serving value can't be scaled for lack of a serving size.
+    const declaredZero =
+      parseOffNumber(nutriments['sodium_100g']) === 0 ||
+      parseOffNumber(nutriments['sodium_serving']) === 0;
+    if (sodium > 0 || declaredZero) return sodium;
+  }
+  const fromSalt =
+    getOffNutrient100g(nutriments, 'salt', declaredServingQuantity) /
+    SALT_PER_SODIUM;
+  return fromSalt > 0 && fromSalt <= MAX_SODIUM_G_PER_100G ? fromSalt : 0;
+}
+
 function getOffEnergyKcal100g(
   nutriments: Record<string, unknown>,
   declaredServingQuantity: number | null
@@ -1286,9 +1370,7 @@ function mapOpenFoodFactsProduct(
           10
       ) / 10,
     sodium: Math.round(
-      getOffNutrient100g(nutriments, 'sodium', declaredServingQuantity) *
-        1000 *
-        scale
+      getOffSodium100g(nutriments, declaredServingQuantity) * 1000 * scale
     ),
     dietary_fiber:
       Math.round(
@@ -1406,10 +1488,19 @@ function mapOpenFoodFactsProduct(
   // 1. product_name_${language}
   // 2. product_name_en
   // 3. product_name (default/original)
+  // Each candidate is decoded first, so one that is only entities or spaces
+  // (e.g. "&nbsp;") falls through to the next. If none has text, the first
+  // one keeps its raw form, as before.
+  const nameCandidates = [
+    product[`product_name_${language}`],
+    product.product_name_en,
+    product.product_name,
+  ];
+  const rawName = nameCandidates.find(Boolean);
   const name =
-    product[`product_name_${language}`] ||
-    product.product_name_en ||
-    product.product_name;
+    nameCandidates
+      .map((n) => (typeof n === 'string' ? decodeHtmlEntities(n) : ''))
+      .find(Boolean) || rawName;
   // The metric serving (e.g. 28 g) stays the default; nothing downstream that
   // keys off is_default changes.
   const metricVariant = {
@@ -1449,7 +1540,7 @@ function mapOpenFoodFactsProduct(
       : null;
   return {
     name,
-    brand: product.brands?.split(',')[0]?.trim() || '',
+    brand: decodeHtmlEntities(product.brands?.split(',')[0] || ''),
     barcode: normalizeBarcode(product.code),
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',

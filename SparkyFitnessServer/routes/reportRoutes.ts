@@ -469,10 +469,7 @@ router.get('/training-calendar', authenticate, async (req, res, next) => {
     const hasPermission = await canAccessUserData(
       String(targetUserId),
       'reports',
-      authenticatedUserId,
-      // Planned and completed workouts are read on a family grant only, never
-      // on a matching email address.
-      { allowSameEmail: false }
+      authenticatedUserId
     );
     if (!hasPermission) {
       return res.status(403).json({

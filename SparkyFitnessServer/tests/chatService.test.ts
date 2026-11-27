@@ -44,6 +44,13 @@ vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
   getChatToolServerIds: vi.fn(() => ({ mcp_notes__search: 'server-1' })),
   getChatToolTitles: vi.fn(() => ({ mcp_notes__search: 'search_notes' })),
 }));
+vi.mock('../services/coachChatContextService.js', () => ({
+  CoachChatError: class CoachChatError extends Error {},
+  getCoachChatContext: vi.fn(async () => ({
+    extraPrompt: null,
+    toolCategories: null,
+  })),
+}));
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/measurementRepository');
@@ -363,7 +370,8 @@ describe('chatService', () => {
       // The signed-in person's history, in the account being worked in.
       expect(chatRepository.getChatHistoryByUserId).toHaveBeenCalledWith(
         mockUserId,
-        mockTargetUserId
+        mockTargetUserId,
+        null
       );
     });
     it('should get chat history entry by id', async () => {
@@ -921,7 +929,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 33\/59 active tools for chatbot \(profile=core/
+          /Loaded 34\/60 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -1003,7 +1011,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -1036,7 +1044,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
     });
@@ -1064,7 +1072,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.

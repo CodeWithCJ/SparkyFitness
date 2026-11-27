@@ -380,15 +380,20 @@ describe('FreeExerciseDBService.getExerciseById', () => {
     expect(axios.get).toHaveBeenCalledTimes(1);
   });
 
-  it('does not remember an id that is not shaped like an exercise id', async () => {
+  it('never asks upstream for an id that is not shaped like an exercise id', async () => {
     vi.mocked(axios.get).mockRejectedValue(notFound());
-    const odd = `${'x'.repeat(300)}`;
 
-    await freeExerciseDBService.getExerciseById(odd);
-    await freeExerciseDBService.getExerciseById(odd);
+    // Too long, and a path that would point the GitHub URL at another repo.
+    for (const odd of [
+      'x'.repeat(300),
+      '../../../owner/repo/main/exercises/X',
+    ]) {
+      await expect(
+        freeExerciseDBService.getExerciseById(odd)
+      ).resolves.toBeNull();
+    }
 
-    // Each caller-chosen oddity is asked upstream afresh, never parked in memory.
-    expect(axios.get).toHaveBeenCalledTimes(2);
+    expect(axios.get).not.toHaveBeenCalled();
   });
 
   it('keeps working, without remembering more, once the missing-id cache is full', async () => {

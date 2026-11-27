@@ -1,8 +1,15 @@
-import { type FC } from 'react';
+import { CHAT_TOOL_CATEGORY_LABELS } from '@/constants/chatToolCategoryLabels';
+import { useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { SlidersHorizontalIcon } from 'lucide-react';
-import type { ChatToolCategorySlug } from '@workspace/shared';
+import {
+  CHAT_TOOL_CATEGORY_FEATURES,
+  isShownByFeature,
+} from '@workspace/shared';
 import { useChatToolCategories } from '@/contexts/ChatToolCategoriesContext';
+import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import { TooltipIconButton } from '@/components/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -13,38 +20,38 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 
-// English fallbacks kept inline (2nd arg) so the control is readable before the
-// translation keys land in every locale, matching the repo's inline-fallback
-// convention for translated strings.
-const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
-  food: ['chat.toolCategories.food', 'Food & Water'],
-  exercise: ['chat.toolCategories.exercise', 'Exercise'],
-  checkin: ['chat.toolCategories.checkin', 'Body & Check-ins'],
-  goals: ['chat.toolCategories.goals', 'Goals'],
-  reports: ['chat.toolCategories.reports', 'Reports & Analytics'],
-  coaching: ['chat.toolCategories.coaching', 'Coaching'],
-  vision: ['chat.toolCategories.vision', 'Vision'],
-  profile: ['chat.toolCategories.profile', 'Profile & Habits'],
-  medications: ['chat.toolCategories.medications', 'Medications'],
-};
-
 /**
  * Runtime tool-category selector shown in the chat composer. Lets the user
  * trim which tool domains the chatbot may use (fewer tools = smaller prompt,
  * which weak local models handle far better). Selection is persisted per AI
  * service in localStorage via ChatToolCategoriesContext.
+ *
+ * The chip of an optional feature that is off on this website (Settings >
+ * Features) is left out, with one line that says so. Only the chips change:
+ * the stored selection, and so the tools the chatbot gets, stay as they were.
+ * The count is about the chips shown, and it stays while the stored selection
+ * is trimmed even if none of the chips shown is chosen (only a hidden category
+ * is, so it reads 0); the empty hint only shows when nothing at all is chosen,
+ * since a chosen hidden category is still sent.
  */
 export const ChatToolCategoriesSelector: FC = () => {
   const { t } = useTranslation();
   const { allCategories, selected, presetFull, presetCore, clearAll, toggle } =
     useChatToolCategories();
+  const { isShown } = useWebFeatures();
+  const { closeChat } = useChatbotVisibility();
+  const [open, setOpen] = useState(false);
 
+  const shownCategories = allCategories.filter((slug) =>
+    isShownByFeature(CHAT_TOOL_CATEGORY_FEATURES[slug], isShown)
+  );
+  const someFeaturesOff = shownCategories.length < allCategories.length;
   const selectedSet = new Set(selected);
-  const count = selected.length;
-  const isTrimmed = count > 0 && count < allCategories.length;
+  const count = shownCategories.filter((slug) => selectedSet.has(slug)).length;
+  const isTrimmed = selected.length > 0 && count < shownCategories.length;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <TooltipIconButton
           tooltip={t('chat.toolCategories.tooltip', 'Choose chatbot tools')}
@@ -110,8 +117,8 @@ export const ChatToolCategoriesSelector: FC = () => {
           <Separator />
 
           <div className="flex flex-wrap gap-1.5">
-            {allCategories.map((slug) => {
-              const [key, fallback] = CATEGORY_LABELS[slug];
+            {shownCategories.map((slug) => {
+              const [key, fallback] = CHAT_TOOL_CATEGORY_LABELS[slug];
               return (
                 <Toggle
                   key={slug}
@@ -128,13 +135,49 @@ export const ChatToolCategoriesSelector: FC = () => {
             })}
           </div>
 
-          {count === 0 && (
+          {selected.length === 0 && (
             <p className="text-muted-foreground text-xs">
               {t(
                 'chat.toolCategories.emptyHint',
                 'No categories selected — the chatbot will use its default tool set.'
               )}
             </p>
+          )}
+
+          {someFeaturesOff && (
+            <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
+              <span>
+                {t(
+                  'settings.webTabs.someFeaturesOff',
+                  'Some features are turned off'
+                )}
+              </span>
+              <span aria-hidden="true">·</span>
+              <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                <Link
+                  to="/settings?section=features"
+                  onClick={(event) => {
+                    // Opening Settings in another tab or window leaves this
+                    // one as it is.
+                    if (
+                      event.button !== 0 ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey
+                    ) {
+                      return;
+                    }
+                    // The chat panel would stay over Settings (full screen on
+                    // phones), so it closes along with this popover.
+                    setOpen(false);
+                    closeChat();
+                  }}
+                >
+                  {t('settings.webTabs.manageFeatures', 'Manage')}
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </PopoverContent>

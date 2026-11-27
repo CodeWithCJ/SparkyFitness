@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 vi.mock('../services/exerciseStatsService.js', () => ({
   default: {
@@ -36,6 +44,7 @@ import trainingReviewService from '../services/trainingReviewService.js';
 import runReviewService from '../services/runReviewService.js';
 import preferenceService from '../services/preferenceService.js';
 import { buildExerciseStatsTools } from '../ai/tools/exerciseStatsTools.js';
+import { addDays } from '@workspace/shared';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 const opts = toolOpts;
@@ -501,5 +510,166 @@ describe('sparky_get_exercise_stats', () => {
       const result = await getTool().execute!({ action: 'run_review' }, opts);
       expect(result).toBe(DB_ERROR_TEXT);
     });
+  });
+});
+
+// #3713: cross-action keys are read for what they mean. A date range ending
+// today becomes the review window, a window becomes a date range, and anything
+// that would change the answer is rejected with the keys the action accepts.
+describe('sparky_get_exercise_stats cross-action keys', () => {
+  // Pinned so a run that straddles midnight cannot flake.
+  const today = '2026-06-15';
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'));
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+  const reviewSvc = trainingReviewService as unknown as {
+    getTrainingReview: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // A rejected review short-circuits rendering; these tests only check the
+    // arguments the service was called with.
+    reviewSvc.getTrainingReview.mockRejectedValue(new Error('stop'));
+    (
+      runReviewService as unknown as {
+        getRunReview: ReturnType<typeof vi.fn>;
+      }
+    ).getRunReview.mockRejectedValue(new Error('stop'));
+    svc.getExerciseStatsSummary.mockRejectedValue(new Error('stop'));
+    svc.getPersonalRecordMatrix.mockRejectedValue(new Error('stop'));
+    svc.getMatchedCourses.mockRejectedValue(new Error('stop'));
+    svc.queryExerciseActivities.mockResolvedValue({
+      items: [],
+      page: 1,
+      totalPages: 1,
+      totalCount: 0,
+    });
+  });
+
+  it('turns a date range ending today into the training review window', async () => {
+    await getTool().execute!(
+      {
+        action: 'training_review',
+        start_date: addDays(today, -27),
+        end_date: today,
+      },
+      opts
+    );
+    expect(reviewSvc.getTrainingReview).toHaveBeenCalledWith('user-1', 28);
+  });
+
+  it('drops a date range that matches the given window', async () => {
+    await getTool().execute!(
+      {
+        action: 'training_review',
+        start_date: addDays(today, -27),
+        end_date: today,
+        window_days: 28,
+      },
+      opts
+    );
+    expect(reviewSvc.getTrainingReview).toHaveBeenCalledWith('user-1', 28);
+  });
+
+  it('rejects a date range that disagrees with the window', async () => {
+    const result = (await getTool().execute!(
+      {
+        action: 'training_review',
+        start_date: addDays(today, -27),
+        end_date: today,
+        window_days: 7,
+      },
+      opts
+    )) as string;
+    expect(reviewSvc.getTrainingReview).not.toHaveBeenCalled();
+    expect(result).toContain('"start_date"');
+    expect(result).toContain(
+      "Action 'training_review' accepts only: window_days."
+    );
+  });
+
+  it('rejects a review range that does not end today', async () => {
+    const result = (await getTool().execute!(
+      {
+        action: 'training_review',
+        start_date: addDays(today, -40),
+        end_date: addDays(today, -13),
+      },
+      opts
+    )) as string;
+    expect(reviewSvc.getTrainingReview).not.toHaveBeenCalled();
+    expect(result).toContain('Error [VALIDATION]');
+  });
+
+  it('turns window_days into a date range ending today for query_activities', async () => {
+    await getTool().execute!(
+      { action: 'query_activities', search_keyword: 'Running', window_days: 7 },
+      opts
+    );
+    expect(svc.queryExerciseActivities).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        startDate: addDays(today, -6),
+        endDate: today,
+      })
+    );
+  });
+
+  it('turns a date range ending today into the run review window', async () => {
+    await getTool().execute!(
+      { action: 'run_review', start_date: addDays(today, -13) },
+      opts
+    );
+    expect(runReviewService.getRunReview).toHaveBeenCalledWith('user-1', 14);
+  });
+
+  it('turns window_days into a date range ending today for stats_summary', async () => {
+    await getTool().execute!(
+      { action: 'stats_summary', window_days: 30 },
+      opts
+    );
+    expect(svc.getExerciseStatsSummary).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        startDate: addDays(today, -29),
+        endDate: today,
+      })
+    );
+  });
+
+  it.each([
+    ['personal_records', 'getPersonalRecordMatrix'],
+    ['matched_courses', 'getMatchedCourses'],
+  ] as const)(
+    'drops an end_date of today on the all-time action %s',
+    async (action, method) => {
+      await getTool().execute!({ action, end_date: today }, opts);
+      expect(svc[method]).toHaveBeenCalled();
+    }
+  );
+
+  it('rejects a huge window on query_activities instead of throwing', async () => {
+    const result = (await getTool().execute!(
+      { action: 'query_activities', window_days: 1_000_000 },
+      opts
+    )) as string;
+    expect(svc.queryExerciseActivities).not.toHaveBeenCalled();
+    expect(result).toContain('Error [VALIDATION]');
+  });
+
+  it('rejects dates on personal_records and names what it accepts', async () => {
+    const result = (await getTool().execute!(
+      { action: 'personal_records', start_date: addDays(today, -30) },
+      opts
+    )) as string;
+    expect(svc.getPersonalRecordMatrix).not.toHaveBeenCalled();
+    expect(result).toContain(
+      "Action 'personal_records' accepts only: unit_system."
+    );
   });
 });

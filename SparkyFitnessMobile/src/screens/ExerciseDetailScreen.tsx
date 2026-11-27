@@ -30,6 +30,7 @@ import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
+import ExerciseTrendCard from '../components/ExerciseTrendCard';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { cardioSessionFromDiaryEntry } from '../utils/cardioSession';
 import ActionSheet, {
@@ -72,7 +73,10 @@ import {
 import { formatDateLabel } from '../utils/dateUtils';
 import { createInFlightGuard } from '../utils/duplicatePress';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import {
+  isBodyweightModality,
+  type ExerciseSessionResponse,
+} from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
@@ -219,6 +223,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const { data: stats } = useExerciseStats(historyAvailable ? item.id : null);
   const bestSet = stats?.bestSet ?? null;
   const lastSet = stats?.lastSet ?? null;
+  // The trend is for lifts with a load (weight × reps, or body weight ±
+  // added) once two sessions exist, at any time: recentSessions holds up to
+  // the last three.
+  const trendModality = resolveSnapshotModality(exercise);
+  const showTrend =
+    historyAvailable &&
+    (stats?.recentSessions.length ?? 0) >= 2 &&
+    (trendModality === 'weight_reps' || isBodyweightModality(trendModality));
 
   const canManageExercise = !!(
     isConnected &&
@@ -866,6 +878,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
                     />
                   ) : null}
                 </View>
+              ) : null}
+
+              {showTrend ? (
+                <ExerciseTrendCard
+                  exerciseId={item.id}
+                  weightUnit={weightUnit}
+                />
               ) : null}
 
               {equipmentText.length > 0 ||

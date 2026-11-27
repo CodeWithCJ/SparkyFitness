@@ -96,7 +96,8 @@ describe('watchServerCredentials', () => {
           'X-Proxy': '1',
           Authorization: 'Bearer secret',
           'X-Meal-Model-Version': '2',
-        }
+        },
+        'srv-android'
       );
       expect(WatchConnectivity?.clearServerCredentials).not.toHaveBeenCalled();
     });
@@ -135,7 +136,8 @@ describe('watchServerCredentials', () => {
       expect(WatchConnectivity?.setServerCredentials).toHaveBeenCalledTimes(1);
       expect(WatchConnectivity?.setServerCredentials).toHaveBeenLastCalledWith(
         'https://b.example.com',
-        expect.any(Object)
+        expect.any(Object),
+        'srv-b'
       );
     });
 

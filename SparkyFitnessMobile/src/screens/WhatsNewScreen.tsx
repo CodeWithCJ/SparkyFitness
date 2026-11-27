@@ -997,12 +997,16 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
           'Add your medications, set dose schedules, log each dose from the dashboard with optional reminders, and review adherence with a calendar and dose log.',
       }),
       hero: <MedicationsMockup />,
-      cta: {
-        label: t('whatsNewPage.features.medications.cta', {
-          defaultValue: 'Set up medications',
-        }),
-        onPress: () => navigation.navigate('MedicationsList'),
-      },
+      ...(isFeatureOn('medications')
+        ? {
+            cta: {
+              label: t('whatsNewPage.features.medications.cta', {
+                defaultValue: 'Set up medications',
+              }),
+              onPress: () => navigation.navigate('MedicationsList'),
+            },
+          }
+        : {}),
     },
     {
       eyebrow: t('whatsNewPage.features.cycle.eyebrow', {

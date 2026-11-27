@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 import type {
   FastingLog,
@@ -14,11 +15,14 @@ const SERVICE_NAME = 'Fasting API';
  * coalesce to `null` (never `undefined`) so the React Query `queryFn` doesn't
  * throw on a missing return value.
  */
-export const fetchCurrentFast = async (): Promise<FastingLog | null> => {
+export const fetchCurrentFast = async (
+  serverConfig?: ServerConfig
+): Promise<FastingLog | null> => {
   const result = await apiFetch<FastingLog | null>({
     endpoint: '/api/fasting/current',
     serviceName: SERVICE_NAME,
     operation: 'fetch current fast',
+    serverConfig,
   });
   return result ?? null;
 };
@@ -30,18 +34,22 @@ interface StartFastParams {
   targetEndTime: string;
   /** Opaque display string (the preset name). */
   fastingType: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
 }
 
 export const startFast = ({
   startTime,
   targetEndTime,
   fastingType,
+  serverConfig,
 }: StartFastParams): Promise<FastingLog> =>
   apiFetch<FastingLog>({
     endpoint: '/api/fasting/start',
     serviceName: SERVICE_NAME,
     operation: 'start fast',
     method: 'POST',
+    serverConfig,
     body: {
       start_time: startTime,
       target_end_time: targetEndTime,
@@ -55,18 +63,22 @@ interface EndFastParams {
   startTime: string;
   /** ISO-8601 end time. */
   endTime: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
 }
 
 export const endFast = ({
   id,
   startTime,
   endTime,
+  serverConfig,
 }: EndFastParams): Promise<FastingLog> =>
   apiFetch<FastingLog>({
     endpoint: '/api/fasting/end',
     serviceName: SERVICE_NAME,
     operation: 'end fast',
     method: 'POST',
+    serverConfig,
     body: {
       id,
       start_time: startTime,

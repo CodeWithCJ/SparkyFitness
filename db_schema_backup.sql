@@ -1789,6 +1789,10 @@ CREATE TABLE public.action_tags (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
     updated_by_user_id uuid,
+    allow_amount_adjustment boolean DEFAULT false NOT NULL,
+    allow_custom_timestamp boolean DEFAULT false NOT NULL,
+    tap_to_log boolean DEFAULT false NOT NULL,
+    preset_amounts jsonb,
     CONSTRAINT action_tags_action_check CHECK (((jsonb_typeof(action) = 'object'::text) AND (action ? 'type'::text))),
     CONSTRAINT action_tags_code_check CHECK ((char_length((tag_code)::text) >= 16))
 );
@@ -2140,6 +2144,71 @@ CREATE TABLE public.check_in_photos (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY ((ARRAY['front'::character varying, 'back'::character varying, 'side'::character varying])::text[])))
+);
+
+
+--
+-- Name: coach_nudges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.coach_nudges (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    coach_id uuid NOT NULL,
+    local_day date NOT NULL,
+    checkin_slot time without time zone NOT NULL,
+    rule_key text NOT NULL,
+    because jsonb DEFAULT '[]'::jsonb NOT NULL,
+    source text NOT NULL,
+    template_key text,
+    template_params jsonb,
+    chat_message_id uuid NOT NULL,
+    read_at timestamp with time zone,
+    kind text DEFAULT 'gap'::text NOT NULL,
+    reaction smallint,
+    reaction_at timestamp with time zone,
+    suggestion jsonb,
+    suggestion_status text,
+    suggestion_resolved_at timestamp with time zone,
+    question text,
+    question_ref text,
+    answer jsonb,
+    answered_at timestamp with time zone,
+    exercise_entry_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_coach_nudges_kind CHECK ((kind = ANY (ARRAY['gap'::text, 'win'::text, 'outlook'::text]))),
+    CONSTRAINT chk_coach_nudges_question CHECK (((question IS NULL) OR (question = ANY (ARRAY['energy'::text, 'mood'::text, 'focus'::text, 'habit_done'::text])))),
+    CONSTRAINT chk_coach_nudges_reaction CHECK (((reaction IS NULL) OR (reaction = ANY (ARRAY['-1'::integer, 1])))),
+    CONSTRAINT chk_coach_nudges_source CHECK ((source = ANY (ARRAY['ai'::text, 'template'::text, 'template_fallback'::text]))),
+    CONSTRAINT chk_coach_nudges_suggestion CHECK ((((suggestion IS NULL) = (suggestion_status IS NULL)) AND ((suggestion_status IS NULL) OR (suggestion_status = ANY (ARRAY['pending'::text, 'applied'::text, 'dismissed'::text, 'expired'::text])))))
+);
+
+
+--
+-- Name: coach_profile; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.coach_profile (
+    user_id uuid NOT NULL,
+    diet_type text,
+    foods_avoid text,
+    foods_prefer text,
+    tone text,
+    notes text,
+    checkin_times time without time zone[] DEFAULT ARRAY['08:00:00'::time without time zone, '13:00:00'::time without time zone, '19:00:00'::time without time zone] NOT NULL,
+    max_messages_per_day smallint DEFAULT 3 NOT NULL,
+    paused_until date,
+    pause_reason text,
+    last_checkin_at timestamp with time zone,
+    last_event_scan_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_coach_profile_diet_type CHECK (((diet_type IS NULL) OR (diet_type = ANY (ARRAY['omnivore'::text, 'vegetarian'::text, 'vegan'::text, 'pescatarian'::text, 'keto'::text, 'halal'::text, 'kosher'::text, 'other'::text])))),
+    CONSTRAINT chk_coach_profile_lengths CHECK (((length(foods_avoid) <= 500) AND (length(foods_prefer) <= 500) AND (length(notes) <= 1000))),
+    CONSTRAINT chk_coach_profile_max_messages CHECK (((max_messages_per_day >= 1) AND (max_messages_per_day <= 5))),
+    CONSTRAINT chk_coach_profile_pause_reason CHECK (((pause_reason IS NULL) OR (pause_reason = ANY (ARRAY['sick'::text, 'travel'::text, 'injury'::text, 'other'::text])))),
+    CONSTRAINT chk_coach_profile_times CHECK (((cardinality(checkin_times) >= 1) AND (cardinality(checkin_times) <= 4))),
+    CONSTRAINT chk_coach_profile_tone CHECK (((tone IS NULL) OR (tone = ANY (ARRAY['friendly'::text, 'direct'::text, 'encouraging'::text, 'neutral'::text]))))
 );
 
 
@@ -3379,7 +3448,7 @@ CREATE TABLE public.global_settings (
     mock_data_enabled boolean DEFAULT false NOT NULL,
     enable_passkey_login boolean DEFAULT true NOT NULL,
     mcp_oauth_enabled boolean DEFAULT false NOT NULL,
-    mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
+    mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'https://oauth-redirect.googleusercontent.com/r/*'::text, 'https://oauth-redirect-sandbox.googleusercontent.com/r/*'::text, 'https://oauth-redirect-test.googleusercontent.com/r/*'::text, 'https://oauth-redirect.googleusercontent.com/a/*'::text, 'https://oauth-redirect-sandbox.googleusercontent.com/a/*'::text, 'https://oauth-redirect-test.googleusercontent.com/a/*'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
     enable_version_check boolean DEFAULT true NOT NULL,
     enable_magic_link_login boolean DEFAULT true NOT NULL,
     enable_challenges boolean DEFAULT true NOT NULL,
@@ -5197,6 +5266,33 @@ COMMENT ON TABLE public.user_calorie_rule_history IS 'The calorie settings in fo
 
 
 --
+-- Name: user_coaches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_coaches (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    builtin_key text,
+    name text,
+    instructions text,
+    tool_categories text[] DEFAULT '{}'::text[] NOT NULL,
+    mode text DEFAULT 'rules'::text NOT NULL,
+    rules jsonb DEFAULT '{"rules": [], "version": 1}'::jsonb NOT NULL,
+    ai_rule text,
+    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    sort_order smallint DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_user_coaches_ai_rule CHECK (((mode <> 'ai_judge'::text) OR (ai_rule IS NOT NULL))),
+    CONSTRAINT chk_user_coaches_builtin_key CHECK (((builtin_key IS NULL) OR (builtin_key ~ '^[a-z][a-z0-9_]{0,39}$'::text))),
+    CONSTRAINT chk_user_coaches_kind CHECK ((((builtin_key IS NOT NULL) AND (name IS NULL) AND (mode = 'rules'::text)) OR ((builtin_key IS NULL) AND (name IS NOT NULL)))),
+    CONSTRAINT chk_user_coaches_lengths CHECK ((((name IS NULL) OR ((length(name) >= 1) AND (length(name) <= 40))) AND ((instructions IS NULL) OR (length(instructions) <= 1000)) AND ((ai_rule IS NULL) OR (length(ai_rule) <= 500)))),
+    CONSTRAINT chk_user_coaches_mode CHECK ((mode = ANY (ARRAY['rules'::text, 'ai_judge'::text])))
+);
+
+
+--
 -- Name: user_custom_moods; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6834,6 +6930,22 @@ ALTER TABLE ONLY public.check_in_photos
 
 
 --
+-- Name: coach_nudges coach_nudges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coach_nudges
+    ADD CONSTRAINT coach_nudges_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: coach_profile coach_profile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coach_profile
+    ADD CONSTRAINT coach_profile_pkey PRIMARY KEY (user_id);
+
+
+--
 -- Name: custom_run_programs custom_run_programs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7858,6 +7970,14 @@ ALTER TABLE ONLY public.user_symptom_options
 
 
 --
+-- Name: coach_nudges uq_coach_nudges_daily; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coach_nudges
+    ADD CONSTRAINT uq_coach_nudges_daily UNIQUE (user_id, coach_id, rule_key, local_day);
+
+
+--
 -- Name: daily_health_metrics uq_daily_health_metrics; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7922,6 +8042,14 @@ ALTER TABLE ONLY public.run_programs
 
 
 --
+-- Name: user_coaches uq_user_coaches_owner_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_coaches
+    ADD CONSTRAINT uq_user_coaches_owner_id UNIQUE (user_id, id);
+
+
+--
 -- Name: vitals_entries uq_vitals_entry; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7959,6 +8087,14 @@ ALTER TABLE ONLY public.user_calorie_rule_history
 
 ALTER TABLE ONLY public.user_calorie_rule_history
     ADD CONSTRAINT user_calorie_rule_history_user_day_key UNIQUE (user_id, effective_date);
+
+
+--
+-- Name: user_coaches user_coaches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_coaches
+    ADD CONSTRAINT user_coaches_pkey PRIMARY KEY (id);
 
 
 --
@@ -8470,6 +8606,27 @@ CREATE UNIQUE INDEX idx_challenges_invite_code_hash ON public.challenges USING b
 --
 
 CREATE INDEX idx_challenges_owner ON public.challenges USING btree (owner_user_id);
+
+
+--
+-- Name: idx_coach_nudges_reaction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coach_nudges_reaction ON public.coach_nudges USING btree (user_id, coach_id, rule_key) WHERE (reaction = '-1'::integer);
+
+
+--
+-- Name: idx_coach_nudges_unread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coach_nudges_unread ON public.coach_nudges USING btree (user_id, coach_id) WHERE (read_at IS NULL);
+
+
+--
+-- Name: idx_coach_nudges_user_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coach_nudges_user_day ON public.coach_nudges USING btree (user_id, local_day);
 
 
 --
@@ -9411,6 +9568,13 @@ CREATE INDEX idx_symptom_entry_treatments_user ON public.symptom_entry_treatment
 
 
 --
+-- Name: idx_user_coaches_enabled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_coaches_enabled ON public.user_coaches USING btree (user_id) WHERE enabled;
+
+
+--
 -- Name: idx_user_custom_moods_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9607,10 +9771,24 @@ CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING b
 
 
 --
+-- Name: uq_coach_nudges_entry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coach_nudges_entry ON public.coach_nudges USING btree (user_id, exercise_entry_id) WHERE (exercise_entry_id IS NOT NULL);
+
+
+--
 -- Name: uq_fitness_tests_exercise_entry; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX uq_fitness_tests_exercise_entry ON public.fitness_tests USING btree (exercise_entry_id) WHERE (exercise_entry_id IS NOT NULL);
+
+
+--
+-- Name: uq_user_coaches_builtin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_user_coaches_builtin ON public.user_coaches USING btree (user_id, builtin_key) WHERE (builtin_key IS NOT NULL);
 
 
 --
@@ -10345,6 +10523,14 @@ ALTER TABLE ONLY public.check_in_photos
 
 
 --
+-- Name: coach_profile coach_profile_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coach_profile
+    ADD CONSTRAINT coach_profile_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: custom_categories custom_categories_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10694,6 +10880,14 @@ ALTER TABLE ONLY public.fitness_tests
 
 ALTER TABLE ONLY public.fitness_tests
     ADD CONSTRAINT fitness_tests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: coach_nudges fk_coach_nudges_coach; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coach_nudges
+    ADD CONSTRAINT fk_coach_nudges_coach FOREIGN KEY (user_id, coach_id) REFERENCES public.user_coaches(user_id, id) ON DELETE CASCADE;
 
 
 --
@@ -11961,6 +12155,14 @@ ALTER TABLE ONLY public.user_calorie_rule_history
 
 
 --
+-- Name: user_coaches user_coaches_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_coaches
+    ADD CONSTRAINT user_coaches_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_custom_moods user_custom_moods_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12527,6 +12729,18 @@ ALTER TABLE public.check_in_measurements ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.check_in_photos ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coach_nudges; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coach_nudges ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coach_profile; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coach_profile ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: custom_categories; Type: ROW SECURITY; Schema: public; Owner: -
@@ -13632,6 +13846,20 @@ CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.authe
 
 
 --
+-- Name: coach_nudges owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.coach_nudges USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: coach_profile owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.coach_profile USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
 -- Name: custom_run_programs owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -13816,6 +14044,13 @@ CREATE POLICY owner_policy ON public.run_programs USING ((user_id = public.authe
 --
 
 CREATE POLICY owner_policy ON public.sparky_chat_history USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
+
+--
+-- Name: user_coaches owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_coaches USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -14653,6 +14888,12 @@ ALTER TABLE public.user_allergen_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_calorie_rule_history ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: user_coaches; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_coaches ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: user_custom_moods; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -15437,6 +15678,20 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_app;
 
 
 --
+-- Name: TABLE coach_nudges; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.coach_nudges TO sparky_app;
+
+
+--
+-- Name: TABLE coach_profile; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.coach_profile TO sparky_app;
+
+
+--
 -- Name: TABLE custom_categories; Type: ACL; Schema: public; Owner: -
 --
 
@@ -16169,6 +16424,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO s
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_calorie_rule_history TO sparky_app;
+
+
+--
+-- Name: TABLE user_coaches; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_coaches TO sparky_app;
 
 
 --

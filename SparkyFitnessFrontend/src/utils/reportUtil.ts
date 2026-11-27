@@ -608,6 +608,8 @@ export const exportExerciseEntries = async ({
   endDate,
   formatDateInUserTimezone,
   convertEnergy,
+  defaultWeightUnit,
+  convertWeight,
 }: {
   loggingLevel: LoggingLevel;
   energyUnit: EnergyUnit;
@@ -620,6 +622,8 @@ export const exportExerciseEntries = async ({
     fromUnit: EnergyUnit,
     toUnit: EnergyUnit
   ) => number;
+  defaultWeightUnit: WeightUnit;
+  convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export exercise entries.');
   try {
@@ -653,7 +657,11 @@ export const exportExerciseEntries = async ({
       ),
       i18n.t('reports.exerciseEntriesExportHeaders.sets', 'Sets'),
       i18n.t('reports.exerciseEntriesExportHeaders.reps', 'Reps'),
-      i18n.t('reports.exerciseEntriesExportHeaders.weight', 'Weight'),
+      i18n.t(
+        'reports.exerciseEntriesExportHeaders.weight',
+        'Weight ({{unit}})',
+        { unit: defaultWeightUnit }
+      ),
       i18n.t('reports.exerciseEntriesExportHeaders.notes', 'Notes'),
       i18n.t('reports.exerciseEntriesExportHeaders.category', 'Category'),
       i18n.t('reports.exerciseEntriesExportHeaders.equipment', 'Equipment'),
@@ -667,6 +675,15 @@ export const exportExerciseEntries = async ({
       ),
     ];
 
+    // Set weights are stored in kg; write them in the user's unit, as the app shows them.
+    const formatSetWeight = (value: number | null) => {
+      if (value === null || value === undefined) return '';
+      if (defaultWeightUnit === 'st_lbs') return formatWeight(value, 'st_lbs');
+      return String(
+        Number(convertWeight(value, 'kg', defaultWeightUnit).toFixed(2))
+      );
+    };
+
     const csvRows = exerciseEntries.map((entry) => [
       formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'),
       entry.exercises.name,
@@ -676,7 +693,7 @@ export const exportExerciseEntries = async ({
       ).toString(),
       entry.sets.map((set) => set.set_number).join('; ') || '', // Display set numbers
       entry.sets.map((set) => set.reps).join('; ') || '', // Display reps for each set
-      entry.sets.map((set) => set.weight).join('; ') || '', // Display weight for each set
+      entry.sets.map((set) => formatSetWeight(set.weight)).join('; ') || '', // Display weight for each set
       entry.notes || '',
       entry.exercises.category,
       entry.exercises.equipment?.join(', ') || '',
@@ -685,7 +702,9 @@ export const exportExerciseEntries = async ({
     ]);
 
     const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      )
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

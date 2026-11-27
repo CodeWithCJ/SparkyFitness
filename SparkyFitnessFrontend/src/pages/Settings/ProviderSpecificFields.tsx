@@ -20,6 +20,7 @@ import {
   getFoodProviderMetadata,
 } from '@workspace/shared';
 import { WeatherProviderFields } from './WeatherProviderFields';
+import { getProviderBaseUrlExample } from '@/utils/settings';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
 // URL are configured. Kept in sync with the per-provider text in EditProviderForm.
@@ -148,11 +149,7 @@ export const ProviderSpecificFields = ({
             onChange={(e) =>
               setProvider((prev) => ({ ...prev, base_url: e.target.value }))
             }
-            placeholder={t(
-              'settings.providerSpecificFields.eGHttpYourInstance',
-              'e.g., http://your-{{provider_type}}-instance.com',
-              { provider_type: provider.provider_type }
-            )}
+            placeholder={getProviderBaseUrlExample(provider.provider_type)}
             autoComplete="off"
           />
         </div>

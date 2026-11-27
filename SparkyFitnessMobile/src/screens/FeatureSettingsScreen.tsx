@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -7,6 +8,7 @@ import {
   FEATURE_GROUPS,
   FEATURE_KEYS,
   OPTIONAL_FEATURES,
+  isFeatureOffered,
   type ChoiceFeatureKey,
   type FeatureGroup,
   type FeatureKey,
@@ -221,13 +223,53 @@ function LabResultsFeatureRows() {
   );
 }
 
-/** One row per feature. A new registry key needs its own rows here. */
-function FeatureRows({ feature }: { feature: FeatureKey }) {
+/** Supplements and GLP-1 tracking are part of it. Reminders stop while it is
+ * off; supplement nutrients still count in the day's totals. */
+function MedicationsFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="medications"
+      icon="medication"
+      title={t('featureSettings.medications.title', {
+        defaultValue: 'Medications',
+      })}
+      description={t('featureSettings.medications.description', {
+        defaultValue:
+          'Medications, supplements and GLP-1 tracking. While it is off, reminders stop and come back when you turn it on; supplement nutrients still count in your totals.',
+      })}
+    />
+  );
+}
+
+/** AI coaches (#2013): messages from coaches in Sparky chat. Off by default. */
+function AiCoachesFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="aiCoaches"
+      icon="sparkles"
+      title={t('featureSettings.aiCoaches.title', { defaultValue: 'Coaches' })}
+      description={t('featureSettings.aiCoaches.description', {
+        defaultValue:
+          'AI coaches that watch your food, training and sleep and send a short message when something is worth saying.',
+      })}
+    />
+  );
+}
+
+/** One row per feature. A new registry key needs its own rows here: the
+ * return type makes a missing case fail to compile. */
+function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
   switch (feature) {
     case 'cycle':
       return <CycleFeatureRows />;
+    case 'medications':
+      return <MedicationsFeatureRows />;
     case 'labResults':
       return <LabResultsFeatureRows />;
+    case 'aiCoaches':
+      return <AiCoachesFeatureRows />;
   }
 }
 
@@ -266,7 +308,9 @@ export default function FeatureSettingsScreen(
         </Text>
         {FEATURE_GROUPS.map((group) => {
           const keys = FEATURE_KEYS.filter(
-            (key) => OPTIONAL_FEATURES[key].group === group
+            (key) =>
+              OPTIONAL_FEATURES[key].group === group &&
+              isFeatureOffered(key, 'mobile')
           );
           if (keys.length === 0) return null;
           return (

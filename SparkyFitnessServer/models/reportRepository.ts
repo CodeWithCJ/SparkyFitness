@@ -762,6 +762,42 @@ async function getDailyNutritionTotalsRange(
 }
 
 /**
+ * Calories, macros and fiber per meal for one day, scaled like the daily totals.
+ * Supplements are not part of a meal, so they are only in the day totals.
+ */
+async function getMealNutritionTotals(userId: string, date: string) {
+  const client = await getClient(userId);
+  try {
+    const sums = [
+      ['calories', 'calories'],
+      ['protein', 'protein'],
+      ['carbs', 'carbs'],
+      ['fat', 'fat'],
+      ['dietary_fiber', 'fiber'],
+    ]
+      .map(
+        ([col, alias]) =>
+          `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS ${alias}`
+      )
+      .join(',\n              ');
+    const result = await client.query(
+      `SELECT mt.name AS meal_type,
+              COUNT(fe.id)::int AS entries,
+              ${sums}
+       FROM food_entries fe
+       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+       WHERE fe.user_id = $1 AND fe.entry_date = $2
+       GROUP BY mt.id, mt.name, mt.sort_order
+       ORDER BY mt.sort_order NULLS LAST, mt.name NULLS LAST, mt.id`,
+      [userId, date]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Minutes of an entry for load: its own duration, or the timing of its sets
  * (seconds, per set) when it has none. One definition for the load report and
  * the training calendar.
@@ -1176,6 +1212,7 @@ export { getExerciseEntries };
 export { getBodyWeightReadings };
 export { getExerciseNames };
 export { getDailyNutritionTotalsRange };
+export { getMealNutritionTotals };
 export default {
   getNutritionData,
   getTabularFoodData,
@@ -1191,4 +1228,5 @@ export default {
   getBodyWeightReadings,
   getExerciseNames,
   getDailyNutritionTotalsRange,
+  getMealNutritionTotals,
 };

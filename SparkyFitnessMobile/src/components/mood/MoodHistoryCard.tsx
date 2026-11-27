@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { moodByName } from '@workspace/shared';
 import SegmentedControl, { type Segment } from '../SegmentedControl';
-import MoodLineChart from './MoodLineChart';
+import MoodLineChart from '../MoodLineChart';
 import { getBuiltInMoodLabels } from './moodLabels';
 import { useMoodEntries } from '../../hooks/useMood';
 import type { CustomMood } from '../../services/api/moodApi';

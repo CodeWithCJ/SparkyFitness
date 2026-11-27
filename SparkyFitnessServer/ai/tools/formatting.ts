@@ -1,6 +1,8 @@
 import { localDateToDay } from '@workspace/shared';
 import {
   getCharacterLimit,
+  NARROW_HINT,
+  offsetHint,
   truncateIfNeeded,
   truncateJsonRecords,
 } from './truncation.js';
@@ -94,6 +96,13 @@ export function formatList<T>(
 ): string {
   const formatted = items.map(formatItem);
 
+  // Where the next page starts: after the items shown, not after the whole
+  // fetched page, so items dropped for length are not skipped.
+  const nextOffsetAfter = (shown: number) =>
+    meta
+      ? (meta.next_offset ?? meta.total_count) - formatted.length + shown
+      : 0;
+
   const build = (shown: number): string => {
     let text = `# ${title}\n\n`;
     if (formatted.length === 0) {
@@ -103,12 +112,15 @@ export function formatList<T>(
     }
     if (meta) {
       text += `\n\n---\nShowing ${shown} of ${meta.total_count} results.`;
-      if (meta.has_more) {
-        text += ` Use offset=${meta.next_offset} to see more.`;
+      if (shown < formatted.length || meta.has_more) {
+        text += ` Use offset=${nextOffsetAfter(shown)} to see more.`;
       }
     }
     if (shown < formatted.length) {
-      text += `\n⚠️ ${formatted.length - shown} fetched item(s) omitted for length. Use 'limit' and 'offset' parameters to paginate, or add filters to narrow your search.`;
+      // With meta, the offset line above already says how to continue.
+      text += `\n⚠️ ${formatted.length - shown} fetched item(s) omitted for length.${
+        meta ? '' : ` ${NARROW_HINT}`
+      }`;
     }
     return text;
   };
@@ -120,9 +132,14 @@ export function formatList<T>(
     shown = Math.ceil(shown / 2);
     text = build(shown);
   }
-  // A single item can still overflow; fall back to a plain string cut.
+  // A single item can still overflow; fall back to a plain string cut, which
+  // also cuts off the offset line, so put it in the hint.
   return text.length > limit
-    ? truncateIfNeeded(text, undefined, profile)
+    ? truncateIfNeeded(
+        text,
+        meta ? offsetHint(nextOffsetAfter(1)) : undefined,
+        profile
+      )
     : text;
 }
 
