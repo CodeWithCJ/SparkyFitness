@@ -1169,9 +1169,6 @@
       "openFoodFactsPasswordOptional": "Open-Food-Facts-Passwort (optional)",
       "leaveBlankToKeepExisting2": "•••••••• (leer lassen, um den bestehenden Wert zu behalten)",
       "appURL": "App-URL",
-      "eGHttpsNorishYour": "z. B. https://norish.deine-domain.com",
-      "eGHttpYourTandoor": "z. B. http://deine-tandoor-instanz.com",
-      "eGHttpYourMealie": "z. B. http://deine-mealie-instanz.com",
       "apiKey": "API-Schlüssel",
       "enterNorishAPIKey": "Norish-API-Schlüssel eingeben",
       "enterTandoorAPIKey": "Tandoor-API-Schlüssel eingeben",
@@ -1354,7 +1351,6 @@
     },
     "providerSpecificFields": {
       "appURL": "App-URL",
-      "eGHttpYourInstance": "z. B. http://deine-{{provider_type}}-instanz.com",
       "clientID": "Client-ID",
       "yazioEmailUsername": "YAZIO-E-Mail / -Benutzername",
       "appID": "App-ID",
@@ -1612,6 +1608,9 @@
       },
       "labResults": {
         "description": "Blutuntersuchungen erfassen und jeden Wert im Zeitverlauf verfolgen."
+      },
+      "medications": {
+        "description": "Tracking von Medikamenten, Nahrungsergänzungsmitteln und GLP-1. Nährstoffe aus Nahrungsergänzungsmitteln zählen weiterhin zu deinen Gesamtwerten."
       }
     },
     "foodProviders": {
@@ -2734,7 +2733,7 @@
       "mcpOAuthAccessWarning": "Wenn du eine Anwendung freigibst, erhält sie vollen MCP-Zugriff – auch auf Werkzeuge, die Daten schreiben oder löschen können. Gib nur Anwendungen frei, denen du vertraust.",
       "mcpOAuthHttpsRequired": "Remote-MCP-OAuth erfordert öffentliches HTTPS. Einfaches HTTP wird nur für die Entwicklung über Loopback unterstützt.",
       "mcpOAuthRedirectAllowlist": "Erlaubte OAuth-Weiterleitungs-URIs",
-      "mcpOAuthRedirectAllowlistDescription": "Gib pro Zeile eine exakte URI oder ein Loopback-Muster ein. Mit http://localhost:*, http://127.0.0.1:* oder http://[::1]:* erlaubst du Desktop-Clients auf jedem lokalen Callback-Port.",
+      "mcpOAuthRedirectAllowlistDescription": "Gib pro Zeile eine exakte URI oder ein Muster ein. Mit http://localhost:*, http://127.0.0.1:* oder http://[::1]:* erlaubst du Desktop-Clients auf jedem lokalen Callback-Port. Eine HTTPS-URI, die auf /* endet, erlaubt jeden Pfad darunter auf diesem Host, wie es Gemini benötigt (https://oauth-redirect.googleusercontent.com/r/*).",
       "saveMcpOAuthRedirects": "Erlaubte OAuth-Weiterleitungen speichern",
       "mcpOAuthRedirectsUpdated": "Liste der erlaubten OAuth-Weiterleitungen aktualisiert.",
       "mcpOAuthRedirectsFailed": "Die Liste der erlaubten OAuth-Weiterleitungen konnte nicht gespeichert werden.",
@@ -3679,7 +3678,9 @@
     "editFoodDatabase": "Lebensmitteldatenbank bearbeiten",
     "editFoodDatabaseDescription": "Bearbeite die Nährwertangaben für dieses Lebensmittel in deiner Datenbank.",
     "editingTemporarilyUnavailable": "Das Bearbeiten von Lebensmitteldetails ist wegen Schemaänderungen vorübergehend nicht verfügbar.",
-    "copyFood": "Lebensmittel kopieren"
+    "copyFood": "Lebensmittel kopieren",
+    "fromTime": "ab {{time}}",
+    "nothingLogged": "Noch nichts erfasst, Lebensmittel hinzufügen"
   },
   "checkIn": {
     "neutral": "neutral",
@@ -4326,7 +4327,7 @@
       "caloriesBurned": "Kalorien verbrannt",
       "sets": "Sätze",
       "reps": "Wiederholungen",
-      "weight": "Gewicht",
+      "weight": "Gewicht ({{unit}})",
       "notes": "Notizen",
       "category": "Kategorie",
       "equipment": "Equipment",

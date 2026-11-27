@@ -2737,7 +2737,8 @@
   "foodSummary": {
     "tapToAddFood": "Tippe, um Lebensmittel hinzuzufügen",
     "caloriesShort": "kcal",
-    "nutritionBreakdown": "{{label}} Nährwerte"
+    "nutritionBreakdown": "{{label}} Nährwerte",
+    "fromTime": "ab {{time}}"
   },
   "exerciseSummary": {
     "tapToAdd": "Tippe, um eine Übung hinzuzufügen",
@@ -3941,7 +3942,21 @@
     "duplicate": "Übung duplizieren",
     "viewImages": "Bilder im Vollbild ansehen",
     "duplicateName": "{{name}} (Kopie)",
-    "caloriesPerHourWithUnit": "{{unit}} / Stunde"
+    "caloriesPerHourWithUnit": "{{unit}} / Stunde",
+    "progress": {
+      "title": "Fortschritt",
+      "weeks": "Wochen",
+      "months": "Monate",
+      "years": "Jahre",
+      "estimated1RM": "Gesch. 1RM",
+      "heaviest": "Höchstgewicht",
+      "volume": "Volumen",
+      "volumeUnit": "{{unit}} × Wdh.",
+      "weekOf": "Woche ab {{date}}",
+      "loadFailed": "Fortschritt konnte nicht geladen werden",
+      "empty": "Keine Einträge in diesem Zeitraum",
+      "footnote": "Bestwert pro Zeitraum. Punkte markieren neue Bestleistungen."
+    }
   },
   "mealTypeSettings": {
     "reorder": "{{name}} neu anordnen",
@@ -5483,6 +5498,11 @@
       "rangeLabel": "SPANNE",
       "loadFailed": "Herzfrequenzdaten konnten nicht geladen werden",
       "empty": "Keine Herzfrequenzdaten für diesen Zeitraum"
+    },
+    "mood": {
+      "title": "Stimmung",
+      "loadFailed": "Stimmungsdaten konnten nicht geladen werden",
+      "empty": "Keine Stimmung in diesem Zeitraum erfasst"
     }
   },
   "exerciseLibrary": {
@@ -6589,7 +6609,7 @@
     "cm": "{{value}} cm",
     "mmolL": "{{value}} mmol/L",
     "ms": "{{value}} ms",
-    "vo2": "{{value}} ml/min/kg",
+    "vo2": "{{value}} ml/kg/min",
     "minutes": "{{count}} min",
     "meters": "{{value}} m",
     "watts": "{{value}} W",
@@ -7145,7 +7165,37 @@
     "mediaAccessDisclosureBody": "Android benötigt Benachrichtigungszugriff, um Song und Interpret für deine Wear-OS-Uhr auszulesen. SparkyFitness liest nur aktive Mediensitzungen und ignoriert Nachrichten sowie andere Benachrichtigungen.",
     "mediaAccessOpenSettings": "Einstellungen öffnen",
     "mediaAccessOpenErrorTitle": "Einstellungen konnten nicht geöffnet werden",
-    "mediaAccessOpenErrorBody": "Öffne in den Android-Einstellungen → Benachrichtigungen → Benachrichtigungszugriff (Lesen, Antworten & Steuern) und aktiviere SparkyFitness Media Controls."
+    "mediaAccessOpenErrorBody": "Öffne in den Android-Einstellungen → Benachrichtigungen → Benachrichtigungszugriff (Lesen, Antworten & Steuern) und aktiviere SparkyFitness Media Controls.",
+    "complicationsTitle": "Komplikationen",
+    "complicationsRow": "Deine Komplikationen",
+    "complicationsSubtitle": "Eigene Komplikationen fürs Zifferblatt erstellen, importieren oder exportieren.",
+    "complications": {
+      "sources": {
+        "calories": "Kalorien",
+        "caloriesRemaining": "Kalorien übrig",
+        "caloriesBurned": "Verbrannte Kalorien",
+        "protein": "Protein",
+        "carbs": "Kohlenhydrate",
+        "fat": "Fett",
+        "water": "Wasser",
+        "steps": "Schritte",
+        "fasting": "Fasten",
+        "weight": "Gewicht",
+        "bodyFat": "Körperfett",
+        "deepSleep": "Tiefschlaf",
+        "exerciseCalories": "Trainingskalorien",
+        "exerciseMinutes": "Trainingsminuten",
+        "hrv": "Nächtliche HRV",
+        "lightSleep": "Leichtschlaf",
+        "remSleep": "REM-Schlaf",
+        "restingHeartRate": "Ruhepuls",
+        "sleepDuration": "Schlafdauer",
+        "sleepScore": "Schlafwert",
+        "spo2": "Blutsauerstoff",
+        "timeInBed": "Zeit im Bett",
+        "workouts": "Workouts heute"
+      }
+    }
   },
   "exerciseStatistics": {
     "title": "Übungsstatistiken",
@@ -10788,7 +10838,11 @@
       "description": "Blutwerte erfassen und einzelne Marker im Zeitverlauf verfolgen."
     },
     "someOff": "Einige Funktionen sind deaktiviert",
-    "manage": "Verwalten"
+    "manage": "Verwalten",
+    "medications": {
+      "title": "Medikamente",
+      "description": "Tracking für Medikamente, Supplements und GLP-1. Ist es aus, pausieren Erinnerungen und starten beim Einschalten neu; Supplement-Nährstoffe zählen weiter zu deinen Tageswerten."
+    }
   },
   "bloodAlcohol": {
     "title": "Geschätzter Blutalkohol",
@@ -11190,5 +11244,130 @@
     "youHost": "Du leitest",
     "memberCount_one": "{{count}} Mitglied",
     "memberCount_other": "{{count}} Mitglieder"
+  },
+  "watchComplications": {
+    "deleteTitle": "Komplikation löschen",
+    "deleteMessage": "„{{name}}“ löschen? Ein Zifferblatt-Platz, der sie anzeigt, bleibt dann leer.",
+    "exportFailed": "Komplikationen konnten nicht exportiert werden",
+    "importTooLarge": "Diese Datei ist zu groß",
+    "importFailed": "Datei konnte nicht gelesen werden",
+    "importInvalid": "Keine Datei für Komplikationen",
+    "importInvalidSubtitle": "Wähle eine Datei, die über den Bildschirm „Komplikationen“ exportiert wurde.",
+    "importTitle": "Komplikationen importieren",
+    "importAdd": "Hinzufügen",
+    "importReplace": "Ersetzen",
+    "resetTitle": "Auf Standard zurücksetzen",
+    "resetMessage": "Deine Komplikationen durch die Standardauswahl ersetzen? Deine eigenen gehen dabei verloren.",
+    "resetConfirm": "Zurücksetzen",
+    "title": "Komplikationen",
+    "add": "Komplikation hinzufügen",
+    "menu": "Komplikations-Optionen",
+    "reload": "Komplikationen neu laden",
+    "reloadHint": "Sendet deine Komplikationen an die Apple Watch und aktualisiert sie.",
+    "reloaded": "An Watch gesendet",
+    "reloadedSubtitle": "Öffne die Watch-App, falls die Auswahl noch die alte Liste zeigt.",
+    "reloadFailed": "Senden an die Watch fehlgeschlagen",
+    "builtInTitle": "Integrierte Komplikationen",
+    "builtInHelp": "Diese sind in der App enthalten. Passe ihre Farben und Symbole an.",
+    "changeBuiltIn": "{{name}} anpassen",
+    "builtInReset": "Original-Aussehen wiederherstellen",
+    "builtInDailyEnergy": "Tägliches Energieziel",
+    "builtInEnergyReset": "Originalfarben wiederherstellen",
+    "builtIn": {
+      "calorieGoal": "Kalorienziel",
+      "proteinGoal": "Proteinziel",
+      "carbsGoal": "Kohlenhydratziel",
+      "fatGoal": "Fettziel",
+      "water": "Wasserzufuhr",
+      "fasting": "Fasten",
+      "steps": "Schritte"
+    },
+    "export": "Exportieren",
+    "import": "Importieren",
+    "reset": "Auf Standard zurücksetzen",
+    "withGauge": "Anzeige",
+    "editNamed": "{{name}} bearbeiten",
+    "moveUp": "{{name}} nach oben",
+    "moveDown": "{{name}} nach unten",
+    "deleteNamed": "{{name}} löschen",
+    "intro": "Erstelle eigene Komplikationen fürs Zifferblatt - jede zeigt einen Tageswert. Füge auf der Watch „Eigene Komplikation“ in einen Platz ein und wähle eine aus.",
+    "starterNote": "Das sind die Standard-Komplikationen. Ändere oder ergänze eine, um deine eigene Liste anzulegen.",
+    "emptyTitle": "Noch keine Komplikationen",
+    "emptySubtitle": "Füge eine hinzu (z. B. verbleibendes Protein heute) oder importiere eine Datei.",
+    "nameRequired": "Namen vergeben",
+    "nameRequiredSubtitle": "Unter diesem Namen wählst du sie auf dem Zifferblatt aus.",
+    "saved": "Komplikation gespeichert",
+    "editTitle": "Komplikation bearbeiten",
+    "createTitle": "Komplikation hinzufügen",
+    "previewNote": "Ein Beispieltag in allen Größen. Das Zifferblatt bestimmt die endgültige Darstellung.",
+    "preview": {
+      "left": "übrig",
+      "leftUnit": "{{unit}} übrig",
+      "ofGoal": "von {{goal}}"
+    },
+    "name": "Name",
+    "namePlaceholder": "z. B. Protein übrig",
+    "source": "Zeigt",
+    "sourceHelp": "Nährstoffe, die du auf der Ziele-Seite der Watch anzeigst, werden hier ebenfalls aufgelistet.",
+    "format": "Anzeigen als",
+    "noGoalNote": "Hierfür ist kein Ziel festgelegt, daher kann nur der aktuelle Wert angezeigt werden.",
+    "gauge": "Fortschrittsanzeige",
+    "gaugeSubtitle": "Zeigt einen Ring oder Balken für den aktuellen Ziel-Fortschritt.",
+    "color": "Farbe",
+    "icon": "Symbol",
+    "formats": {
+      "value": "Wert",
+      "percent": "Prozent",
+      "remaining": "Übrig"
+    },
+    "colors": {
+      "calories": "Violett",
+      "protein": "Gold",
+      "carbs": "Grün",
+      "fat": "Himmelblau",
+      "water": "Cyan",
+      "steps": "Mint",
+      "fasting": "Orange",
+      "weight": "Petrol",
+      "neutral": "Weiß",
+      "exercise": "Hellgrün",
+      "heart": "Pink",
+      "sleep": "Indigo"
+    },
+    "icons": {
+      "flame": "Flamme",
+      "fish": "Fisch",
+      "leaf": "Blatt",
+      "drop": "Tropfen",
+      "walk": "Gehen",
+      "timer": "Timer",
+      "scale": "Waage",
+      "heart": "Herz",
+      "bolt": "Blitz",
+      "fork": "Besteck",
+      "chart": "Balkendiagramm",
+      "gauge": "Tacho",
+      "bed": "Bett",
+      "dumbbell": "Hantel",
+      "heartbeat": "Herzschlag",
+      "lungs": "Lunge",
+      "moon": "Mond"
+    },
+    "addValue": "Weiteren Wert hinzufügen",
+    "moreValues": "Weitere Werte",
+    "moreValuesHelp": "Bis zu drei Werte gleichzeitig: als Ringe bei rund/Ecke, als eigene Zeile bei rechteckig.",
+    "remove": "Entfernen",
+    "removeValue": "Wert {{number}} entfernen",
+    "ringsNote": "Bei mehreren Werten erhält jeder Wert mit definiertem Ziel einen eigenen Ring oder Balken.",
+    "starters": {
+      "macros": "Makros"
+    },
+    "valueNumber": "Wert {{number}}",
+    "importDone_one": "{{count}} Komplikation importiert",
+    "importDone_other": "{{count}} Komplikationen importiert",
+    "importMessage_one": "{{count}} Komplikation in der Datei gefunden. Zu deiner Liste hinzufügen oder deine Liste damit ersetzen?",
+    "importMessage_other": "{{count}} Komplikationen in der Datei gefunden. Zu deiner Liste hinzufügen oder deine Liste damit ersetzen?",
+    "importSkipped_one": "{{count}} Eintrag konnte nicht verwendet werden.",
+    "importSkipped_other": "{{count}} Einträge konnten nicht verwendet werden."
   }
 }

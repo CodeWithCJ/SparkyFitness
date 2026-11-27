@@ -1169,9 +1169,6 @@
       "openFoodFactsPasswordOptional": "Senha do Open Food Facts (opcional)",
       "leaveBlankToKeepExisting2": "•••••••• (deixe em branco para manter a atual)",
       "appURL": "URL do app",
-      "eGHttpsNorishYour": "ex.: https://norish.seu-dominio.com",
-      "eGHttpYourTandoor": "ex.: http://sua-instancia-tandoor.com",
-      "eGHttpYourMealie": "ex.: http://sua-instancia-mealie.com",
       "apiKey": "Chave de API",
       "enterNorishAPIKey": "Digite a chave de API do Norish",
       "enterTandoorAPIKey": "Digite a chave de API do Tandoor",
@@ -1355,7 +1352,6 @@
     },
     "providerSpecificFields": {
       "appURL": "URL do app",
-      "eGHttpYourInstance": "ex.: http://sua-instancia-{{provider_type}}.com",
       "clientID": "ID do cliente",
       "yazioEmailUsername": "E-mail / usuário do YAZIO",
       "appID": "ID do app",
@@ -1615,6 +1611,12 @@
       },
       "labResults": {
         "description": "Registre exames de sangue e acompanhe cada marcador ao longo do tempo."
+      },
+      "medications": {
+        "description": "Medicamentos, suplementos e acompanhamento de GLP-1. Os nutrientes dos suplementos continuam contando nos seus totais."
+      },
+      "aiCoaches": {
+        "description": "Coaches de IA que acompanham sua alimentação, treino e sono e mandam uma mensagem curta quando há algo que vale a pena dizer. Configure em Configurações → Bem-estar → Coaches."
       }
     },
     "foodProviders": {
@@ -2421,7 +2423,7 @@
       "primaryMuscles": "Músculos primários",
       "secondaryMuscles": "Músculos Secundários",
       "reps": "Repetições",
-      "weight": "Peso",
+      "weight": "Peso ({{unit}})",
       "notes": "Notas",
       "durationMinutes": "Duração (minutos)",
       "caloriesBurned": "Calorias queimadas",
@@ -4358,7 +4360,9 @@
     "editFoodDatabase": "Editar alimento no banco de dados",
     "editFoodDatabaseDescription": "Edite as informações nutricionais deste alimento no seu banco de dados.",
     "editingTemporarilyUnavailable": "A edição de alimentos está temporariamente indisponível por causa de mudanças no banco de dados.",
-    "copyFood": "Copiar alimento"
+    "copyFood": "Copiar alimento",
+    "fromTime": "a partir das {{time}}",
+    "nothingLogged": "Nada registrado ainda, adicione um alimento"
   },
   "foodDatabaseManager": {
     "system": "Sistema",
@@ -4560,7 +4564,7 @@
       "mcpOAuthAccessWarning": "Aprovar um aplicativo dá a ele acesso total ao MCP, inclusive a ferramentas que podem gravar ou excluir dados. Aprove só aplicativos de confiança.",
       "mcpOAuthHttpsRequired": "O OAuth do MCP remoto exige HTTPS público. HTTP simples só é aceito para desenvolvimento em loopback.",
       "mcpOAuthRedirectAllowlist": "URIs de redirecionamento OAuth permitidas",
-      "mcpOAuthRedirectAllowlistDescription": "Digite uma URI exata ou um padrão de loopback por linha. Use http://localhost:*, http://127.0.0.1:* ou http://[::1]:* para permitir clientes desktop em qualquer porta local de retorno.",
+      "mcpOAuthRedirectAllowlistDescription": "Digite uma URI exata ou um padrão por linha. Use http://localhost:*, http://127.0.0.1:* ou http://[::1]:* para permitir clientes desktop em qualquer porta local de retorno. Uma URI HTTPS terminada em /* permite qualquer caminho abaixo dela naquele host, conforme exigido pelo Gemini (https://oauth-redirect.googleusercontent.com/r/*).",
       "saveMcpOAuthRedirects": "Salvar a lista de redirecionamentos OAuth",
       "mcpOAuthRedirectsUpdated": "Lista de redirecionamentos OAuth atualizada.",
       "mcpOAuthRedirectsFailed": "Falha ao salvar a lista de redirecionamentos OAuth."
@@ -11669,6 +11673,375 @@
       "lift": "levantamentos",
       "distance": "distância",
       "pace": "ritmo"
+    }
+  },
+  "coaches": {
+    "saved": "Salvo.",
+    "saveFailed": "Não foi possível salvar as configurações do coach.",
+    "previewFailed": "Não foi possível verificar este coach.",
+    "because": "Motivo: {{reason}}",
+    "rulesToggle": "Quando ele se manifesta",
+    "settings": {
+      "title": "Coaches",
+      "description": "Coaches de IA que olham seus dados e se manifestam quando importa",
+      "off": "Os coaches estão desligados. Ative-os para receber mensagens curtas e na hora certa de coaches que olham sua alimentação, treino e sono.",
+      "turnOn": "Ativar Coaches",
+      "loadError": "Não foi possível carregar seus coaches.",
+      "weekday": "Dia da semana",
+      "focusHabit": "Hábito em foco",
+      "noHabit": "Nenhum ainda"
+    },
+    "aboutMe": {
+      "title": "Sobre mim",
+      "description": "Seus coaches e o chat do Sparky usam isto. Você pode alterar ou apagar quando quiser.",
+      "diet": "Dieta",
+      "tone": "Tom",
+      "notSet": "Não definido",
+      "foodsAvoid": "Alimentos a evitar",
+      "foodsPrefer": "Alimentos de que gosto",
+      "notes": "Algo mais que os coaches devem saber",
+      "allergies": "Alergias",
+      "noAllergies": "Nenhuma salva.",
+      "allergiesHint": "Gerenciado em Configurações → Nutrição e dieta → Preferências de alérgenos.",
+      "clear": "Apagar tudo",
+      "clearTitle": "Apagar Sobre mim?",
+      "clearDescription": "Sua dieta, tom, alimentos e anotações são removidos de todos os coaches e do chat do Sparky. As alergias não são afetadas."
+    },
+    "diets": {
+      "omnivore": "Sem restrições",
+      "vegetarian": "Vegetariana",
+      "vegan": "Vegana",
+      "pescatarian": "Pescetariana",
+      "keto": "Cetogênica",
+      "halal": "Halal",
+      "kosher": "Kosher",
+      "other": "Outra"
+    },
+    "tones": {
+      "friendly": "Amigável e breve",
+      "direct": "Direto",
+      "encouraging": "Encorajador",
+      "neutral": "Neutro"
+    },
+    "schedule": {
+      "title": "Quando os coaches fazem check-in",
+      "description": "Os coaches só olham seus dados nesses horários, no seu fuso horário, e só se manifestam quando há algo que vale a pena dizer.",
+      "checkInTime": "Horário do check-in",
+      "removeTime": "Remover este horário",
+      "addTime": "Adicionar horário",
+      "maxMessages": "No máximo esta quantidade de mensagens por dia",
+      "maxMessagesTooltip": "Limita o total de mensagens de todos os coaches ativos por dia, para evitar excesso de notificações e reduzir o uso de IA."
+    },
+    "pause": {
+      "title": "Pausar coaches",
+      "description": "Doente, viajando ou machucado? Os coaches ficam em silêncio até a data que você escolher.",
+      "until": "Pausado até {{date}}.",
+      "untilLabel": "Até",
+      "reason": "Motivo",
+      "pause": "Pausar",
+      "resume": "Retomar agora",
+      "reasons": {
+        "sick": "Doença",
+        "travel": "Viagem",
+        "injury": "Lesão",
+        "other": "Outro"
+      }
+    },
+    "list": {
+      "title": "Seus coaches",
+      "cost": "Os coaches usam seu provedor de IA só quando uma regra é atendida. Sem um provedor, você recebe uma mensagem curta fixa.",
+      "create": "Criar seu próprio coach",
+      "limit": "Você chegou ao limite de {{count}} coaches próprios.",
+      "aiDecides": "A IA decide quando ele se manifesta.",
+      "customRules": "{{count}} regras"
+    },
+    "preview": {
+      "button": "Ele falaria agora?",
+      "tooltip": "Simula este coach com a alimentação e os exercícios registrados hoje. Mostra se alguma regra é acionada agora, sem gastar tokens de IA.",
+      "yes": "Sim, ele diria:",
+      "no": "Não. Nada se aplica agora, então ele ficaria em silêncio.",
+      "today": "Prévia de hoje",
+      "aiDecides": "A IA decide a cada check-in, então não há nada para verificar aqui."
+    },
+    "thread": {
+      "sparky": "Sparky",
+      "label": "Conversar com",
+      "unread": "{{count}} não lidas",
+      "readOnly": "Adicione um provedor de IA em Configurações para responder aos seus coaches.",
+      "otherUnread": "Mensagens não lidas"
+    },
+    "names": {
+      "recovery": "Recuperação",
+      "consistency": "Constância",
+      "nutrition": "Nutrição",
+      "sleep_recovery": "Sono e recuperação",
+      "custom": "Coach",
+      "daily_outlook": "Previsão do dia",
+      "weekly_review": "Balanço semanal",
+      "training": "Treino",
+      "habits": "Hábitos"
+    },
+    "descriptions": {
+      "recovery": "Acompanha treino e alimentação juntos, para você comer proteína e carboidratos suficientes após treinos pesados.",
+      "consistency": "Percebe falhas e sequências nos registros e ajuda você a recomeçar com calma.",
+      "nutrition": "Compara a proteína, as fibras, as calorias e a água de hoje com as suas metas.",
+      "sleep_recovery": "Compara o sono da última noite com o seu normal e com seus treinos recentes.",
+      "daily_outlook": "Toda manhã: puxar, treino normal ou pegar leve hoje, com base no seu sono e nos treinos recentes.",
+      "weekly_review": "Uma vez por semana: como foi a semana e, se a tendência do seu peso indicar, uma nova meta de calorias para aplicar.",
+      "training": "Analisa seus exercícios de força e sugere mudanças no plano quando as cargas podem subir ou diminuir.",
+      "habits": "Ajuda com um pequeno hábito por vez, com uma verificação tranquila à noite."
+    },
+    "when": {
+      "morning": "Manhã",
+      "evening": "Noite",
+      "any": "Qualquer check-in",
+      "first_morning": "Primeiro check-in da manhã",
+      "weekday": "Uma vez por semana",
+      "after_workout": "Após um treino"
+    },
+    "units": {
+      "percent": "%",
+      "hours": "h",
+      "minutes": "min",
+      "days": "dias"
+    },
+    "directions": {
+      "toward": "em direção à meta",
+      "away": "se afastando da meta",
+      "flat": "estável",
+      "fertile": "fértil",
+      "ovulation": "ovulação",
+      "menstrual": "menstrual",
+      "follicular": "folicular",
+      "luteal": "lútea"
+    },
+    "ops": {
+      "lt": "é menor que",
+      "lte": "é no máximo",
+      "gt": "é maior que",
+      "gte": "é pelo menos",
+      "eq": "é"
+    },
+    "signals": {
+      "protein_pct_of_goal": "Proteína (% da meta)",
+      "carbs_pct_of_goal": "Carboidratos (% da meta)",
+      "fiber_pct_of_goal": "Fibras (% da meta)",
+      "calories_pct_of_goal": "Calorias (% da meta)",
+      "water_pct_of_goal": "Água (% da meta)",
+      "hours_since_strength": "Horas desde um treino de força",
+      "hours_since_hard_cardio": "Horas desde um cardio intenso",
+      "sleep_minutes_vs_avg": "Sono em relação ao normal",
+      "training_load_ratio": "Carga de treino vs. sua média de 4 semanas",
+      "weight_trend_direction": "Tendência de peso",
+      "days_since_last_log": "Dias desde o seu último registro",
+      "logging_streak_days": "Sequência de registros",
+      "new_prs_since_last_checkin": "Novos recordes pessoais",
+      "protein_goal_hit_streak_days": "Dias seguidos batendo a meta de proteína",
+      "calorie_goal_hit_streak_days": "Dias seguidos dentro da meta de calorias",
+      "stalled_lifts": "Exercícios que pararam de progredir",
+      "mood_checkin_today": "Check-in de humor hoje (1 = sim)",
+      "focus_habit_done_today": "Hábito em foco feito hoje (1 = sim)",
+      "focus_habit_streak_days": "Sequência do hábito em foco",
+      "cycle_phase": "Fase do ciclo",
+      "workout_is_strength": "Treino é de força (1 = sim)",
+      "workout_is_cardio": "Treino é cardio (1 = sim)",
+      "workout_duration_min": "Duração do treino",
+      "workout_hard": "Treino foi intenso (1 = sim)",
+      "workout_new_pr": "Treino bateu recorde (1 = sim)"
+    },
+    "rules": {
+      "recovery": {
+        "protein_after_strength": "Proteína baixa após treino de força",
+        "carbs_after_hard_cardio": "Carboidratos baixos após cardio intenso",
+        "after_strength_session": "Após um treino de força pesado",
+        "new_pr": "Você bateu um recorde"
+      },
+      "consistency": {
+        "logging_gap": "Você não registra há um tempo",
+        "nothing_logged_today": "Nada registrado hoje",
+        "streak_7": "Uma semana seguida de registros",
+        "streak_30": "Um mês seguido de registros",
+        "energy_question": "Perguntar como está minha energia"
+      },
+      "nutrition": {
+        "fiber_low": "Fibras baixas",
+        "protein_low": "Proteína baixa",
+        "water_low": "Água baixa",
+        "protein_streak": "Meta de proteína batida vários dias seguidos"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "Sono curto antes de uma semana pesada",
+        "short_sleep": "Sono bem mais curto que o normal"
+      },
+      "daily_outlook": {
+        "outlook": "Previsão da manhã"
+      },
+      "weekly_review": {
+        "weekly": "Balanço semanal"
+      },
+      "training": {
+        "weekly_plan_review": "Revisão semanal do plano",
+        "stall": "Um exercício parou de progredir",
+        "after_workout_review": "Após um treino"
+      },
+      "habits": {
+        "not_done_evening": "Hábito ainda não feito hoje",
+        "streak_win": "Sequência do hábito"
+      }
+    },
+    "templates": {
+      "recovery": {
+        "protein_after_strength": "Você está em {{protein_pct_of_goal}}% da sua meta de proteína após um treino de força há {{hours_since_strength}} horas. Uma refeição rica em proteína ajudaria na recuperação.",
+        "carbs_after_hard_cardio": "Você está em {{carbs_pct_of_goal}}% da sua meta de carboidratos após um cardio intenso. Alguns carboidratos ajudariam a repor as energias.",
+        "after_strength_session": "Bom treino ({{workout_minutes}} min). Uma refeição rica em proteína nas próximas horas vai ajudar na recuperação.",
+        "new_pr": "Você bateu um novo recorde pessoal. Muito bem."
+      },
+      "consistency": {
+        "logging_gap": "Faz {{days_since_last_log}} dias desde o seu último registro. Não precisa pôr nada em dia: registrar a próxima refeição já coloca você de volta nos trilhos.",
+        "nothing_logged_today": "Nada registrado hoje ainda. Registrar a próxima refeição já basta para começar.",
+        "streak_7": "Você registrou {{logging_streak_days}} dias seguidos. Que constância!",
+        "streak_30": "{{logging_streak_days}} dias seguidos de registro. Isso já é um hábito de verdade."
+      },
+      "nutrition": {
+        "fiber_low": "As fibras estão em {{fiber_pct_of_goal}}% da sua meta. Verduras, frutas, leguminosas ou aveia ajudariam.",
+        "protein_low": "A proteína está em {{protein_pct_of_goal}}% da sua meta hoje. Que tal uma refeição rica em proteína?",
+        "water_low": "A água está em {{water_pct_of_goal}}% da sua meta. Um ou dois copos ajudariam.",
+        "protein_streak": "Você bateu sua meta de proteína {{protein_goal_hit_streak_days}} dias seguidos."
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "Você dormiu menos que o normal e sua carga de treino está alta. Considere um treino mais leve hoje.",
+        "short_sleep": "Você dormiu bem menos que o normal. Vá com calma hoje e cuide do sono desta noite."
+      },
+      "daily_outlook": {
+        "outlook": {
+          "push": "Bom dia para puxar: sua carga de treino recente está leve e você descansou bem.",
+          "normal": "Dia de treino normal: sono e carga de treino parecem estáveis.",
+          "easy": "Pegue leve hoje: sono curto ou uma semana de treino pesada pedem recuperação."
+        }
+      },
+      "weekly_review": {
+        "weekly": "Sua semana: você seguiu sua meta em cerca de {{followed_target_percent}}% dela, ao longo de {{days_logged}} dias com registro."
+      },
+      "training": {
+        "weekly_plan_review": "Uma olhada semanal no seu plano de treino.",
+        "stall": "{{stalled_lifts}} dos seus exercícios pararam de progredir.",
+        "after_workout_review": "Bom trabalho nesse treino ({{workout_minutes}} min)."
+      },
+      "habits": {
+        "streak_win": "{{focus_habit_streak_days}} dias seguidos no seu hábito em foco. Continue assim."
+      }
+    },
+    "answerFailed": "Não foi possível salvar sua resposta.",
+    "kind": {
+      "win": "Conquista",
+      "outlook": "Previsão"
+    },
+    "weekdays": {
+      "0": "Domingo",
+      "1": "Segunda-feira",
+      "2": "Terça-feira",
+      "3": "Quarta-feira",
+      "4": "Quinta-feira",
+      "5": "Sexta-feira",
+      "6": "Sábado"
+    },
+    "editor": {
+      "created": "Coach criado.",
+      "deleted": "Coach excluído.",
+      "newTitle": "Criar seu próprio coach",
+      "editTitle": "Editar coach",
+      "description": "Escolha sobre o que ele fala, o que ele pode ver e quando se manifesta.",
+      "name": "Nome",
+      "instructions": "Como ele deve falar comigo",
+      "access": "O que ele pode ver",
+      "when": "Quando ele deve se manifestar",
+      "modeRules": "Só quando estas regras forem atendidas",
+      "modeRulesHint": "Nenhuma IA é usada até uma regra ser atendida.",
+      "modeAi": "Deixar a IA decidir",
+      "modeAiHint": "Uma chamada de IA a cada check-in (até {{count}} por dia) para decidir se deve falar.",
+      "modeAiNeedsProvider": "Precisa de um provedor de IA. Adicione um em Configurações primeiro.",
+      "aiRule": "O que ele deve observar?",
+      "aiRulePlaceholder": "Me avise se algo parecer fora do lugar para a minha meia maratona em 14 de março.",
+      "addRule": "Adicionar regra",
+      "removeRule": "Remover esta regra",
+      "addCondition": "e outra condição",
+      "removeCondition": "Remover esta condição",
+      "whenLabel": "Quando",
+      "signalLabel": "Número a observar",
+      "valueLabel": "Valor",
+      "opLabel": "Comparação",
+      "deleteTitle": "Excluir este coach?",
+      "deleteBody": "As configurações dele são removidas. As mensagens que ele já enviou continuam no seu chat."
+    },
+    "suggestion": {
+      "goalDayProtein": "Aumentar a meta de proteína de hoje para {{to}} g (era {{from}} g)? Amanhã volta ao normal.",
+      "calorieTarget": "Nova meta diária de calorias a partir de hoje: {{to}} {{unit}} (atual: {{from}}).",
+      "planChanges": "Mudanças no seu plano de treino: {{up}} aumentos de carga, {{down}} dias mais leves.",
+      "apply": "Aplicar",
+      "dismiss": "Não, obrigado",
+      "applyFailed": "Não foi possível aplicar. Talvez já tenha sido resolvido ou não se aplique mais.",
+      "status": {
+        "applied": "Aplicado.",
+        "dismissed": "Não aplicado.",
+        "expired": "Isto era para outro dia."
+      }
+    },
+    "feedback": {
+      "helpful": "Isto ajudou",
+      "notHelpful": "Isto não ajudou"
+    },
+    "knowledge": {
+      "title": "O que meus coaches sabem",
+      "nothing": "Nada salvo em Sobre mim ainda.",
+      "avoids": "Evita: {{foods}}",
+      "likes": "Gosta de: {{foods}}",
+      "allergies": "Alergias: {{list}}",
+      "noCoaches": "Nenhum coach está ativado.",
+      "muted": "Parou de mencionar: {{rule}}",
+      "unmute": "Reativar"
+    },
+    "questions": {
+      "answer": "Sua resposta",
+      "low": "Baixo",
+      "high": "Alto",
+      "yes": "Sim",
+      "notYetButton": "Ainda não",
+      "markedDone": "Marcado como feito.",
+      "notYet": "Anotado. Ainda não hoje.",
+      "saved": "Salvo no seu check-in.",
+      "energy": {
+        "ask": "Como está sua energia hoje?"
+      },
+      "mood": {
+        "ask": "Como está seu humor hoje?"
+      },
+      "focus": {
+        "ask": "Como está seu foco hoje?"
+      },
+      "habit_done": {
+        "ask": "Você fez seu hábito em foco hoje?"
+      }
+    },
+    "checkInNow": {
+      "title": "Fazer check-in agora",
+      "tooltip": "Faz os coaches analisarem seu diário atual e avaliarem as regras agora, em vez de esperar o próximo check-in agendado.",
+      "button": "Fazer check-in agora",
+      "resetToday": "Zerar a contagem de hoje",
+      "resetFailed": "Não foi possível zerar a contagem de hoje.",
+      "openChat": "Abrir chat",
+      "failed": "Não foi possível fazer o check-in.",
+      "last": "Último check-in: {{when}}.",
+      "never": "Nenhum check-in foi feito ainda. Eles acontecem nos seus horários de check-in.",
+      "where": "As mensagens aparecem no botão do chat do Sparky, sob o coach que as escreveu.",
+      "sent_one": "{{count}} mensagem nova. Abra o chat para lê-la.",
+      "sent_many": "{{count}} mensagens novas. Abra o chat para lê-las.",
+      "sent_other": "{{count}} mensagens novas. Abra o chat para lê-las.",
+      "reason": {
+        "paused": "Os coaches estão pausados.",
+        "no_coaches": "Nenhum coach está ativado. Ative um na lista abaixo.",
+        "limit_reached": "O limite de mensagens de hoje já foi atingido.",
+        "nothing_to_say": "Nada a dizer agora: nenhuma regra se aplica aos dados de hoje, ou os coaches já disseram isso hoje."
+      }
     }
   }
 }
