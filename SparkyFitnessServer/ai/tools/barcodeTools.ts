@@ -2,6 +2,7 @@ import { tool } from 'ai';
 import { log } from '../../config/logging.js';
 import foodCoreService from '../../services/foodCoreService.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { formatServing, roundEnergy, roundNutrient } from './formatting.js';
 import {
   BARCODE_ACTIONS,
   barcodeSchema,
@@ -78,7 +79,7 @@ export function buildBarcodeTools(userId: string, tz: string) {
                   ? `**${food.name}** (${food.brand})`
                   : `**${food.name}**`,
                 `- Source: ${result.source}`,
-                `- Per ${variant.serving_size} ${variant.serving_unit}: ${variant.calories} kcal, P ${variant.protein}g / C ${variant.carbs}g / F ${variant.fat}g`,
+                `- Per ${formatServing(variant.serving_size, variant.serving_unit)}: ${roundEnergy(variant.calories)} kcal, P ${roundNutrient(variant.protein)}g / C ${roundNutrient(variant.carbs)}g / F ${roundNutrient(variant.fat)}g`,
               ];
               if (food.id !== undefined && food.id !== null && food.id !== '') {
                 lines.push(`- ID: ${food.id}`);

@@ -395,7 +395,7 @@ describe('search_food', () => {
     );
 
     expect(result).toBe(
-      `# Food Search: "egg" (broad)\n\n**Eggs** (Farm Fresh)\n  100g: 155 kcal | P: 13g | C: 1.1g | F: 11g\n  ID: ${FOOD_ID} | Variant: ${VARIANT_ID}\n\n---\nShowing 1 of 1 results.`
+      `# Food Search: "egg" (broad)\n\n**Eggs** (Farm Fresh)\n  100 g: 155 kcal | P: 13g | C: 1.1g | F: 11g\n  ID: ${FOOD_ID} | Variant: ${VARIANT_ID}\n\n---\nShowing 1 of 1 results.`
     );
     expect(foodRepository.getFoodsWithPagination).toHaveBeenCalledWith(
       'egg',
@@ -419,7 +419,7 @@ describe('search_food', () => {
     );
 
     expect(result).toBe(
-      `# Food Search: "Eggs" (exact)\n\n**eggs** (Farm Fresh)\n  100g: 155 kcal | P: 13g | C: 1.1g | F: 11g\n  ID: ${FOOD_ID} | Variant: ${VARIANT_ID}\n\n---\nShowing 1 of 1 results.`
+      `# Food Search: "Eggs" (exact)\n\n**eggs** (Farm Fresh)\n  100 g: 155 kcal | P: 13g | C: 1.1g | F: 11g\n  ID: ${FOOD_ID} | Variant: ${VARIANT_ID}\n\n---\nShowing 1 of 1 results.`
     );
     expect(foodRepository.getFoodsWithPagination).toHaveBeenCalledWith(
       'Eggs',
@@ -430,6 +430,33 @@ describe('search_food', () => {
       null
     );
     expect(foodRepository.countFoods).not.toHaveBeenCalled();
+  });
+
+  it('rounds float noise and string numerics in the macro line', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      {
+        ...eggsRow,
+        default_variant: {
+          ...eggsRow.default_variant,
+          serving_size: '30.00',
+          serving_unit: 'piece',
+          calories: 405.00000000000006,
+          protein: 44.500000000000014,
+          carbs: '2.25',
+          fat: 0.04,
+        },
+      },
+    ]);
+    vi.mocked(foodRepository.countFoods).mockResolvedValue(1);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'egg', search_type: 'broad' },
+      opts
+    );
+
+    expect(result).toContain(
+      '\n  30 piece: 405 kcal | P: 44.5g | C: 2.3g | F: 0.04g\n'
+    );
   });
 
   it('renders no results for an empty search', async () => {
@@ -474,9 +501,41 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      `### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n  Available Serving Units: 100 g\n  ID: ${FOOD_ID}\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100g: 155 kcal)`
+      `### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n  Available Serving Units: 100 g\n  ID: ${FOOD_ID}\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100 g: 155 kcal)`
     );
     expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+
+  it('rounds float noise in the match and its alternatives', async () => {
+    const noisy = {
+      ...eggsRow.default_variant,
+      serving_size: '100.00',
+      calories: 155.00000000000003,
+      protein: 13.000000000000002,
+      sodium: 124.00000000000001,
+    };
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { ...eggsRow, default_variant: noisy, variants: [noisy] },
+      {
+        ...eggsRow,
+        id: FOOD_ID_2,
+        name: 'eggs',
+        brand: 'Other Farm',
+        default_variant: noisy,
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'lookup_food_nutrition', food_name: 'Eggs' },
+      opts
+    );
+
+    expect(result).toContain('Serving Size: 100 g');
+    expect(result).toContain('Energy: 155 kcal');
+    expect(result).toContain('Protein: 13g');
+    expect(result).toContain('Sodium: 124mg');
+    expect(result).toContain('Available Serving Units: 100 g');
+    expect(result).toContain('(100 g: 155 kcal)');
   });
 
   it('cascades through active providers in order and appends OpenFoodFacts', async () => {
@@ -563,7 +622,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **usda**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  Available Serving Units: 100 g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240ml: 110 kcal)\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","provider_type":"usda","external_id":"171688","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
+      '### Found match in **usda**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  Available Serving Units: 100 g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240 ml: 110 kcal)\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","provider_type":"usda","external_id":"171688","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
     );
   });
 
@@ -1283,8 +1342,8 @@ describe('log_food', () => {
       'user-1',
       expect.objectContaining({ quantity: 75, unit: 'g' })
     );
-    expect(gramsResult).toContain('Consumed: 263.25 kcal | P 17.7g');
-    expect(servingResult).toContain('Consumed: 263.25 kcal | P 17.7g');
+    expect(gramsResult).toContain('Consumed: 263 kcal | P 17.7g');
+    expect(servingResult).toContain('Consumed: 263 kcal | P 17.7g');
   });
 
   it('converts compatible mass and volume units but never grams to millilitres', async () => {
@@ -3064,7 +3123,7 @@ describe('log_external_food', () => {
         expect.objectContaining({ quantity: 50, unit: 'g' })
       );
       expect(result).toContain('logged 50 g');
-      expect(result).toContain('Consumed: 136.364 kcal');
+      expect(result).toContain('Consumed: 136 kcal');
     });
 
     // The lookup may have quoted the 33 g slice; a save that only has the
@@ -3450,7 +3509,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Chicken Fingers" created with 520 kcal per 4pieces.'
+      '✅ Food "Chicken Fingers" created with 520 kcal per 4 pieces.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
@@ -3530,7 +3589,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Protein Bar" created with 220 kcal per 1serving.'
+      '✅ Food "Protein Bar" created with 220 kcal per 1 serving.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith('user-1', {
       user_id: 'user-1',
@@ -3667,7 +3726,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Rice" created with 130 kcal per 100g. Also logged to Lunch for 2026-06-10.'
+      '✅ Food "Rice" created with 130 kcal per 100 g. Also logged to Lunch for 2026-06-10.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
@@ -3720,7 +3779,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Tasting Menu" created with 1200 kcal per 1serving. Also logged to Dinner for 2026-06-10. Saved as Quick Add — hidden from your food list and search.'
+      '✅ Food "Tasting Menu" created with 1200 kcal per 1 serving. Also logged to Dinner for 2026-06-10. Saved as Quick Add — hidden from your food list and search.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
@@ -3779,7 +3838,7 @@ describe('create_food', () => {
       opts
     );
 
-    expect(result).toBe('✅ Food "Oats" created with 380 kcal per 100g.');
+    expect(result).toBe('✅ Food "Oats" created with 380 kcal per 100 g.');
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({ is_quick_food: false })
@@ -4641,6 +4700,40 @@ describe('list_diary', () => {
   });
 });
 
+describe('list_diary rounding', () => {
+  it('totals unrounded entry energy and rounds when printed', async () => {
+    const entry = {
+      food_name: 'Nuts',
+      quantity: 1,
+      unit: 'g',
+      serving_size: 1,
+      serving_unit: 'g',
+      meal_type: 'snacks',
+      calories: 100.4,
+      protein: 1,
+      carbs: 1,
+      fat: 1,
+    };
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      { ...entry, id: ENTRY_ID },
+      { ...entry, id: FOOD_ID_2 },
+      { ...entry, id: FOOD_ID },
+    ]);
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDate
+    ).mockResolvedValue([]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'list_diary', entry_date: '2026-06-10' },
+      opts
+    );
+
+    // Each entry shows 100; the total is round(301.2), not 3 x 100.
+    expect(result).toContain('— 1 g (100 kcal)');
+    expect(result).toContain('**Total Energy:** 301 kcal');
+  });
+});
+
 describe('delete_entry', () => {
   it('advertises the food_name alternative in the tool description', () => {
     const description = tools.sparky_manage_food.description ?? '';
@@ -5457,7 +5550,7 @@ describe('update_food_variant', () => {
     );
 
     expect(result).toBe(
-      '✅ Food variant updated for "Oatmeal" (390 kcal per 100g).'
+      '✅ Food variant updated for "Oatmeal" (390 kcal per 100 g).'
     );
     expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
       VARIANT_ID,
@@ -5500,7 +5593,7 @@ describe('update_food_variant', () => {
     );
 
     expect(result).toBe(
-      '✅ Food variant updated for "Cold Brew" (5 kcal per 355ml).'
+      '✅ Food variant updated for "Cold Brew" (5 kcal per 355 ml).'
     );
     expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
       VARIANT_ID,
@@ -5537,7 +5630,7 @@ describe('update_food_variant', () => {
     );
 
     expect(result).toBe(
-      '✅ Food variant updated for "Watermelon" (30 kcal per 100g).'
+      '✅ Food variant updated for "Watermelon" (30 kcal per 100 g).'
     );
     expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
       VARIANT_ID,
@@ -6242,7 +6335,7 @@ describe('get_nutritional_summary', () => {
     );
 
     expect(result).toBe(
-      '# Nutritional Summary (2026-06-01 to 2026-06-07)\n\n**2026-06-01**:\n  Macros: 1850.5 kcal | P: 95.2g | C: 210g | F: 65.5g\n  Fiber: 25g | Sugar: 48g | Sodium: 2300mg\n  Other: SatFat: 12g | Chol: 180mg | Potas: 3400mg\n\n**2026-06-02**:\n  Macros: 1500 kcal | P: 80g | C: 180g | F: 50g\n  Fiber: 20g | Sugar: 30g | Sodium: 1800mg\n'
+      '# Nutritional Summary (2026-06-01 to 2026-06-07)\n\n**2026-06-01**:\n  Macros: 1851 kcal | P: 95.2g | C: 210g | F: 65.5g\n  Fiber: 25g | Sugar: 48g | Sodium: 2300mg\n  Other: SatFat: 12g | Chol: 180mg | Potas: 3400mg\n\n**2026-06-02**:\n  Macros: 1500 kcal | P: 80g | C: 180g | F: 50g\n  Fiber: 20g | Sugar: 30g | Sodium: 1800mg\n'
     );
     expect(reportRepository.getDailyNutritionTotalsRange).toHaveBeenCalledWith(
       'user-1',
@@ -6902,6 +6995,47 @@ describe('sparky_get_nutrition_summary', () => {
       today,
       today
     );
+  });
+
+  it('rounds day totals: energy to whole numbers, nutrients to one decimal or two below 1', async () => {
+    vi.mocked(reportRepository.getDailyNutritionTotalsRange).mockResolvedValue([
+      {
+        entry_date: '2026-06-10',
+        calories: '1948.0945945945946',
+        protein: 101.11111111111111,
+        carbs: '210',
+        fat: 65.55,
+        sodium: 2300.0000000000005,
+        trans_fat: 0.0444,
+        vitamin_a: 812.3456,
+        vitamin_c: 0.04,
+        calcium: 0.004,
+        cholesterol: 0.04,
+        iron: 0.04,
+        legacy_ambiguous_entry_count: 0,
+      },
+    ]);
+
+    const result = await tools.sparky_get_nutrition_summary.execute!(
+      { date: '2026-06-10' },
+      opts
+    );
+    const [row] = JSON.parse(String(result));
+
+    expect(row).toMatchObject({
+      calories: 1948,
+      protein: 101.1,
+      carbs: 210,
+      fat: 65.6,
+      sodium: 2300,
+      trans_fat: 0.04,
+      vitamin_a: 812.3,
+      vitamin_c: 0.04,
+      calcium: 0,
+      cholesterol: 0.04,
+      iron: 0.04,
+      potassium: 0,
+    });
   });
 });
 

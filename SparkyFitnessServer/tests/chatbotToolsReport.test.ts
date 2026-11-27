@@ -119,7 +119,7 @@ describe('sparky_get_report (get_weekly_report)', () => {
         '## Nutrition & Energy\n' +
         '| Date | Calories (kcal) | P (g) | C (g) | F (g) |\n' +
         '| :--- | :--- | :--- | :--- | :--- |\n' +
-        '| 2026-06-08 | 2100.5 | 95 | 240 | 70 |\n' +
+        '| 2026-06-08 | 2101 | 95 | 240 | 70 |\n' +
         '\n' +
         '## Water Intake\n' +
         '| Date | Amount (ml) |\n' +
@@ -248,7 +248,7 @@ describe('sparky_get_daily_report', () => {
         nutrition: [
           {
             entry_date: '2026-06-10',
-            calories: 2100.5,
+            calories: 2101,
             protein: 95,
             carbs: 240,
             fat: 70,
@@ -311,8 +311,44 @@ describe('sparky_get_daily_report', () => {
     const report = JSON.parse(String(result));
 
     expect(report.energy_unit).toBe('kJ');
-    expect(report.nutrition[0].calories).toBeCloseTo(418.4);
-    expect(report.exercise[0].exercise_calories).toBeCloseTo(1673.6);
+    expect(report.nutrition[0].calories).toBe(418);
+    expect(report.exercise[0].exercise_calories).toBe(1674);
+  });
+
+  it('rounds resolved exercise calories in kcal too', async () => {
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue(PREFS);
+    vi.mocked(reportRepository.getDailyNutritionTotalsRange).mockResolvedValue(
+      []
+    );
+    vi.mocked(exerciseEntryDb.getDailyExerciseTotalsRange).mockResolvedValue([
+      {
+        entry_date: '2026-06-10',
+        calories_burned: 400,
+        duration_minutes: 45,
+        steps: 8000,
+      },
+    ]);
+    const resolvedDay: ResolvedExerciseCalorieDay = {
+      date: '2026-06-10',
+      calories: 400.00000000000006,
+      source: 'logged',
+      stepCalories: 0,
+      loggedCalories: 400.00000000000006,
+      activeCalories: 0,
+    };
+    vi.mocked(getResolvedExerciseCaloriesRange).mockResolvedValue(
+      new Map([['2026-06-10', resolvedDay]])
+    );
+    vi.mocked(
+      measurementRepository.getWaterTotalsByDateRange
+    ).mockResolvedValue([]);
+
+    const result = await tools.sparky_get_daily_report.execute!(
+      { date: '2026-06-10' },
+      opts
+    );
+
+    expect(JSON.parse(String(result)).exercise[0].exercise_calories).toBe(400);
   });
 
   it('renders pg local-midnight Date rows as calendar-day strings in all three sets', async () => {
@@ -355,7 +391,7 @@ describe('sparky_get_daily_report', () => {
         nutrition: [
           {
             entry_date: '2026-06-10',
-            calories: 2100.5,
+            calories: 2101,
             protein: 95,
             carbs: 240,
             fat: 70,
