@@ -17,6 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 
 import Icon from './Icon';
+import type { SupersetBorder } from './ActiveWorkoutRail';
 import { supersetPageSupports } from './FocusSupersetPage';
 import {
   useReorderDrag,
@@ -66,8 +67,8 @@ interface Props {
   selectedId: string | null;
   /** Null when no set is logged yet. */
   undo: FocusExercisesUndo | null;
-  /** Lilac group colour, from the focus palette. */
-  groupColor: string;
+  /** Per-superset colours, the same map the top strip draws with. */
+  supersetBorders: Map<string, SupersetBorder>;
   onSelectExercise: (entryId: string) => void;
   onMoveItem: (fromItemIndex: number, toItemIndex: number) => void;
   onAddExercise: () => void;
@@ -86,7 +87,7 @@ interface ItemProps {
   exerciseNumber: (entryId: string) => number;
   completedSetIds: CompletedSetMap;
   selectedId: string | null;
-  groupColor: string;
+  supersetBorders: Map<string, SupersetBorder>;
   drag: ReorderDrag;
   onSelectExercise: (entryId: string) => void;
   onMoveItem: (fromItemIndex: number, toItemIndex: number) => void;
@@ -129,16 +130,20 @@ function ExercisesItem({
   exerciseNumber,
   completedSetIds,
   selectedId,
-  groupColor,
+  supersetBorders,
   drag,
   onSelectExercise,
   onMoveItem,
 }: ItemProps) {
   const { t } = useTranslation();
-  const [accent, borderStrong] = useCSSVariable([
+  const [accent, borderStrong, defaultGroupColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-border-strong',
-  ]) as [string, string];
+    '--color-superset',
+  ]) as [string, string, string];
+  // Each superset keeps the colour the strip gives it.
+  const groupColor =
+    supersetBorders.get(item.entryIds[0])?.color ?? defaultGroupColor;
   const { animatedStyle } = useReorderItemDrag(index, drag);
   const isGroup = item.groupId != null;
 
@@ -326,7 +331,7 @@ function ExercisesItem({
 
 /**
  * The focus view's Exercises sheet (Phone-Exercises board): every exercise with
- * its progress, supersets in one lilac group with A1 / A2 badges, drag handles
+ * its progress, supersets in a group coloured as in the strip with A1 / A2 badges, drag handles
  * (the same reorder logic as the list view's overlay), Add exercise, Undo set
  * for the last logged set, Back to workout and End workout. A modal rather
  * than a gorhom sheet: a long-press drag inside a bottom sheet's own scroll
@@ -338,7 +343,7 @@ function FocusExercisesSheet({
   completedSetIds,
   selectedId,
   undo,
-  groupColor,
+  supersetBorders,
   onSelectExercise,
   onMoveItem,
   onAddExercise,
@@ -461,7 +466,7 @@ function FocusExercisesSheet({
                 exerciseNumber={exerciseNumber}
                 completedSetIds={completedSetIds}
                 selectedId={selectedId}
-                groupColor={groupColor}
+                supersetBorders={supersetBorders}
                 drag={drag}
                 onSelectExercise={handleSelect}
                 onMoveItem={onMoveItem}

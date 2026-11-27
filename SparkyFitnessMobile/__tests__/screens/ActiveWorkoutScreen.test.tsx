@@ -2007,14 +2007,16 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(mockEffortSheet.props).toBeNull();
     });
 
-    it('leaves the guided rest to the guided card: no floating rest card', () => {
+    it('shows the standard rest card (with -15 s / +15 s) during a guided rest', () => {
       useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
-      const { queryByTestId } = renderScreen();
+      const { getByTestId } = renderScreen();
       act(() => {
         useActiveWorkoutStore.getState().completeSet('102');
       });
       expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
-      expect(queryByTestId('focus-rest-card')).toBeNull();
+      expect(getByTestId('focus-rest-card')).toBeTruthy();
+      expect(getByTestId('focus-rest-shorten')).toBeTruthy();
+      expect(getByTestId('focus-rest-extend')).toBeTruthy();
     });
 
     it('starts no rest timer and shows no rest card in an interval format', () => {

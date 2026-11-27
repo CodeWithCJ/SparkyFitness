@@ -24,7 +24,6 @@ import {
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCSSVariable } from 'uniwind';
 
 import ActiveWorkoutHeader, {
   ActiveWorkoutStripButtons,
@@ -174,7 +173,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
-  const focusGroupColor = String(useCSSVariable('--color-superset'));
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
@@ -1025,14 +1023,18 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // scroll content keeps its height clear while it shows. It hides behind the
   // keyboard, whose bar carries the rest controls instead.
   const [focusRestHeight, setFocusRestHeight] = useState(0);
-  // Guided mode and the interval formats own their rest (the guided card, the
-  // HUD), so the overlay would be a second timer.
+  // The interval formats own their rest (the HUD), so the overlay would be a
+  // second timer. Guided mode shares the standard card: it is the one set of
+  // rest controls (-15 s, Pause, +15 s, Skip), and the guided card shows only
+  // what is next.
   // A field can stay focused with no keyboard on screen (a hardware keyboard,
   // or a tap on a button that leaves the field focused); the keyboard bar then
   // isn't there to carry the rest, so the card stays up.
   const keyboardUp = useKeyboardState((state) => state.isVisible);
   const focusRestOverlay =
-    restRunning && !(focusedSetKey != null && keyboardUp) && standardFocus;
+    restRunning &&
+    !(focusedSetKey != null && keyboardUp) &&
+    (workoutFormat ?? 'standard') === 'standard';
   const scrollContentStyle = useMemo(() => {
     const basePadding = insets.bottom + 16;
     return {
@@ -1597,7 +1599,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             ?.id ?? null
         }
         undo={exercisesUndo}
-        groupColor={focusGroupColor}
+        supersetBorders={focusSupersetBorders}
         onSelectExercise={handleShowExercise}
         onMoveItem={handleReorderMove}
         onAddExercise={handleAddExercise}

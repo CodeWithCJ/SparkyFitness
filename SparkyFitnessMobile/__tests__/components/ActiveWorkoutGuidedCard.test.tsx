@@ -181,7 +181,9 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(store.rest.state).toBe('resting');
     expect(spoken().at(-1)).toEqual(['Rest. 30 seconds.', 'Next: Push-up.']);
     expect(screen.getByText('Next up')).toBeTruthy();
-    expect(screen.getByTestId('guided-rest-countdown')).toBeTruthy();
+    // One set of rest controls: the focus view's bottom rest card, not this one.
+    expect(screen.queryByLabelText('Skip rest')).toBeNull();
+    expect(screen.queryByTestId('guided-rest-countdown')).toBeNull();
 
     // Rest over: set 2 is announced without repeating the instructions.
     act(() => useActiveWorkoutStore.getState().dismissRest());
@@ -216,6 +218,36 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(
       screen.getByText('All sets done. End the workout to save it.')
     ).toBeTruthy();
+  });
+
+  it('runs a stopwatch for a hold with no planned time and logs the time held', () => {
+    const session = makeSession();
+    session.exercises[1]!.sets[0]!.duration = null;
+    __resetActiveWorkoutStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const store = useActiveWorkoutStore.getState();
+    store.completeSet('1');
+    useActiveWorkoutStore.getState().dismissRest();
+    useActiveWorkoutStore.getState().completeSet('2');
+    useActiveWorkoutStore.getState().dismissRest();
+    renderCard();
+
+    act(() => jest.advanceTimersByTime(250));
+    expect(screen.getByText('Get ready')).toBeTruthy();
+    act(() => jest.advanceTimersByTime(3000));
+    expect(
+      useActiveWorkoutStore.getState().setTimerStartedAt['3']
+    ).toBeDefined();
+    expect(screen.getByTestId('guided-stopwatch')).toHaveTextContent('0:00');
+
+    act(() => jest.advanceTimersByTime(42_000));
+    expect(screen.getByTestId('guided-stopwatch')).toHaveTextContent('0:42');
+
+    fireEvent.press(screen.getByText('DONE — NEXT'));
+    const done = useActiveWorkoutStore.getState();
+    expect(done.completedSetIds['3']).toBeDefined();
+    expect(done.session?.exercises[1]?.sets[0]?.duration).toBe(42);
+    expect(done.setTimerStartedAt['3']).toBeUndefined();
   });
 
   it('resumes a running timed set silently after a remount', () => {

@@ -26,6 +26,7 @@ import { fireSelectionHaptic } from '../services/haptics';
 import { renderGuidedCues } from '../utils/guidedWorkoutSpeech';
 import {
   describeActiveSetAssumed,
+  isWeightDurationModality,
   resolveSnapshotModality,
 } from '../utils/workoutSession';
 
@@ -36,6 +37,11 @@ export interface GuidedSetView {
   images: string[];
   instructions: string[];
   target: GuidedSetTarget;
+  /**
+   * A timed hold with no planned length: guided mode runs a stopwatch for it
+   * and logs the time held, instead of waiting on a bare DONE tap.
+   */
+  stopwatch: boolean;
   setNumber: number;
   totalSets: number;
 }
@@ -53,6 +59,8 @@ export type GuidedPhase =
       remainingSec: number;
       totalSec: number;
     }
+  /** A hold with no planned time: the stopwatch counts up until DONE. */
+  | { kind: 'stopwatch'; set: GuidedSetView; elapsedSec: number }
   /** A new set guided mode hasn't started yet (until the next tick). */
   | { kind: 'starting'; set: GuidedSetView }
   | { kind: 'reps'; set: GuidedSetView }
@@ -94,15 +102,19 @@ function describeGuidedSet(
   const desc = describeActiveSetAssumed(session, setId, state);
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const snapshot = exercise.exercise_snapshot;
+  const target = resolveGuidedSetTarget(modality, {
+    reps: desc?.reps,
+    duration: desc?.durationSec,
+  });
   return {
     setId,
     exerciseName: desc?.exerciseName ?? snapshot?.name ?? '',
     images: guidedExerciseImages(snapshot?.images),
     instructions: snapshot?.instructions ?? [],
-    target: resolveGuidedSetTarget(modality, {
-      reps: desc?.reps,
-      duration: desc?.durationSec,
-    }),
+    target,
+    stopwatch:
+      target.kind === 'open' &&
+      (modality === 'duration' || isWeightDurationModality(modality)),
     setNumber: desc?.setNumber ?? 1,
     totalSets: desc?.setCount ?? exercise.sets.length,
   };
@@ -243,7 +255,7 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
       memo.completingSetId = null;
       memo.halfwaySetId = null;
       speak(buildGuidedSetStartCues(set), true);
-      if (set.target.kind === 'time') {
+      if (set.target.kind === 'time' || set.stopwatch) {
         useActiveWorkoutStore.getState().startSetTimer(set.setId);
       }
     };
@@ -271,7 +283,7 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
         // running, so resume silently instead of restarting it.
         if (state.setTimerStartedAt[set.setId] != null) return;
         const isSessionStart = Object.keys(state.completedSetIds).length === 0;
-        if (isSessionStart || set.target.kind === 'time') {
+        if (isSessionStart || set.target.kind === 'time' || set.stopwatch) {
           updateGetReady({
             setId: set.setId,
             endsAt: nowMs + latestRef.current.countdownSec * 1000,
@@ -422,7 +434,11 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
     memoRef.current.pausedAt = null;
     memoRef.current.pausedRest = false;
     setPausedAt(null);
-    if (setId != null) onCompleteSet(setId);
+    if (setId == null) return;
+    // A stopwatch hold logs the time held; stopping it writes the duration.
+    const state = useActiveWorkoutStore.getState();
+    if (describeGuidedSet(state, setId)?.stopwatch) state.stopSetTimer(setId);
+    onCompleteSet(setId);
   }, [onCompleteSet]);
 
   // While paused, the clocks read the moment they were frozen.
@@ -458,6 +474,12 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
         0,
         Math.ceil((timerStartedAt + totalSec * 1000 - clockNow) / 1000)
       ),
+    };
+  } else if (activeSet.stopwatch && timerStartedAt != null) {
+    phase = {
+      kind: 'stopwatch',
+      set: activeSet,
+      elapsedSec: Math.max(0, Math.floor((clockNow - timerStartedAt) / 1000)),
     };
   } else {
     phase = { kind: 'reps', set: activeSet };

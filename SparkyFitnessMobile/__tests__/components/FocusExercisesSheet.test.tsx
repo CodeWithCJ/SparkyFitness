@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { PresetSessionResponse } from '@workspace/shared';
@@ -48,7 +49,10 @@ function renderSheet(
     completedSetIds: { 'bench-s0': 1, 'bench-s1': 2 },
     selectedId: 'bench',
     undo: { detail: 'BENCH · 80 kg × 8', onUndo: jest.fn() },
-    groupColor: '#c9a0f0',
+    supersetBorders: new Map([
+      ['tri', { color: '#c9a0f0', isLast: false }],
+      ['lat', { color: '#c9a0f0', isLast: true }],
+    ]),
     onSelectExercise: jest.fn(),
     onMoveItem: jest.fn(),
     onAddExercise: jest.fn(),
@@ -88,6 +92,31 @@ describe('FocusExercisesSheet', () => {
     fireEvent.press(getByTestId('focus-exercise-row-bench'));
     expect(props.onClose).toHaveBeenCalled();
     expect(props.onSelectExercise).toHaveBeenCalledWith('bench');
+  });
+
+  it('colours each superset as the strip does', () => {
+    const { getByTestId } = renderSheet({
+      exercises: [
+        makeExercise('a1', 1, 1),
+        makeExercise('a2', 1, 1),
+        makeExercise('b1', 1, 2),
+        makeExercise('b2', 1, 2),
+      ],
+      supersetBorders: new Map([
+        ['a1', { color: '#c9a0f0', isLast: false }],
+        ['a2', { color: '#c9a0f0', isLast: true }],
+        ['b1', { color: '#10b981', isLast: false }],
+        ['b2', { color: '#10b981', isLast: true }],
+      ]),
+    });
+    const flat = (id: string) =>
+      StyleSheet.flatten(getByTestId(id).props.style);
+    expect(flat('focus-exercise-group-a1').borderColor).toBe(
+      'rgba(201, 160, 240, 0.28)'
+    );
+    expect(flat('focus-exercise-group-b1').borderColor).toBe(
+      'rgba(16, 185, 129, 0.28)'
+    );
   });
 
   it('opens a superset from one button, not one per member', () => {

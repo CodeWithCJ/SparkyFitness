@@ -34,6 +34,7 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
+import { FocusLogLockContext } from '../../src/components/focusLogLock';
 import type { FocusHold } from '../../src/hooks/useFocusHold';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
@@ -355,6 +356,35 @@ describe('ActiveWorkoutFocusView', () => {
     fireEvent.press(screen.getByTestId('focus-chip-c'));
     expect(screen.getByTestId('focus-hold-ready')).toBeTruthy();
     expect(screen.getByText(/^Set 2 · Ready$/)).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start hold'));
+    expect(start).toHaveBeenCalledWith('c-1');
+  });
+
+  it('keeps Start hold live on another exercise while the rest lock is on', () => {
+    const start = jest.fn();
+    const timed = makeExercise('c', 'Plank');
+    timed.exercise_snapshot = {
+      ...timed.exercise_snapshot,
+      modality: 'duration',
+      equipment: [],
+    };
+    render(
+      <FocusLogLockContext.Provider value>
+        {viewElement(
+          'a',
+          {
+            activeSetId: 'a-0',
+            completedSetIds: { 'c-0': 1 },
+            hold: { ...IDLE_HOLD, start },
+          },
+          { exercises: [makeExercise('a', 'Bench Press'), timed] }
+        )}
+      </FocusLogLockContext.Provider>
+    );
+    fireEvent.press(screen.getByTestId('focus-chip-c'));
+    expect(
+      screen.getByTestId('focus-hold-start').props.accessibilityState
+    ).toEqual({ disabled: false });
     fireEvent.press(screen.getByLabelText('Start hold'));
     expect(start).toHaveBeenCalledWith('c-1');
   });
