@@ -3883,7 +3883,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Dumpling" created with 380 kcal per 1piece. Also logged 2 piece to Dinner for 2026-06-10.'
+      '✅ Food "Dumpling" created with 380 kcal per 1 piece. Also logged 2 piece to Dinner for 2026-06-10.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
