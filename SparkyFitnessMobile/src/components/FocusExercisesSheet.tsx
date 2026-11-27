@@ -18,7 +18,7 @@ import type { PresetSessionResponse } from '@workspace/shared';
 
 import Icon from './Icon';
 import type { SupersetBorder } from './ActiveWorkoutRail';
-import { supersetPageSupports } from './FocusSupersetPage';
+import { supersetRunSupports } from './FocusSupersetPage';
 import {
   useReorderDrag,
   useReorderItemDrag,
@@ -182,7 +182,7 @@ function ExercisesItem({
     isGroup &&
     item.entryIds.every((id) => {
       const member = exercisesById.get(id);
-      return member != null && supersetPageSupports(member);
+      return member != null && supersetRunSupports(member);
     });
   const groupTarget =
     item.entryIds.find((id) => id === selectedId) ?? item.entryIds[0];

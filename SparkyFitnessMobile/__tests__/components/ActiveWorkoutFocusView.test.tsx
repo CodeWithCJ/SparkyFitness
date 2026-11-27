@@ -717,6 +717,152 @@ describe('ActiveWorkoutFocusView', () => {
       fireEvent.press(screen.getByTestId('focus-chip-c'));
       expect(screen.queryByTestId('focus-away-frame')).toBeNull();
     });
+
+    describe('with a timed hold member', () => {
+      const plank = (id: string, setCount: number) =>
+        makeExercise(id, 'Plank', {
+          superset_group: 2,
+          exercise_snapshot: {
+            name: 'Plank',
+            modality: 'duration',
+            images: [],
+          },
+          sets: Array.from({ length: setCount }, (_, i) => ({
+            id: `${id}-${i}`,
+            set_number: i + 1,
+            set_type: 'normal',
+            weight: null,
+            reps: null,
+            duration: 45,
+          })),
+        });
+      const holdSession = (plankSets: number, curlSets: number) =>
+        ({
+          exercises: [
+            plank('p', plankSets),
+            makeExercise('q', 'Curl', {
+              superset_group: 2,
+              sets: Array.from({ length: curlSets }, (_, i) => ({
+                id: `q-${i}`,
+                set_number: i + 1,
+                set_type: 'normal',
+                weight: null,
+                reps: null,
+              })),
+            }),
+          ],
+        }) as any;
+      const holdBorders = new Map([
+        ['p', { color: '#f0a060', isLast: false }],
+        ['q', { color: '#f0a060', isLast: true }],
+      ]);
+
+      it('runs the superset on its one page, with Start hold in the round card', () => {
+        const start = jest.fn();
+        render(
+          viewElement(
+            'p',
+            {
+              supersetBorders: holdBorders,
+              activeSetId: 'p-0',
+              hold: { ...IDLE_HOLD, entryId: 'p', setId: 'p-0', start },
+            },
+            holdSession(2, 2)
+          )
+        );
+        expect(screen.getByTestId('focus-superset-page')).toBeTruthy();
+        const card = screen.getByTestId('focus-superset-round-card');
+        expect(within(card).getByTestId('focus-hold-ready')).toBeTruthy();
+        // The hold card replaces Log set and the reps stepper.
+        expect(screen.queryByTestId('focus-superset-log')).toBeNull();
+        expect(within(card).queryByLabelText('Reps +')).toBeNull();
+        fireEvent.press(within(card).getByLabelText('Start hold'));
+        expect(start).toHaveBeenCalledWith(undefined);
+      });
+
+      it('shows a pending hold row as its planned time', () => {
+        render(
+          viewElement(
+            'p',
+            { supersetBorders: holdBorders, activeSetId: 'p-0' },
+            holdSession(2, 2)
+          )
+        );
+        expect(
+          within(screen.getByTestId('focus-superset-step-p-1')).getByText('45s')
+        ).toBeTruthy();
+      });
+
+      it('runs the hold in the round card while it counts', () => {
+        render(
+          viewElement(
+            'p',
+            {
+              supersetBorders: holdBorders,
+              activeSetId: 'p-0',
+              hold: {
+                ...IDLE_HOLD,
+                phase: 'running',
+                entryId: 'p',
+                setId: 'p-0',
+                targetSec: 45,
+                startedAt: Date.now(),
+              },
+            },
+            holdSession(2, 2)
+          )
+        );
+        const card = screen.getByTestId('focus-superset-round-card');
+        expect(within(card).getByTestId('focus-hold-panel')).toBeTruthy();
+        expect(within(card).getByText(/^Set 1 · Holding$/)).toBeTruthy();
+      });
+
+      it('changes the planned length from the round card', () => {
+        render(
+          viewElement(
+            'p',
+            {
+              supersetBorders: holdBorders,
+              activeSetId: 'p-0',
+              hold: { ...IDLE_HOLD, entryId: 'p', setId: 'p-0', targetSec: 45 },
+            },
+            holdSession(2, 2)
+          )
+        );
+        fireEvent.press(screen.getByLabelText('Increase hold time'));
+        expect(handlers.onCommitField).toHaveBeenCalledWith('p-0', {
+          duration: 50,
+        });
+      });
+
+      it('adds a round to every member when their sets match', () => {
+        render(
+          viewElement(
+            'p',
+            { supersetBorders: holdBorders, activeSetId: 'p-0' },
+            holdSession(2, 2)
+          )
+        );
+        fireEvent.press(screen.getByText('Add round'));
+        expect(handlers.onAddSet).toHaveBeenCalledTimes(2);
+        expect(handlers.onAddSet).toHaveBeenCalledWith('p');
+        expect(handlers.onAddSet).toHaveBeenCalledWith('q');
+      });
+
+      it('tops the short member up to the longest when sets differ', () => {
+        render(
+          viewElement(
+            'p',
+            { supersetBorders: holdBorders, activeSetId: 'p-0' },
+            holdSession(3, 1)
+          )
+        );
+        fireEvent.press(screen.getByText('Match sets to 3 rounds'));
+        expect(handlers.onAddSet).toHaveBeenCalledTimes(2);
+        expect(handlers.onAddSet).toHaveBeenNthCalledWith(1, 'q');
+        expect(handlers.onAddSet).toHaveBeenNthCalledWith(2, 'q');
+      });
+    });
   });
 
   describe('away frame', () => {

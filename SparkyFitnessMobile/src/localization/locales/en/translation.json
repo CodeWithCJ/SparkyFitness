@@ -645,6 +645,10 @@
         "prev": "Prev {{value}}",
         "log": "Log set",
         "logGoTo": "Log set · go to {{badge}}",
+        "seconds": "Sec",
+        "addRound": "Add round",
+        "matchRounds_one": "Match sets to {{count}} round",
+        "matchRounds_other": "Match sets to {{count}} rounds",
         "done": "Superset done"
       },
       "hero": {

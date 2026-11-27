@@ -13,6 +13,8 @@ import { withAlpha } from '../utils/colors';
 import { formatRestCountdown } from '../utils/workoutSession';
 
 const RING_SIZE = 208;
+/** Inside a superset's round card the timer is smaller. */
+const COMPACT_RING_SIZE = 120;
 
 interface FocusHoldPanelProps {
   hold: Pick<
@@ -23,6 +25,8 @@ interface FocusHoldPanelProps {
   setLabel: string;
   /** The live heart-rate readout, when the watch sends one. */
   heartRate?: React.ReactNode;
+  /** A smaller timer without its own frame, for a superset's round card. */
+  compact?: boolean;
 }
 
 /**
@@ -33,7 +37,12 @@ interface FocusHoldPanelProps {
  * the ring to start now or to end. At zero the hold cues and keeps counting up
  * ("+0:07") until the tap, which logs the time actually held.
  */
-function FocusHoldPanel({ hold, setLabel, heartRate }: FocusHoldPanelProps) {
+function FocusHoldPanel({
+  hold,
+  setLabel,
+  heartRate,
+  compact = false,
+}: FocusHoldPanelProps) {
   const { t } = useTranslation();
   const now = useClockTick(true);
   const beepSeconds = useCountdownSeconds();
@@ -100,12 +109,20 @@ function FocusHoldPanel({ hold, setLabel, heartRate }: FocusHoldPanelProps) {
   return (
     <View
       testID="focus-hold-panel"
-      className="mb-0.5 items-center gap-2.5 rounded-[20px] p-2"
-      style={{
-        backgroundColor: withAlpha(holdColor, 0.1),
-        borderWidth: 2,
-        borderColor: holdColor,
-      }}
+      className={
+        compact
+          ? 'items-center gap-2'
+          : 'mb-0.5 items-center gap-2.5 rounded-[20px] p-2'
+      }
+      style={
+        compact
+          ? undefined
+          : {
+              backgroundColor: withAlpha(holdColor, 0.1),
+              borderWidth: 2,
+              borderColor: holdColor,
+            }
+      }
     >
       <View className="w-full flex-row items-center justify-between">
         <Text
@@ -146,8 +163,8 @@ function FocusHoldPanel({ hold, setLabel, heartRate }: FocusHoldPanelProps) {
         }
       >
         <FocusTimerRing
-          size={RING_SIZE}
-          strokeWidth={14}
+          size={compact ? COMPACT_RING_SIZE : RING_SIZE}
+          strokeWidth={compact ? 10 : 14}
           progress={progress}
           color={holdColor}
           trackColor={withAlpha(holdColor, 0.22)}
@@ -155,19 +172,29 @@ function FocusHoldPanel({ hold, setLabel, heartRate }: FocusHoldPanelProps) {
           <Text
             testID="focus-hold-time"
             className={
-              bigText.length >= 5
-                ? 'text-[54px] font-bold'
-                : 'text-[64px] font-bold'
+              compact
+                ? bigText.length >= 5
+                  ? 'text-[30px] font-bold'
+                  : 'text-[38px] font-bold'
+                : bigText.length >= 5
+                  ? 'text-[54px] font-bold'
+                  : 'text-[64px] font-bold'
             }
             style={{
               color: holdText,
               fontVariant: ['tabular-nums'],
-              lineHeight: 72,
+              lineHeight: compact ? 44 : 72,
             }}
           >
             {bigText}
           </Text>
-          <Text className="text-[16px] text-text-secondary">
+          <Text
+            className={
+              compact
+                ? 'text-[13px] text-text-secondary'
+                : 'text-[16px] text-text-secondary'
+            }
+          >
             {gettingReady
               ? t('activeWorkout.focus.hold.startsInShort', {
                   defaultValue: 'starts in',

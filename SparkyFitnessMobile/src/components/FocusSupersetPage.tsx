@@ -4,16 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
+import FocusHoldPanel from './FocusHoldPanel';
+import FocusHoldReadyCard from './FocusHoldReadyCard';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { timedTargetForSet, type FocusHold } from '../hooks/useFocusHold';
 import { useLiveAssumedSetValues } from '../hooks/useLiveExerciseCoaching';
 import type {
   ActiveSetPatch,
   CompletedSetMap,
 } from '../stores/activeWorkoutStore';
 import { DEFAULT_WARMUP_PLATE_ROUNDING } from '@workspace/shared';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { withAlpha } from '../utils/colors';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
@@ -22,7 +26,11 @@ import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import {
   alignPreviousSets,
   CATEGORY_ICON_MAP,
+  effectiveSetDurationSec,
+  formatDurationSeconds,
+  isWeightDurationModality,
   quantizeSetWeightKg,
+  rendersCardioEffortForm,
   resolveSnapshotModality,
 } from '../utils/workoutSession';
 
@@ -37,6 +45,27 @@ export function supersetPageSupports(exercise: FocusExercise): boolean {
     modality === 'reps_only' ||
     modality === 'bodyweight_reps'
   );
+}
+
+/** A timed hold (plank): its round card carries the hold timer, not steppers. */
+export function isTimedHoldMember(exercise: FocusExercise): boolean {
+  const snapshot = exercise.exercise_snapshot;
+  const modality = resolveSnapshotModality(snapshot);
+  return (
+    (modality === 'duration' || isWeightDurationModality(modality)) &&
+    !rendersCardioEffortForm(snapshot, exercise.sets.length)
+  );
+}
+
+/** Members a superset's one page can run: weight and reps sets, or timed holds. */
+export function supersetRunSupports(exercise: FocusExercise): boolean {
+  return supersetPageSupports(exercise) || isTimedHoldMember(exercise);
+}
+
+/** Whether the exercise's sets carry a weight to edit. */
+function carriesWeight(exercise: FocusExercise): boolean {
+  const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+  return modality !== 'reps_only' && modality !== 'duration';
 }
 
 export interface SupersetStep {
@@ -100,6 +129,9 @@ function useMemberValues(
   return { previousSets, assumed };
 }
 
+/** Seconds a hold's -/+ tap moves its length. */
+const HOLD_STEP_SEC = 5;
+
 interface MemberProps {
   step: SupersetStep;
   badge: string;
@@ -149,8 +181,12 @@ const SupersetStepRow = React.memo(function SupersetStepRow({
     weightUnit
   );
   const index = step.exercise.sets.findIndex((s) => s.id === step.set.id);
-  const showWeight =
-    resolveSnapshotModality(step.exercise.exercise_snapshot) !== 'reps_only';
+  const showWeight = carriesWeight(step.exercise);
+  const timed = isTimedHoldMember(step.exercise);
+  const seconds = effectiveSetDurationSec(
+    step.set,
+    resolveSnapshotModality(step.exercise.exercise_snapshot)
+  );
   const name =
     step.exercise.exercise_snapshot?.name ??
     t('workout.exercise', { defaultValue: 'Exercise' });
@@ -185,12 +221,16 @@ const SupersetStepRow = React.memo(function SupersetStepRow({
           className="text-[15px] text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {formatLoad(
-            step.set.weight ?? assumed?.[index]?.weight ?? null,
-            step.set.reps ?? assumed?.[index]?.reps ?? null,
-            weightUnit,
-            showWeight
-          )}
+          {timed
+            ? seconds != null
+              ? formatDurationSeconds(seconds)
+              : '–'
+            : formatLoad(
+                step.set.weight ?? assumed?.[index]?.weight ?? null,
+                step.set.reps ?? assumed?.[index]?.reps ?? null,
+                weightUnit,
+                showWeight
+              )}
         </Text>
       )}
     </View>
@@ -279,8 +319,11 @@ function StepEditor({
   verifiedSourcePresetId,
   weightUnit,
   onCommitField,
+  omitDuration = false,
 }: Omit<MemberProps, 'badge'> & {
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
+  /** Leave the seconds stepper out (the hold card edits the length). */
+  omitDuration?: boolean;
 }) {
   const { t } = useTranslation();
   const { exercise, set } = step;
@@ -305,8 +348,13 @@ function StepEditor({
     weightUnit
   );
   const setIndex = exercise.sets.findIndex((s) => s.id === set.id);
-  const showWeight =
-    resolveSnapshotModality(exercise.exercise_snapshot) !== 'reps_only';
+  const showWeight = carriesWeight(exercise);
+  const timed = isTimedHoldMember(exercise);
+  const seconds =
+    effectiveSetDurationSec(
+      set,
+      resolveSnapshotModality(exercise.exercise_snapshot)
+    ) ?? 0;
   const weightKg = set.weight ?? assumed?.[setIndex]?.weight ?? null;
   const reps = set.reps ?? assumed?.[setIndex]?.reps ?? null;
   const weightDisplay =
@@ -319,6 +367,8 @@ function StepEditor({
     });
   const commitReps = (nextReps: number) =>
     onCommitField(String(set.id), { reps: Math.max(0, nextReps) });
+  const commitSeconds = (next: number) =>
+    onCommitField(String(set.id), { duration: Math.max(HOLD_STEP_SEC, next) });
   return (
     <View className="flex-row gap-3">
       {showWeight && (
@@ -333,12 +383,27 @@ function StepEditor({
           onIncrement={() => commitWeight(weightDisplay + weightStep)}
         />
       )}
-      <RoundStepper
-        label={t('activeWorkout.focus.preview.reps', { defaultValue: 'Reps' })}
-        text={String(reps ?? 0)}
-        onDecrement={() => commitReps((reps ?? 0) - 1)}
-        onIncrement={() => commitReps((reps ?? 0) + 1)}
-      />
+      {timed ? (
+        !omitDuration && (
+          <RoundStepper
+            label={t('activeWorkout.focus.superset.seconds', {
+              defaultValue: 'Sec',
+            })}
+            text={String(seconds)}
+            onDecrement={() => commitSeconds(seconds - HOLD_STEP_SEC)}
+            onIncrement={() => commitSeconds(seconds + HOLD_STEP_SEC)}
+          />
+        )
+      ) : (
+        <RoundStepper
+          label={t('activeWorkout.focus.preview.reps', {
+            defaultValue: 'Reps',
+          })}
+          text={String(reps ?? 0)}
+          onDecrement={() => commitReps((reps ?? 0) - 1)}
+          onIncrement={() => commitReps((reps ?? 0) + 1)}
+        />
+      )}
     </View>
   );
 }
@@ -353,9 +418,12 @@ interface Props {
   sessionId: string | null;
   verifiedSourcePresetId: number | undefined;
   weightUnit: 'kg' | 'lbs';
+  /** The focus view's timed hold, which a timed member's round card runs. */
+  hold: FocusHold;
   getImageSource: GetImageSource;
   onCompleteSet: (setId: string) => void;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
+  onAddSet: (entryId: string) => void;
   onPressOverflow: (entryId: string) => void;
 }
 
@@ -375,13 +443,16 @@ function FocusSupersetPage({
   sessionId,
   verifiedSourcePresetId,
   weightUnit,
+  hold,
   getImageSource,
   onCompleteSet,
   onCommitField,
+  onAddSet,
   onPressOverflow,
 }: Props) {
   const { t } = useTranslation();
   const logLocked = useFocusLogLocked();
+  const plannedSetValues = useActiveWorkoutStore((st) => st.plannedSetValues);
   const [textSecondary, accent, accentOn] = useCSSVariable([
     '--color-text-secondary',
     '--color-accent-primary',
@@ -415,8 +486,7 @@ function FocusSupersetPage({
       ? current.exercise.sets.findIndex((s) => s.id === current.set.id)
       : -1;
   const previous = setIndex >= 0 ? previousSets[setIndex] : undefined;
-  const showWeight =
-    resolveSnapshotModality(currentExercise.exercise_snapshot) !== 'reps_only';
+  const showWeight = carriesWeight(currentExercise);
 
   const next =
     current != null
@@ -442,6 +512,44 @@ function FocusSupersetPage({
   const currentName =
     currentExercise.exercise_snapshot?.name ??
     t('workout.exercise', { defaultValue: 'Exercise' });
+
+  // One more round for every member; when the members have unequal sets, the
+  // short ones are topped up to the longest instead.
+  const uneven = members.some((m) => m.sets.length < rounds);
+  const handleAddRound = () => {
+    for (const member of members) {
+      const missing = uneven ? rounds - member.sets.length : 1;
+      for (let i = 0; i < missing; i++) onAddSet(member.id);
+    }
+  };
+
+  // A timed member's round: the hold timer in place of steppers and Log set.
+  const renderHold = (s: SupersetStep) => {
+    const setId = String(s.set.id);
+    const setLabel = t('activeWorkout.focus.hold.setNumber', {
+      defaultValue: 'Set {{number}}',
+      number: s.round + 1,
+    });
+    if (hold.setId === setId && hold.phase !== 'idle') {
+      return <FocusHoldPanel compact hold={hold} setLabel={setLabel} />;
+    }
+    const target =
+      hold.setId === setId
+        ? hold.targetSec
+        : (timedTargetForSet(s.exercise, setId, plannedSetValues)?.targetSec ??
+          null);
+    return (
+      <FocusHoldReadyCard
+        compact
+        setLabel={setLabel}
+        targetSec={target}
+        onChangeSeconds={(seconds) =>
+          onCommitField(setId, { duration: seconds })
+        }
+        onStart={() => hold.start(hold.setId === setId ? undefined : setId)}
+      />
+    );
+  };
 
   return (
     <View testID="focus-superset-page" className="gap-3">
@@ -541,32 +649,50 @@ function FocusSupersetPage({
                   </Text>
                 )}
               </View>
-              <StepEditor
-                step={s}
-                sessionId={sessionId}
-                verifiedSourcePresetId={verifiedSourcePresetId}
-                weightUnit={weightUnit}
-                onCommitField={onCommitField}
-              />
-              <Pressable
-                testID="focus-superset-log"
-                onPress={() => onCompleteSet(String(s.set.id))}
-                disabled={logLocked}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: logLocked }}
-                className="min-h-14 items-center justify-center rounded-full active:opacity-80"
-                style={{
-                  backgroundColor: accent,
-                  opacity: logLocked ? LOG_LOCKED_OPACITY : 1,
-                }}
-              >
-                <Text
-                  className="text-[19px] font-bold"
-                  style={{ color: accentOn ?? '#ffffff' }}
-                >
-                  {logLabel}
-                </Text>
-              </Pressable>
+              {isTimedHoldMember(s.exercise) ? (
+                <>
+                  {carriesWeight(s.exercise) && (
+                    <StepEditor
+                      step={s}
+                      sessionId={sessionId}
+                      verifiedSourcePresetId={verifiedSourcePresetId}
+                      weightUnit={weightUnit}
+                      onCommitField={onCommitField}
+                      omitDuration
+                    />
+                  )}
+                  {renderHold(s)}
+                </>
+              ) : (
+                <>
+                  <StepEditor
+                    step={s}
+                    sessionId={sessionId}
+                    verifiedSourcePresetId={verifiedSourcePresetId}
+                    weightUnit={weightUnit}
+                    onCommitField={onCommitField}
+                  />
+                  <Pressable
+                    testID="focus-superset-log"
+                    onPress={() => onCompleteSet(String(s.set.id))}
+                    disabled={logLocked}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: logLocked }}
+                    className="min-h-14 items-center justify-center rounded-full active:opacity-80"
+                    style={{
+                      backgroundColor: accent,
+                      opacity: logLocked ? LOG_LOCKED_OPACITY : 1,
+                    }}
+                  >
+                    <Text
+                      className="text-[19px] font-bold"
+                      style={{ color: accentOn ?? '#ffffff' }}
+                    >
+                      {logLabel}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           ) : (
             <SupersetStepRow
@@ -585,6 +711,27 @@ function FocusSupersetPage({
           )
         )}
       </View>
+
+      <Pressable
+        testID="focus-superset-add-round"
+        onPress={handleAddRound}
+        accessibilityRole="button"
+        className="h-11 flex-row items-center justify-center gap-2 rounded-full bg-raised active:opacity-70"
+      >
+        <Icon name="add" size={18} color={textSecondary} weight="bold" />
+        <Text className="text-[15px] font-semibold text-text-secondary">
+          {uneven
+            ? t('activeWorkout.focus.superset.matchRounds', {
+                defaultValue_one: 'Match sets to {{count}} round',
+                defaultValue_other: 'Match sets to {{count}} rounds',
+                defaultValue: 'Match sets to {{count}} rounds',
+                count: rounds,
+              })
+            : t('activeWorkout.focus.superset.addRound', {
+                defaultValue: 'Add round',
+              })}
+        </Text>
+      </Pressable>
 
       {current == null && (
         <View

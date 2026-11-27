@@ -45,7 +45,10 @@ import { FocusLogLockContext, useFocusLogLocked } from './focusLogLock';
 import FocusAwayFrame from './FocusAwayFrame';
 import FocusExercisePreview from './FocusExercisePreview';
 import FocusNowBanner, { type FocusNowBannerInfo } from './FocusNowBanner';
-import FocusSupersetPage, { supersetPageSupports } from './FocusSupersetPage';
+import FocusSupersetPage, {
+  supersetPageSupports,
+  supersetRunSupports,
+} from './FocusSupersetPage';
 import FocusPlateStrip from './FocusPlateStrip';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { AnchorRect } from './AnchoredMenu';
@@ -989,8 +992,7 @@ function ActiveWorkoutFocusView({
     run != null
       ? run.entryIds.flatMap((id) => exercises.find((e) => e.id === id) ?? [])
       : [];
-  const supersetEligible =
-    run != null && runMembers.every(supersetPageSupports);
+  const supersetEligible = run != null && runMembers.every(supersetRunSupports);
   // While a hold is running or counting down, every other exercise (a
   // superset page included) is a read-only preview, so nothing can be logged
   // off the held set.
@@ -1081,9 +1083,11 @@ function ActiveWorkoutFocusView({
                   sessionId={sessionId}
                   verifiedSourcePresetId={verifiedSourcePresetId}
                   weightUnit={weightUnit}
+                  hold={hold}
                   getImageSource={getImageSource}
                   onCompleteSet={setEditorProps.onCompleteSet}
                   onCommitField={setEditorProps.onCommitField}
+                  onAddSet={setEditorProps.onAddSet}
                   onPressOverflow={onPressOverflow}
                 />
               </AwayFrame>

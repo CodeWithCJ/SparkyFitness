@@ -11,6 +11,8 @@ import { withAlpha } from '../utils/colors';
 import { formatRestCountdown } from '../utils/workoutSession';
 
 const RING_SIZE = 208;
+/** Inside a superset's round card the timer is smaller. */
+const COMPACT_RING_SIZE = 120;
 /** Seconds a -/+ tap moves the planned length. */
 const STEP_SEC = 5;
 const MIN_SEC = 5;
@@ -24,6 +26,8 @@ interface FocusHoldReadyCardProps {
   onChangeSeconds: (seconds: number) => void;
   /** Begins the hold (Get ready first when the watch setting has it on). */
   onStart: () => void;
+  /** A smaller timer without its own frame, for a superset's round card. */
+  compact?: boolean;
 }
 
 /**
@@ -36,6 +40,7 @@ function FocusHoldReadyCard({
   targetSec,
   onChangeSeconds,
   onStart,
+  compact = false,
 }: FocusHoldReadyCardProps) {
   const { t } = useTranslation();
   const logLocked = useFocusLogLocked();
@@ -66,12 +71,20 @@ function FocusHoldReadyCard({
   return (
     <View
       testID="focus-hold-ready"
-      className="mb-0.5 items-center gap-2.5 rounded-[20px] p-2"
-      style={{
-        backgroundColor: withAlpha(holdColor, 0.1),
-        borderWidth: 2,
-        borderColor: holdColor,
-      }}
+      className={
+        compact
+          ? 'items-center gap-2'
+          : 'mb-0.5 items-center gap-2.5 rounded-[20px] p-2'
+      }
+      style={
+        compact
+          ? undefined
+          : {
+              backgroundColor: withAlpha(holdColor, 0.1),
+              borderWidth: 2,
+              borderColor: holdColor,
+            }
+      }
     >
       <View className="w-full flex-row items-center justify-between">
         <Text
@@ -96,23 +109,31 @@ function FocusHoldReadyCard({
         )}
       </View>
       <FocusTimerRing
-        size={RING_SIZE}
-        strokeWidth={14}
+        size={compact ? COMPACT_RING_SIZE : RING_SIZE}
+        strokeWidth={compact ? 10 : 14}
         progress={1}
         color={holdColor}
         trackColor={withAlpha(holdColor, 0.22)}
       >
         <Text
-          className="text-[64px] font-bold"
+          className={
+            compact ? 'text-[38px] font-bold' : 'text-[64px] font-bold'
+          }
           style={{
             color: holdText,
             fontVariant: ['tabular-nums'],
-            lineHeight: 72,
+            lineHeight: compact ? 44 : 72,
           }}
         >
           {formatRestCountdown((targetSec ?? 0) * 1000)}
         </Text>
-        <Text className="text-[16px] text-text-secondary">
+        <Text
+          className={
+            compact
+              ? 'text-[13px] text-text-secondary'
+              : 'text-[16px] text-text-secondary'
+          }
+        >
           {targetSec != null
             ? t('activeWorkout.focus.hold.planWord', { defaultValue: 'plan' })
             : t('activeWorkout.focus.hold.stopwatch', {
