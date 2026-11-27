@@ -4266,6 +4266,12 @@ internal object WatchConnectivityHub {
     val startSyncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to payloadOwner)
     if (clientId.isNotEmpty()) startSyncEvent["clientId"] = clientId
     if (startSyncOutcome != null) startSyncEvent["fastStartOutcome"] = startSyncOutcome
+    val confirmedFastId = if (startSyncOutcome == "confirmed") {
+      confirmedFastJson?.optString("id", "")?.trim()?.takeIf { it.isNotEmpty() }
+    } else {
+      null
+    }
+    if (confirmedFastId != null) startSyncEvent["fastId"] = confirmedFastId
     activeModule?.emitEvent("onWatchServerSynced", startSyncEvent)
     drainQueuedFastEndsForOwner(context, payloadOwner)
     if (fastAckSent) {
@@ -5397,6 +5403,8 @@ internal object WatchConnectivityHub {
           it == "confirmed" || it == "terminal" || it == "superseded"
         }
         if (fastStartOutcome != null) event["fastStartOutcome"] = fastStartOutcome
+        val fastId = (payload["fastId"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        if (fastId != null) event["fastId"] = fastId
         mod?.emitEvent("onWatchServerSynced", event)
       }
       "checkIn" -> {

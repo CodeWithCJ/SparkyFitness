@@ -1230,6 +1230,7 @@ export interface WatchServerSyncedPayload {
   entryDate?: string;
   clientId?: string;
   fastStartOutcome?: 'confirmed' | 'terminal' | 'superseded';
+  fastId?: string;
 }
 
 export type WatchConnectivityEvents = {

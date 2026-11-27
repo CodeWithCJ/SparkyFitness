@@ -348,7 +348,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
                       ownerId = payloadOwner,
                       entryDate = syncEntryDate,
                       clientId = clientId,
-                      fastStartOutcome = direct.fastStartOutcome
+                      fastStartOutcome = direct.fastStartOutcome,
+                      fastId = if (direct.fastStartOutcome == "confirmed") direct.fast?.id else null
                     )
                     val sentLive = sendLiveMessage(syncNotice)
                     if (!sentLive && checkInStore.currentAccountGeneration() == opGen) {
@@ -373,7 +374,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
                       ownerId = payloadOwner,
                       entryDate = syncEntryDate,
                       clientId = clientId,
-                      fastStartOutcome = direct.fastStartOutcome
+                      fastStartOutcome = direct.fastStartOutcome,
+                      fastId = if (direct.fastStartOutcome == "confirmed") direct.fast?.id else null
                     )
                     val sentLive = sendLiveMessage(syncNotice)
                     if (!sentLive && checkInStore.currentAccountGeneration() == opGen) {
@@ -2068,7 +2070,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
       ownerId: String,
       entryDate: String?,
       clientId: String,
-      fastStartOutcome: String? = null
+      fastStartOutcome: String? = null,
+      fastId: String? = null
     ): JSONObject = JSONObject()
       .put("type", "watchDirectSynced")
       .put("domain", domain)
@@ -2077,6 +2080,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
         if (!entryDate.isNullOrEmpty()) put("entryDate", entryDate)
         if (clientId.isNotEmpty()) put("clientId", clientId)
         if (!fastStartOutcome.isNullOrEmpty()) put("fastStartOutcome", fastStartOutcome)
+        if (!fastId.isNullOrEmpty()) put("fastId", fastId)
       }
 
     internal fun shouldApplyLiveRefresh(

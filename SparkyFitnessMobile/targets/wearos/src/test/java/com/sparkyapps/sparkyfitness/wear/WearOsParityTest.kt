@@ -7271,7 +7271,7 @@ class WearOsParityTest {
         assertTrue(outcomeSuperseded is DirectWriteOutcome.Applied)
         assertEquals("superseded", (outcomeSuperseded as DirectWriteOutcome.Applied).fastStartOutcome)
 
-        // Direct sync notice forwards fastStartOutcome when present
+        // Direct sync notice forwards fastStartOutcome and fastId when present
         val terminalNotice = WearSessionManager.buildDirectSyncNotice(
             domain = "fasting",
             ownerId = "srv-1",
@@ -7280,6 +7280,18 @@ class WearOsParityTest {
             fastStartOutcome = "terminal"
         )
         assertEquals("terminal", terminalNotice.getString("fastStartOutcome"))
+        assertFalse(terminalNotice.has("fastId"))
+
+        val confirmedNotice = WearSessionManager.buildDirectSyncNotice(
+            domain = "fasting",
+            ownerId = "srv-1",
+            entryDate = null,
+            clientId = validUuid,
+            fastStartOutcome = "confirmed",
+            fastId = "fast-123"
+        )
+        assertEquals("confirmed", confirmedNotice.getString("fastStartOutcome"))
+        assertEquals("fast-123", confirmedNotice.getString("fastId"))
 
         // Transient failure or invalid JSON on re-fetch falls back so the idempotent clientId stays persisted and retries
         val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(

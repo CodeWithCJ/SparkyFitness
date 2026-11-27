@@ -877,8 +877,13 @@ export function useWatchFastingBridge(enabled: boolean): void {
               const explicitOutcome = payload.fastStartOutcome;
               let resolvedOutcome: 'confirmed' | 'terminal' | 'superseded' =
                 explicitOutcome ?? 'confirmed';
-              let verifiedFastId: string | undefined;
-              if (explicitOutcome === undefined) {
+              let verifiedFastId: string | undefined =
+                payload.fastId?.trim() || undefined;
+              const needsCurrentVerification =
+                explicitOutcome === undefined ||
+                (explicitOutcome === 'confirmed' &&
+                  verifiedFastId === undefined);
+              if (needsCurrentVerification) {
                 const pendingEnds =
                   deferredEndsByOwnerRef.current.get(resolvedOwner) ?? [];
                 const hasGuardedStartlessEnd = pendingEnds.some(

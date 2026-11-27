@@ -890,6 +890,7 @@ describe('useWatchFastingBridge', () => {
       ownerId: 'srv-1',
       clientId: 'retrying-start-a',
       fastStartOutcome: 'confirmed',
+      fastId: 'f-a',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-matching-a', true)
@@ -913,6 +914,7 @@ describe('useWatchFastingBridge', () => {
       ownerId: 'srv-1',
       clientId: 'retrying-start-b',
       fastStartOutcome: 'confirmed',
+      fastId: 'f-b',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-bare', true)
@@ -1272,6 +1274,7 @@ describe('useWatchFastingBridge', () => {
       ownerId: 'srv-1',
       clientId: 'retrying-later-start',
       fastStartOutcome: 'confirmed',
+      fastId: 'f-later',
     });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('end-no-timestamps', true)
@@ -3223,6 +3226,83 @@ describe('useWatchFastingBridge', () => {
           true,
           true,
           expect.objectContaining({ id: 'fast-replacement-after-match' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+
+      // Part 4: Explicit fastStartOutcome: 'confirmed' binds carried fastId (or verifies /current when omitted) so a replacement fast is never ended.
+      const startDClientId = '32323232-3232-4323-8323-323232323232';
+      const endDClientId = '33333333-3333-4333-8333-333333333334';
+      const startEClientId = '34343434-3434-4343-8343-343434343434';
+      const endEClientId = '35353535-3535-4353-8353-353535353535';
+      const replacementFast = {
+        id: 'fast-replacement-on-confirmed',
+        client_id: '36363636-3636-4363-8363-363636363636',
+        start_time: new Date(Date.now() + 4 * 3_600_000).toISOString(),
+        end_time: null,
+        target_end_time: new Date(Date.now() + 20 * 3_600_000).toISOString(),
+        fasting_type: '18:6 Warrior',
+        status: 'ACTIVE',
+      };
+      (endFast as jest.Mock).mockClear();
+      (fetchCurrentFast as jest.Mock)
+        .mockRejectedValueOnce(new Error('offline D')) // Start D fails
+        .mockResolvedValueOnce(replacementFast) // executeEnd sees replacementFast != 'fast-orig-d' -> staleReplay
+        .mockRejectedValueOnce(new Error('offline E')) // Start E fails
+        .mockResolvedValueOnce(replacementFast) // confirmed without fastId verifies /current -> mismatch -> superseded
+        .mockResolvedValueOnce(replacementFast); // retired End E replaySettledAck
+
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startDClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(4));
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endDClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+        clientId: startDClientId,
+        fastStartOutcome: 'confirmed',
+        fastId: 'fast-orig-d',
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endDClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-replacement-on-confirmed' })
+        )
+      );
+      expect(endFast).not.toHaveBeenCalled();
+
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: startEClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+      });
+      await waitFor(() => expect(addLog).toHaveBeenCalledTimes(5));
+      mockListeners.get('onFastEndRequested')?.({
+        clientId: endEClientId,
+        ownerId: 'srv-1',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      mockListeners.get('onWatchServerSynced')?.({
+        domain: 'fasting',
+        ownerId: 'srv-1',
+        clientId: startEClientId,
+        fastStartOutcome: 'confirmed',
+      });
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          endEClientId,
+          true,
+          true,
+          expect.objectContaining({ id: 'fast-replacement-on-confirmed' })
         )
       );
       expect(endFast).not.toHaveBeenCalled();
