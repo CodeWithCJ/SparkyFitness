@@ -31,6 +31,7 @@ import {
   INJECTION_SITES,
   type MedSubtype,
   type SharedScheduleRule,
+  type MedicationWithMeal,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
+import { translateMealRelation } from './medicationUtils';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
@@ -327,6 +329,16 @@ export default function TodayMedications({
                               )
                             : t('medications.schedule.anyTime', 'Any time')}
                         </span>
+                        {due.schedule.with_meal && (
+                          <>
+                            <span>•</span>
+                            <span className="font-medium text-foreground">
+                              {translateMealRelation(
+                                due.schedule.with_meal as MedicationWithMeal
+                              )}
+                            </span>
+                          </>
+                        )}
                       </div>
                       {!isLogged && (
                         <Input

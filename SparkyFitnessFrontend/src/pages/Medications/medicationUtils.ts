@@ -172,7 +172,7 @@ export const formatDaysOfWeek = (days: number[] | null) => {
   return days.map((d) => names[d] ?? '').join(', ');
 };
 
-const translateMealRelation = (withMeal: MedicationWithMeal): string => {
+export const translateMealRelation = (withMeal: MedicationWithMeal): string => {
   switch (withMeal) {
     case 'before':
       return i18n.t('medications.mealRelation.before', 'Before meal');
@@ -241,16 +241,17 @@ export const formatAllSchedulesSummary = (
     return formatScheduleDescription(active[0], timeFormat);
   }
 
-  // Check if all active schedules are daily with times
+  // Check if all active schedules are daily with times and no differing meal instructions
   const allDaily = active.every((s) => s.schedule_type_id === 'daily');
-  if (allDaily) {
+  const allHaveTime = active.every((s) => Boolean(s.time_of_day));
+  const noMealRelations = active.every((s) => !s.with_meal);
+
+  if (allDaily && allHaveTime && noMealRelations) {
     const times = active
-      .filter((s) => Boolean(s.time_of_day))
+      .slice()
       .sort((a, b) => (a.time_of_day || '').localeCompare(b.time_of_day || ''))
       .map((s) => formatTimeOfDayString(s.time_of_day!, timeFormat));
-    if (times.length > 0) {
-      return `${i18n.t('medications.scheduleDesc.daily', 'Daily')} (${times.join(', ')})`;
-    }
+    return `${i18n.t('medications.scheduleDesc.daily', 'Daily')} (${times.join(', ')})`;
   }
 
   return active.map((s) => formatScheduleDescription(s, timeFormat)).join('; ');

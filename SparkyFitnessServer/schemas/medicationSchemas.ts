@@ -111,7 +111,10 @@ const MedicationFieldsSchema = z.object({
   notes: optionalNullableString,
   source: z.string().optional(),
   custom_fields: customFields,
-  schedules: z.array(CreateScheduleBodySchema).optional(),
+  schedules: z
+    .array(CreateScheduleBodySchema)
+    .max(20, 'At most 20 schedules may be created at once')
+    .optional(),
 });
 
 export const CreateMedicationBodySchema = MedicationFieldsSchema.loose();

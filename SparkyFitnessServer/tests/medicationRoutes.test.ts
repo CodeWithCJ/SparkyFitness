@@ -18,6 +18,7 @@ import {
 import { extractSupplementLabel } from '../services/supplementLabelScanService.js';
 import { lookupSupplementInOpenFoodFacts } from '../services/supplementOpenFoodFactsService.js';
 import { getActiveProvidersByTypes } from '../models/externalProviderRepository.js';
+import type { MedicationDetail } from '@workspace/shared';
 
 vi.mock('../models/medicationRepository.js');
 vi.mock('../models/medicationPenRepository.js');
@@ -151,16 +152,82 @@ describe('Medication Routes V2', () => {
     });
 
     it('creates a medication with initial schedules', async () => {
-      const created = {
+      const created: MedicationDetail = {
         id: UID,
+        user_id: 'user-1',
         name: 'Amoxicillin',
+        display_name: null,
+        type_id: null,
+        route_id: null,
+        strength_value: null,
+        strength_unit: null,
+        dose_amount: 500,
+        dose_unit: 'mg',
+        rxnorm_rxcui: null,
+        ndc: null,
+        prescriber: null,
+        pharmacy: null,
+        rx_number: null,
+        reason_text: null,
+        effectiveness_rating: null,
+        color: null,
+        icon: null,
+        photo_path: null,
+        is_active: true,
+        is_quick: false,
+        is_glp1: false,
+        is_supplement: false,
+        nutrients: {},
+        notes: null,
+        source: 'manual',
+        custom_fields: {},
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
         schedules: [
-          { id: 'sched-1', schedule_type_id: 'daily', time_of_day: '08:00' },
-          { id: 'sched-2', schedule_type_id: 'daily', time_of_day: '20:00' },
+          {
+            id: 'sched-1',
+            medication_id: UID,
+            schedule_type_id: 'daily',
+            time_of_day: '08:00',
+            dose_amount: null,
+            days_of_week: null,
+            interval_days: null,
+            day_of_month: null,
+            cycle_on_days: null,
+            cycle_off_days: null,
+            with_meal: null,
+            prn_reason: null,
+            prn_max_per_day: null,
+            start_date: null,
+            end_date: null,
+            active: true,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'sched-2',
+            medication_id: UID,
+            schedule_type_id: 'daily',
+            time_of_day: '20:00',
+            dose_amount: null,
+            days_of_week: null,
+            interval_days: null,
+            day_of_month: null,
+            cycle_on_days: null,
+            cycle_off_days: null,
+            with_meal: null,
+            prn_reason: null,
+            prn_max_per_day: null,
+            start_date: null,
+            end_date: null,
+            active: true,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          },
         ],
       };
       vi.mocked(medicationRepository.createMedication).mockResolvedValue(
-        created as any
+        created
       );
       const res = await request(app)
         .post('/api/v2/medications')

@@ -5,6 +5,7 @@ import type {
   CreateScheduleBody,
   UpdateScheduleBody,
 } from '../schemas/medicationSchemas.js';
+import type { MedicationSchedule } from '@workspace/shared';
 
 // Column lists kept in one place so SELECTs stay consistent.
 const MED_COLS = `id, user_id, name, display_name, type_id, route_id,
@@ -65,9 +66,11 @@ async function createMedication(userId: string, data: CreateMedicationBody) {
     );
     const med = result.rows[0];
 
-    const schedules: any[] = [];
+    const schedules: MedicationSchedule[] = [];
     if (data.schedules && data.schedules.length > 0) {
-      for (const sched of data.schedules) {
+      // Bound schedule array length defensively
+      const initialSchedules = data.schedules.slice(0, 20);
+      for (const sched of initialSchedules) {
         const schedRes = await client.query(
           `INSERT INTO medication_schedules (
              medication_id, user_id, schedule_type_id, time_of_day, dose_amount,
@@ -98,7 +101,7 @@ async function createMedication(userId: string, data: CreateMedicationBody) {
             sched.custom_fields ? JSON.stringify(sched.custom_fields) : null,
           ]
         );
-        schedules.push(schedRes.rows[0]);
+        schedules.push(schedRes.rows[0] as MedicationSchedule);
       }
     }
     await client.query('COMMIT');

@@ -825,6 +825,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
                 schedule_type_id: 'daily',
                 time_of_day: slot.time || null,
                 dose_amount:
+                  !isSupplement &&
                   slot.doseOverride.trim() &&
                   !Number.isNaN(parseFloat(slot.doseOverride))
                     ? parseFloat(slot.doseOverride)
@@ -1186,6 +1187,14 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
                               onPress={() => removeScheduleTimeSlot(index)}
                               className="p-2"
                               accessibilityRole="button"
+                              accessibilityLabel={t(
+                                'medications.form.removeTimeSlot',
+                                {
+                                  defaultValue: 'Remove time slot {{index}}',
+                                  index: index + 1,
+                                }
+                              )}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                               activeOpacity={0.6}
                             >
                               <Icon name="trash" size={18} color={textMuted} />

@@ -173,13 +173,18 @@ export function glp1CheckInMetricLabel(
   }
 }
 
-/** 'Tablet · 2 tablets' style secondary line for a dose row. */
+/** 'Tablet · 2 tablets · With meal' style secondary line for a dose row. */
 export function medicationDoseSubtitle(
   med: Medication,
   schedule: SharedScheduleRule | undefined,
   t: TFunction
 ): string {
-  return [medicationTypeLabel(med.type_id, t), formatDose(med, schedule)]
-    .filter(Boolean)
-    .join(' · ');
+  const parts = [
+    medicationTypeLabel(med.type_id, t),
+    formatDose(med, schedule),
+  ];
+  if (schedule?.with_meal) {
+    parts.push(mealTimingLabel(schedule.with_meal, t));
+  }
+  return parts.filter(Boolean).join(' · ');
 }

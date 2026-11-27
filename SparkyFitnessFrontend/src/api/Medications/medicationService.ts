@@ -69,6 +69,15 @@ export const addSchedule = (
     body,
   });
 
+export const updateSchedule = (
+  id: string,
+  body: Partial<MedicationSchedule>
+): Promise<MedicationSchedule> =>
+  apiCall(`/v2/medications/schedules/${id}`, {
+    method: 'PUT',
+    body,
+  });
+
 export const deleteSchedule = (id: string): Promise<void> =>
   apiCall(`/v2/medications/schedules/${id}`, { method: 'DELETE' });
 

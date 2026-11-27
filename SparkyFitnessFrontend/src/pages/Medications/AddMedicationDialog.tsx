@@ -925,8 +925,21 @@ export default function AddMedicationDialog({
                   {scheduleTimes.map((slot, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="w-32 shrink-0">
+                        <span
+                          id={`schedule-time-slot-${index}-label`}
+                          className="sr-only"
+                        >
+                          {t(
+                            'medications.form.timeSlotLabel',
+                            'Time slot {{index}}',
+                            {
+                              index: index + 1,
+                            }
+                          )}
+                        </span>
                         <TimeInput
                           value={slot.time}
+                          aria-labelledby={`schedule-time-slot-${index}-label`}
                           onChange={(newTime) =>
                             updateScheduleTimeSlot(index, 'time', newTime)
                           }
@@ -969,7 +982,7 @@ export default function AddMedicationDialog({
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
                           onClick={() => removeScheduleTimeSlot(index)}
-                          aria-label={t('common.remove', 'Remove')}
+                          aria-label={t('common.delete', 'Delete')}
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
