@@ -187,8 +187,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         ? DEV_BUNDLE_IDENTIFIER
         : IOS_PROD_BUNDLE_IDENTIFIER,
       appleTeamId: isDev ? DEV_APPLE_TEAM_ID : PROD_APPLE_TEAM_ID,
-      supportsTablet: false,
+      // Universal app: runs natively on iPad. Screens centre their content in a
+      // readable column on wide windows (src/components/ReadableWidthLayout.tsx).
+      supportsTablet: true,
       infoPlist: {
+        // iPhone stays portrait (the `orientation` in app.json). iPad allows
+        // every orientation, which iPadOS also requires for Split View, Slide
+        // Over and Stage Manager windows.
+        'UISupportedInterfaceOrientations~ipad': [
+          'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationPortraitUpsideDown',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
+        ],
         NSLocalNetworkUsageDescription:
           'SparkyFitness connects to self-hosted servers on your local network.',
         // Required by the food/meal photo picker and the label/barcode
@@ -235,12 +246,22 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         // Lets iOS honour the `timeSensitive` rest alert (see
         // `scheduleRestNotification`); without it a Focus mode silences it.
         'com.apple.developer.usernotifications.time-sensitive': true,
+        // Protect files at rest while allowing background tasks (offline outbox
+        // drain, background sync, GPS recording) to access storage once the device
+        // has been unlocked after boot.
+        'com.apple.developer.default-data-protection':
+          'NSFileProtectionCompleteUntilFirstUserAuthentication',
       },
       icon: './assets/icons/appicon.icon',
     },
     android: {
       package: isDev ? DEV_PACKAGE : PROD_PACKAGE,
       permissions: androidPermissions,
+      // Exclude the app's files from Android Auto Backup / adb backup. The
+      // offline SQLite cache (src/offline) holds health data in cleartext, and
+      // Keystore-backed SecureStore entries cannot be restored to another
+      // device anyway, so backing the data dir up only risks exposing it.
+      allowBackup: false,
       // NFC tag links (#941): production, or a dev build with ENABLE_NFC_LINKS=1.
       // The tag site lists the production package and signing keys, so an
       // unlisted dev build would only add a chooser. This is the verified web link Android 16 and later use; older
@@ -332,6 +353,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withExactAlarmModule',
       './plugins/withBackgroundWater',
       './plugins/withQuickActionLaunchGuard',
+      './plugins/withTabletRotation',
       './plugins/withWorkoutNotification',
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',

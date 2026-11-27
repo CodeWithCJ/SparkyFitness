@@ -47,6 +47,9 @@ import {
   formatConfirmation,
   formatJsonResult,
   formatList,
+  formatServing,
+  roundEnergy,
+  roundNutrient,
 } from './formatting.js';
 import {
   normalizePagination,
@@ -108,6 +111,9 @@ const COUNT_BASED_UNITS = [
   'bottle',
   'item',
   'pack',
+  'packet',
+  'scoop',
+  'bar',
 ];
 
 // One detail read while the chat waits on a lookup; the OpenFoodFacts default
@@ -286,9 +292,8 @@ function formatConsumedNutrition(
     unit = ''
   ) => {
     const value = scaled[name];
-    return typeof value === 'number'
-      ? `${Number(value.toFixed(3))}${unit}`
-      : 'unknown';
+    if (typeof value !== 'number') return 'unknown';
+    return `${name === 'calories' ? roundEnergy(value) : roundNutrient(value)}${unit}`;
   };
   return `Consumed: ${present('calories')} kcal | P ${present('protein', 'g')} | C ${present('carbs', 'g')} | F ${present('fat', 'g')}.`;
 }
@@ -852,26 +857,30 @@ export async function getNutritionalSummaryRows(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rows.map((row: any) => {
     const calories = Number(row.calories || 0);
+    // Display rows for the MCP tools (callers only print them): day sums of
+    // scaled entries carry float noise.
+    const nutrient = (value: unknown) => roundNutrient(Number(value || 0));
     return {
       entry_date: dayString(row.entry_date),
-      calories:
-        energyUnit === 'kJ' ? convertEnergy(calories, 'kcal', 'kJ') : calories,
-      protein: Number(row.protein || 0),
-      carbs: Number(row.carbs || 0),
-      fat: Number(row.fat || 0),
-      saturated_fat: Number(row.saturated_fat || 0),
-      polyunsaturated_fat: Number(row.polyunsaturated_fat || 0),
-      monounsaturated_fat: Number(row.monounsaturated_fat || 0),
-      trans_fat: Number(row.trans_fat || 0),
-      cholesterol: Number(row.cholesterol || 0),
-      sodium: Number(row.sodium || 0),
-      potassium: Number(row.potassium || 0),
-      fiber: Number(row.fiber || 0),
-      sugar: Number(row.sugar || 0),
-      vitamin_a: Number(row.vitamin_a || 0),
-      vitamin_c: Number(row.vitamin_c || 0),
-      calcium: Number(row.calcium || 0),
-      iron: Number(row.iron || 0),
+      calories: roundEnergy(
+        energyUnit === 'kJ' ? convertEnergy(calories, 'kcal', 'kJ') : calories
+      ),
+      protein: nutrient(row.protein),
+      carbs: nutrient(row.carbs),
+      fat: nutrient(row.fat),
+      saturated_fat: nutrient(row.saturated_fat),
+      polyunsaturated_fat: nutrient(row.polyunsaturated_fat),
+      monounsaturated_fat: nutrient(row.monounsaturated_fat),
+      trans_fat: nutrient(row.trans_fat),
+      cholesterol: nutrient(row.cholesterol),
+      sodium: nutrient(row.sodium),
+      potassium: nutrient(row.potassium),
+      fiber: nutrient(row.fiber),
+      sugar: nutrient(row.sugar),
+      vitamin_a: nutrient(row.vitamin_a),
+      vitamin_c: nutrient(row.vitamin_c),
+      calcium: nutrient(row.calcium),
+      iron: nutrient(row.iron),
       nutrition_warning:
         Number(row.legacy_ambiguous_entry_count || 0) > 0
           ? 'Totals exclude legacy entries with ambiguous units. Correct those entries explicitly before treating this day as complete.'
@@ -1037,11 +1046,11 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. food_name is searched again, so with provider_type "usda" quote such a name as described under lookup_food_nutrition. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, serving_size?, serving_unit?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Set serving_unit (and serving_size; it defaults to 1 for serving, piece, slice, portion, unit, can, bottle, item, pack, packet, scoop and bar, to the count in a unit such as "250 ml", and to 100 otherwise, so give it for other countable units) to the serving the nutrients are for; quantity/unit is then only the amount logged, read like log_food when logging: no quantity logs one serving, no unit counts servings. Example, 380 kcal per piece and 2 eaten: {serving_size:1, serving_unit:"piece", quantity:2, unit:"piece"}. Without serving_unit, nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
-- list_diary(entry_date?)
+- list_diary(entry_date?) — the day's entries; for calories and macros eaten and left, use sparky_get_day_status
 - delete_entry(entry_id?|food_name?, entry_type?, entry_date?, meal_type?|meal_type_id?) — deletes one diary entry. Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today), with meal_type narrowing when the same food appears in several meals. Ambiguous names return the candidates with their ids instead of deleting.
 - delete_food(food_id?|food_name?) — deletes food + variants from library; logged diary entries are preserved
 - update_entry(entry_id?|food_name?, entry_type?, entry_date?, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type (meal_type/meal_type_id is the NEW meal). Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today). Ambiguous names return the candidates with their ids instead of updating.
@@ -1295,7 +1304,7 @@ Actions:
                   let text = `**${f.name}**`;
                   if (f.brand) text += ` (${f.brand})`;
                   if (v) {
-                    text += `\n  ${v.serving_size}${v.serving_unit}: ${v.calories} kcal | P: ${v.protein}g | C: ${v.carbs}g | F: ${v.fat}g`;
+                    text += `\n  ${formatServing(v.serving_size, v.serving_unit)}: ${roundEnergy(v.calories)} kcal | P: ${roundNutrient(v.protein)}g | C: ${roundNutrient(v.carbs)}g | F: ${roundNutrient(v.fat)}g`;
                   }
                   text += `\n  ID: ${f.id}`;
                   if (v) text += ` | Variant: ${v.id}`;
@@ -1384,19 +1393,19 @@ Actions:
                   ? f.default_variant || f.variants?.[0]
                   : pickBestVariant(f);
               if (v) {
-                text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
+                text += `\n  Serving Size: ${formatServing(v.serving_size, v.serving_unit)}`;
                 if (f[PARTIAL_SERVING_DATA])
                   text +=
                     ' (from the search summary; the full record was unavailable, so log by weight)';
-                text += `\n  Energy: ${v.calories ?? v.energy ?? 0} kcal`;
-                text += `\n  Macros: Protein: ${v.protein}g | Carbs: ${v.carbs}g | Fat: ${v.fat}g`;
+                text += `\n  Energy: ${roundEnergy(v.calories ?? v.energy ?? 0)} kcal`;
+                text += `\n  Macros: Protein: ${roundNutrient(v.protein)}g | Carbs: ${roundNutrient(v.carbs)}g | Fat: ${roundNutrient(v.fat)}g`;
                 if (
                   isSet(v.saturated_fat) ||
                   isSet(v.dietary_fiber) ||
                   isSet(v.sugars) ||
                   isSet(v.sodium)
                 ) {
-                  text += `\n  Details: Fiber: ${v.dietary_fiber ?? 0}g | Sugar: ${v.sugars ?? 0}g | Sodium: ${v.sodium ?? 0}mg | SatFat: ${v.saturated_fat ?? 0}g`;
+                  text += `\n  Details: Fiber: ${roundNutrient(v.dietary_fiber ?? 0)}g | Sugar: ${roundNutrient(v.sugars ?? 0)}g | Sodium: ${roundNutrient(v.sodium ?? 0)}mg | SatFat: ${roundNutrient(v.saturated_fat ?? 0)}g`;
                 }
 
                 const plausibleVariants = (f.variants || []).filter(
@@ -1409,13 +1418,13 @@ Actions:
                 );
                 if (plausibleVariants.length > 0) {
                   const units = plausibleVariants
-                    .map(
-                      (vOpt: any) => `${vOpt.serving_size} ${vOpt.serving_unit}`
+                    .map((vOpt: any) =>
+                      formatServing(vOpt.serving_size, vOpt.serving_unit)
                     )
                     .join(', ');
                   text += `\n  Available Serving Units: ${units}`;
                 } else {
-                  text += `\n  Available Serving Units: ${v.serving_size} ${v.serving_unit}`;
+                  text += `\n  Available Serving Units: ${formatServing(v.serving_size, v.serving_unit)}`;
                 }
 
                 // Internal hits carry a usable food UUID; surface it so the
@@ -1439,7 +1448,7 @@ Actions:
                   text += `\n- **${alt.name}**`;
                   if (alt.brand) text += ` (${alt.brand})`;
                   if (altV) {
-                    text += ` (${altV.serving_size}${altV.serving_unit}: ${altV.calories ?? altV.energy ?? 0} kcal)`;
+                    text += ` (${formatServing(altV.serving_size, altV.serving_unit)}: ${roundEnergy(altV.calories ?? altV.energy ?? 0)} kcal)`;
                   }
                 });
               }
@@ -1536,7 +1545,7 @@ Actions:
               );
               let loggedMsg = `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`;
               if (entry.id) {
-                loggedMsg += ` Entry ID: ${entry.id}. Reference: ${resolvedLog.variant.serving_size} ${resolvedLog.variant.serving_unit}. ${formatConsumedNutrition(resolvedLog.quantity, resolvedLog.variant.serving_size, resolvedLog.variant)}`;
+                loggedMsg += ` Entry ID: ${entry.id}. Reference: ${formatServing(resolvedLog.variant.serving_size, resolvedLog.variant.serving_unit)}. ${formatConsumedNutrition(resolvedLog.quantity, resolvedLog.variant.serving_size, resolvedLog.variant)}`;
               }
               // log_food only ever logs a food already in the database, so
               // Quick Add can never apply here.
@@ -1943,7 +1952,7 @@ Actions:
                   ),
                 }
               );
-              let savedMsg = `Saved "${food.name}" from ${result.source} and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}. Reference: ${logged.variant.serving_size} ${logged.variant.serving_unit}. ${formatConsumedNutrition(logged.quantity, logged.variant.serving_size, logged.variant)}`;
+              let savedMsg = `Saved "${food.name}" from ${result.source} and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}. Reference: ${formatServing(logged.variant.serving_size, logged.variant.serving_unit)}. ${formatConsumedNutrition(logged.quantity, logged.variant.serving_size, logged.variant)}`;
               if (args.is_quick_food) {
                 savedMsg +=
                   ' Saved as Quick Add — hidden from your food list and search.';
@@ -1952,7 +1961,16 @@ Actions:
             }
 
             case 'create_food': {
-              const rawUnit = args.unit || 'serving';
+              // serving_unit (with an optional serving_size) sets the basis the
+              // nutrients are for. Without it, quantity/unit do, exactly as before.
+              const servingUnit = args.serving_unit?.trim() || undefined;
+              const usesServingFields = servingUnit !== undefined;
+              if (args.serving_size !== undefined && !usesServingFields) {
+                return ERRORS.VALIDATION(
+                  'serving_size needs serving_unit, for example {"serving_size":30,"serving_unit":"g"}. quantity/unit are then the amount eaten, logged when meal_type_id or meal_type is set.'
+                );
+              }
+              const rawUnit = servingUnit ?? (args.unit?.trim() || 'serving');
               // A unit that already encodes a count ("4 pieces", "2 cups") must be
               // split into a numeric serving_size and a bare unit. Stored verbatim it
               // becomes serving_size=1, serving_unit="4 pieces" — which then renders as
@@ -1965,14 +1983,24 @@ Actions:
                 ? Number(countPrefix![1])
                 : 1;
               const targetUnit = countPrefix ? countPrefix[2].trim() : rawUnit;
+              // normalizePortionUnit folds case and plurals ("Pieces" -> "piece").
               const isCountUnit = COUNT_BASED_UNITS.includes(
-                targetUnit.toLowerCase()
+                normalizePortionUnit(targetUnit)
               );
+              if (
+                usesServingFields &&
+                args.serving_size !== undefined &&
+                hasPositivePrefix
+              ) {
+                return ERRORS.VALIDATION(
+                  `"${rawUnit}" already includes a serving size. Put the number in serving_size or in the unit, not both.`
+                );
+              }
               // A numeric prefix already states the serving size ("250 ml" is one
               // 250 ml serving), so the implicit base is 1 — not the 100 default
               // used for bare mass/volume units, which would store 25,000 ml.
               const targetQuantity =
-                (args.quantity ||
+                ((usesServingFields ? args.serving_size : args.quantity) ||
                   (hasPositivePrefix || isCountUnit ? 1 : 100)) *
                 unitMultiplier;
               const mealType =
@@ -1995,6 +2023,54 @@ Actions:
                 return ERRORS.VALIDATION(
                   'Quick Add foods are hidden from the food list and search, so they must be logged in the same call. Add meal_type_id (or meal_type) to this create_food call, or drop is_quick_food to save it to the food list.'
                 );
+              }
+              // Amount to log. Without serving fields it is the serving itself. With
+              // them, quantity/unit is what was eaten, read the way log_food reads
+              // it: no quantity is one serving, no unit is a count of servings, and
+              // another unit is converted to the serving unit. Checked before
+              // anything is created.
+              let loggedQuantity = targetQuantity;
+              let loggedUnit = targetUnit;
+              if (
+                usesServingFields &&
+                mealType &&
+                args.quantity !== undefined
+              ) {
+                const eatenUnit = args.unit?.trim() || 'serving';
+                if (args.quantity <= 0) {
+                  return ERRORS.VALIDATION(
+                    'quantity is the amount eaten and must be above 0. Leave it out to log one serving.'
+                  );
+                }
+                if (isAmbiguousLegacyFoodUnit(eatenUnit)) {
+                  return ERRORS.VALIDATION(
+                    `Unit "${eatenUnit}" includes a count. With serving_size/serving_unit, put the amount eaten in quantity and a bare unit in unit, for example {"quantity":2,"unit":"piece"}.`
+                  );
+                }
+                if (
+                  normalizePortionUnit(eatenUnit) ===
+                  normalizePortionUnit(targetUnit)
+                ) {
+                  loggedQuantity = args.quantity;
+                } else {
+                  const converted = resolveFoodPortion({
+                    quantity: args.quantity,
+                    unit: eatenUnit,
+                    variants: [
+                      {
+                        serving_size: targetQuantity,
+                        serving_unit: targetUnit,
+                      },
+                    ],
+                  });
+                  if (!converted.ok) {
+                    return ERRORS.VALIDATION(
+                      `Cannot log ${args.quantity} ${eatenUnit} against a food served per ${targetQuantity} ${targetUnit}: the units cannot be converted without a guess. Nothing was created. Log in "${targetUnit}" or "serving", or set serving_unit to match the amount eaten.`
+                    );
+                  }
+                  loggedQuantity = converted.quantity;
+                  loggedUnit = converted.unit;
+                }
               }
               const rawFoodName = args.food_name?.trim() || 'Food';
               const notes = args.notes ?? null;
@@ -2032,7 +2108,7 @@ Actions:
                 is_quick_food: args.is_quick_food === true,
               });
               const v = food.default_variant;
-              let msg = `Food "${food.name}" created with ${v?.calories || 0} kcal per ${v?.serving_size || 100}${v?.serving_unit || 'g'}.`;
+              let msg = `Food "${food.name}" created with ${roundEnergy(v?.calories || 0)} kcal per ${formatServing(v?.serving_size || 100, v?.serving_unit || 'g')}.`;
               if (mealType) {
                 const entryDate = args.entry_date || todayInZone(tz);
                 await foodEntryService.createFoodEntry(
@@ -2043,8 +2119,8 @@ Actions:
                     food_id: food.id,
                     variant_id: v?.id,
                     entry_date: entryDate,
-                    quantity: targetQuantity,
-                    unit: targetUnit,
+                    quantity: loggedQuantity,
+                    unit: loggedUnit,
                     meal_type_id: mealType.id,
                     entry_time: resolveEntryTime(
                       args.entry_time,
@@ -2054,7 +2130,9 @@ Actions:
                     ),
                   }
                 );
-                msg += ` Also logged to ${mealType.name} for ${entryDate}.`;
+                msg += usesServingFields
+                  ? ` Also logged ${loggedQuantity} ${loggedUnit} to ${mealType.name} for ${entryDate}.`
+                  : ` Also logged to ${mealType.name} for ${entryDate}.`;
               }
               if (args.is_quick_food) {
                 msg +=
@@ -2228,14 +2306,11 @@ Actions:
                     isLegacyAmbiguous || !compatibleUnit
                       ? 'Nutrition is not included because this legacy entry has an ambiguous unit. Correct it explicitly with quantity and unit.'
                       : undefined,
-                  nutritional_values:
+                  // Unrounded, so the day total is the sum of exact values
+                  // (like the other tools); rounded when printed.
+                  energy:
                     scaled && isSet(row.calories)
-                      ? {
-                          calories: Math.round(Number(displayCalories)),
-                          protein: Number(scaled.protein?.toFixed(3)),
-                          carbs: Number(scaled.carbs?.toFixed(3)),
-                          fat: Number(scaled.fat?.toFixed(3)),
-                        }
+                      ? Number(displayCalories)
                       : undefined,
                 };
               });
@@ -2272,9 +2347,12 @@ Actions:
                   for (const entry of entries) {
                     if (entry.entry_type === 'food_entry') {
                       text += `- **${entry.food_name}** — ${entry.quantity} ${entry.unit}`;
-                      if (entry.nutritional_values?.calories !== undefined) {
-                        text += ` (${entry.nutritional_values.calories} ${eUnit})`;
-                        totalEnergy += entry.nutritional_values.calories;
+                      if (
+                        entry.energy !== undefined &&
+                        Number.isFinite(entry.energy)
+                      ) {
+                        text += ` (${roundEnergy(entry.energy)} ${eUnit})`;
+                        totalEnergy += entry.energy;
                       } else if (entry.nutrition_warning) {
                         text += `\n  Warning: ${entry.nutrition_warning}`;
                       }
@@ -2296,7 +2374,7 @@ Actions:
                 }
 
                 if (totalEnergy > 0) {
-                  text += `---\n**Total Energy:** ${totalEnergy} ${eUnit}`;
+                  text += `---\n**Total Energy:** ${roundEnergy(totalEnergy)} ${eUnit}`;
                 }
               }
 
@@ -2808,7 +2886,7 @@ Actions:
                 );
               }
               return formatConfirmation(
-                `Food variant updated for "${parentFood.name}" (${updated.calories ?? 0} kcal per ${updated.serving_size ?? '?'}${updated.serving_unit ?? ''}).`
+                `Food variant updated for "${parentFood.name}" (${roundEnergy(updated.calories ?? 0)} kcal per ${formatServing(updated.serving_size ?? '?', updated.serving_unit)}).`
               );
             }
 
@@ -3099,7 +3177,7 @@ Actions:
       description:
         'Returns entry-level food diary data for a specific date or date range.' +
         DIARY_NUTRIENTS_NOTE +
-        ' For day totals use sparky_get_nutrition_summary.',
+        ' For day totals use sparky_get_nutrition_summary; for what is left against the goals, sparky_get_day_status.',
       inputSchema: foodDiaryDateRangeSchema,
       execute: async (rawArgs) => {
         const parsed = foodDiaryDateRangeSchema.safeParse(

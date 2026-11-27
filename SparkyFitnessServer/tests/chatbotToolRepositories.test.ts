@@ -585,7 +585,17 @@ describe('foodEntry recent/usage queries', () => {
 
 describe('goalRepository.getGoalTimeline', () => {
   it('returns the compact goal history newest first', async () => {
-    const rows = [{ id: 'goal-1', goal_date: '2026-06-01', calories: 2200 }];
+    const rows = [
+      {
+        id: 'goal-1',
+        goal_date: '2026-06-01',
+        calories: 2200,
+        protein: null,
+        carbs: null,
+        fat: null,
+        water_goal_ml: null,
+      },
+    ];
     mockClient.query.mockResolvedValue({ rows });
 
     const result = await goalRepository.getGoalTimeline('user-1');

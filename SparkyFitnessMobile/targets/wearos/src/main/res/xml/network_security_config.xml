@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!--
+    SparkyFitness connects to user-configured self-hosted servers whose hostnames are
+    selected at runtime (matching plugins/withNetworkSecurityConfig.ts), so release
+    builds intentionally trust user-installed CAs in base-config while disallowing
+    cleartext HTTP.
+  -->
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+      <!-- Required for self-hosted servers using private/internal CAs (e.g. Caddy, mkcert, enterprise PKI). -->
+      <certificates src="user" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>

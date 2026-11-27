@@ -1,24 +1,34 @@
 import {
   logDrinkOrQueue,
   removeDrinkOrQueue,
+  logCustomAmountOrQueue,
 } from '../../src/offline/logDrink';
-import { changeWaterIntake } from '../../src/services/api/measurementsApi';
+import {
+  changeWaterIntake,
+  logCustomWaterAmount,
+} from '../../src/services/api/measurementsApi';
 import { ApiError } from '../../src/services/api/errors';
 import { TimeoutError } from '../../src/utils/concurrency';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/api/measurementsApi', () => ({
   changeWaterIntake: jest.fn(),
+  logCustomWaterAmount: jest.fn(),
 }));
 const mockQueue = jest.fn();
 const mockRemoveOffline = jest.fn();
+const mockQueueCustom = jest.fn();
 jest.mock('../../src/offline/waterHandOver', () => ({
   queueWaterDrink: (...args: unknown[]) => mockQueue(...args),
   removeLatestDrinkOffline: (...args: unknown[]) => mockRemoveOffline(...args),
+  queueWaterCustomAmount: (...args: unknown[]) => mockQueueCustom(...args),
 }));
 
 const mockChange = changeWaterIntake as jest.MockedFunction<
   typeof changeWaterIntake
+>;
+const mockLogCustom = logCustomWaterAmount as jest.MockedFunction<
+  typeof logCustomWaterAmount
 >;
 
 describe('logDrinkOrQueue', () => {
@@ -51,10 +61,14 @@ describe('logDrinkOrQueue', () => {
     expect(await logDrinkOrQueue('2026-11-21', 4)).toEqual({ queued: true });
 
     const sentKey = mockChange.mock.calls[0][0].clientId;
-    expect(mockQueue).toHaveBeenCalledWith(sentKey, {
-      entryDate: '2026-11-21',
-      containerId: 4,
-    });
+    expect(mockQueue).toHaveBeenCalledWith(
+      sentKey,
+      {
+        entryDate: '2026-11-21',
+        containerId: 4,
+      },
+      expect.any(Number)
+    );
   });
 
   it('uses a fresh key for each drink', async () => {
@@ -128,7 +142,10 @@ describe('removeDrinkOrQueue', () => {
       kept: true,
       result: 'queued',
     });
-    expect(mockRemoveOffline).toHaveBeenCalledWith('2026-11-21');
+    expect(mockRemoveOffline).toHaveBeenCalledWith(
+      '2026-11-21',
+      expect.any(Number)
+    );
   });
 
   it('does nothing on the phone after a timeout, since the server may have removed it', async () => {
@@ -143,5 +160,65 @@ describe('removeDrinkOrQueue', () => {
 
     await expect(removeDrinkOrQueue('2026-11-21', 4)).rejects.toThrow();
     expect(mockRemoveOffline).not.toHaveBeenCalled();
+  });
+});
+
+describe('logCustomAmountOrQueue', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQueueCustom.mockReset();
+  });
+
+  it('returns the server answer when the amount is logged', async () => {
+    const response = { id: 'x', water_ml: 500, entry_date: '2026-11-21' };
+    mockLogCustom.mockResolvedValue(response);
+
+    expect(await logCustomAmountOrQueue('2026-11-21', 180)).toEqual({
+      queued: false,
+      response,
+    });
+    expect(mockLogCustom).toHaveBeenCalledWith({
+      entryDate: '2026-11-21',
+      waterMl: 180,
+      clientId: expect.any(String),
+    });
+    expect(mockQueueCustom).not.toHaveBeenCalled();
+  });
+
+  it('keeps the amount under the key the failed request carried', async () => {
+    mockLogCustom.mockRejectedValue(new TypeError('Network request failed'));
+    mockQueueCustom.mockResolvedValue(true);
+
+    expect(await logCustomAmountOrQueue('2026-11-21', 180)).toEqual({
+      queued: true,
+    });
+
+    const sentKey = mockLogCustom.mock.calls[0][0].clientId;
+    expect(mockQueueCustom).toHaveBeenCalledWith(
+      sentKey,
+      {
+        entryDate: '2026-11-21',
+        waterMl: 180,
+      },
+      expect.any(Number)
+    );
+  });
+
+  it('does not keep the amount after a timeout, since the server may have it', async () => {
+    mockLogCustom.mockRejectedValue(new TimeoutError('Request', 1000));
+
+    await expect(
+      logCustomAmountOrQueue('2026-11-21', 180)
+    ).rejects.toBeInstanceOf(TimeoutError);
+    expect(mockQueueCustom).not.toHaveBeenCalled();
+  });
+
+  it('passes on a refusal from the server', async () => {
+    mockLogCustom.mockRejectedValue(new ApiError('bad', 400));
+
+    await expect(
+      logCustomAmountOrQueue('2026-11-21', 180)
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(mockQueueCustom).not.toHaveBeenCalled();
   });
 });

@@ -83,7 +83,8 @@ describe('sparky_manage_goals', () => {
         '- **Protein:** 160g\n' +
         '- **Carbs:** 240g\n' +
         '- **Fat:** 70g\n' +
-        '- **Water:** 2200ml\n'
+        '- **Water:** 2200ml\n' +
+        '- **Saturated fat:** 20g\n'
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
@@ -93,7 +94,9 @@ describe('sparky_manage_goals', () => {
     );
   });
 
-  it('get_goals defaults to today (UTC) and labels it "today"', async () => {
+  it('get_goals defaults to today (UTC) and prints the date', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-01T12:00:00Z'));
     vi.mocked(goalService.getUserGoals).mockResolvedValue({
       calories: 2000,
       protein: 150,
@@ -108,7 +111,7 @@ describe('sparky_manage_goals', () => {
     );
 
     expect(result).toBe(
-      '### Goals for today\n\n' +
+      '### Goals for 2026-06-01 (today)\n\n' +
         '- **Calories:** 2000 kcal\n' +
         '- **Protein:** 150g\n' +
         '- **Carbs:** 250g\n' +
@@ -117,10 +120,11 @@ describe('sparky_manage_goals', () => {
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      todayInZone('UTC'),
+      '2026-06-01',
       undefined,
       true
     );
+    vi.useRealTimers();
   });
 
   it('set_goals applies MCP defaults for omitted fields and cascades', async () => {
@@ -163,6 +167,120 @@ describe('sparky_manage_goals', () => {
       p_iron: undefined,
       custom_nutrients: undefined,
     });
+  });
+
+  it('get_goals lists steps, micronutrient and custom goals that are set', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      target_steps: 8000,
+      saturated_fat: 20,
+      polyunsaturated_fat: 10,
+      monounsaturated_fat: 25,
+      trans_fat: 1,
+      cholesterol: 300,
+      sodium: 2300,
+      potassium: 0,
+      dietary_fiber: 30,
+      sugars: 50,
+      vitamin_a: 900,
+      vitamin_c: 90,
+      calcium: 1000,
+      iron: null,
+      custom_nutrients: { Omega3: 1.6666666666666667, Zinc: null },
+    });
+    const result = await tools.sparky_manage_goals.execute!(
+      { action: 'get_goals', target_date: '2026-06-01' },
+      opts
+    );
+    expect(result).toBe(
+      '### Goals for 2026-06-01\n\n' +
+        '- **Calories:** 2000 kcal\n' +
+        '- **Steps:** 8000\n' +
+        '- **Saturated fat:** 20g\n' +
+        '- **Polyunsaturated fat:** 10g\n' +
+        '- **Monounsaturated fat:** 25g\n' +
+        '- **Trans fat:** 1g\n' +
+        '- **Cholesterol:** 300 mg\n' +
+        '- **Sodium:** 2300 mg\n' +
+        '- **Fiber:** 30g\n' +
+        '- **Sugars:** 50g\n' +
+        '- **Vitamin A:** 900 µg\n' +
+        '- **Vitamin C:** 90 mg\n' +
+        '- **Calcium:** 1000 mg\n' +
+        '- **Omega3:** 1.7\n'
+    );
+  });
+
+  it('get_goals leaves out a steps goal of 0', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      target_steps: 0,
+    });
+    const result = await tools.sparky_manage_goals.execute!(
+      { action: 'get_goals', target_date: '2026-06-01' },
+      opts
+    );
+    expect(result).toBe(
+      '### Goals for 2026-06-01\n\n- **Calories:** 2000 kcal\n'
+    );
+  });
+
+  // The cascade deletes the goals in the next six months before inserting the
+  // new row, so a steps goal that is not passed on ends up empty.
+  it('set_goals keeps the steps goal', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      target_steps: 9000,
+    });
+    await tools.sparky_manage_goals.execute!(
+      { action: 'set_goals', start_date: '2026-06-15', calories: 2200 },
+      opts
+    );
+    expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ p_calories: 2200, p_target_steps: 9000 })
+    );
+  });
+
+  it('set_goals keeps the steps goal for a past start date', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      target_steps: 9000,
+    });
+    await tools.sparky_manage_goals.execute!(
+      { action: 'set_goals', start_date: '2020-01-01', calories: 2200 },
+      opts
+    );
+    expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        p_start_date: '2020-01-01',
+        p_target_steps: 9000,
+      })
+    );
+  });
+
+  it('set_goals passes on an empty steps goal as empty', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      target_steps: null,
+    });
+    await tools.sparky_manage_goals.execute!(
+      { action: 'set_goals', start_date: '2026-06-15', calories: 2200 },
+      opts
+    );
+    expect(
+      vi.mocked(goalService.manageGoalTimeline).mock.calls[0][1]
+    ).toHaveProperty('p_target_steps', null);
   });
 
   // set_goals has no parameters for the exercise targets, the macro/meal
@@ -448,7 +566,7 @@ describe('sparky_manage_goals', () => {
   it('list_goal_timeline renders one line per goal change', async () => {
     vi.mocked(goalRepository.getGoalTimeline).mockResolvedValue([
       {
-        id: 1,
+        id: 'goal-1',
         goal_date: '2026-06-01',
         calories: 2000,
         protein: 150,
@@ -457,7 +575,7 @@ describe('sparky_manage_goals', () => {
         water_goal_ml: 2000,
       },
       {
-        id: 2,
+        id: 'goal-2',
         goal_date: '2026-05-01',
         calories: 1800,
         protein: 140,
@@ -483,7 +601,7 @@ describe('sparky_manage_goals', () => {
   it('list_goal_timeline renders a pg local-midnight Date goal_date as a calendar-day string', async () => {
     vi.mocked(goalRepository.getGoalTimeline).mockResolvedValue([
       {
-        id: 1,
+        id: 'goal-1',
         goal_date: new Date(2026, 5, 1),
         calories: 2000,
         protein: 150,
@@ -501,6 +619,82 @@ describe('sparky_manage_goals', () => {
     expect(result).toBe(
       '# Goal Timeline\n\n' +
         '**2026-06-01**: 2000 kcal | P: 150g | C: 250g | F: 67g | W: 2000ml'
+    );
+  });
+
+  it('list_goal_timeline puts the default row last, rounds values and skips empty ones', async () => {
+    // Postgres sorts the undated default row first with ORDER BY goal_date DESC.
+    vi.mocked(goalRepository.getGoalTimeline).mockResolvedValue([
+      {
+        id: 'goal-3',
+        goal_date: null,
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fat: 67,
+        water_goal_ml: null,
+      },
+      {
+        id: 'goal-1',
+        goal_date: '2026-06-01',
+        calories: 2000,
+        protein: 150.33333333333334,
+        carbs: 250,
+        fat: 101.1111111111111,
+        water_goal_ml: 2000,
+      },
+    ]);
+    const result = await tools.sparky_manage_goals.execute!(
+      { action: 'list_goal_timeline' },
+      opts
+    );
+    expect(result).toBe(
+      '# Goal Timeline\n\n' +
+        '**2026-06-01**: 2000 kcal | P: 150.3g | C: 250g | F: 101.1g | W: 2000ml\n\n' +
+        '**Default (no start date)**: 2000 kcal | P: 150g | C: 250g | F: 67g'
+    );
+    expect(result).not.toContain('null');
+  });
+
+  it('list_goal_timeline keeps dated rows newest first wherever the default row is', async () => {
+    vi.mocked(goalRepository.getGoalTimeline).mockResolvedValue([
+      {
+        id: 'goal-1',
+        goal_date: '2026-06-01',
+        calories: 2000,
+        protein: null,
+        carbs: null,
+        fat: null,
+        water_goal_ml: null,
+      },
+      {
+        id: 'goal-3',
+        goal_date: null,
+        calories: 1800,
+        protein: null,
+        carbs: null,
+        fat: null,
+        water_goal_ml: null,
+      },
+      {
+        id: 'goal-2',
+        goal_date: '2026-05-01',
+        calories: null,
+        protein: null,
+        carbs: null,
+        fat: null,
+        water_goal_ml: null,
+      },
+    ]);
+    const result = await tools.sparky_manage_goals.execute!(
+      { action: 'list_goal_timeline' },
+      opts
+    );
+    expect(result).toBe(
+      '# Goal Timeline\n\n' +
+        '**2026-06-01**: 2000 kcal\n\n' +
+        '**2026-05-01**: no values\n\n' +
+        '**Default (no start date)**: 1800 kcal'
     );
   });
 
@@ -1060,6 +1254,17 @@ describe('sparky_get_goal_snapshot', () => {
         opts
       );
       expect(result).toMatch(/own account/);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
+
+    it("refuses the whole call in a family member's account, goals included", async () => {
+      vi.mocked(actorUserIdFor).mockReturnValue('someone-else');
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 70, calories: 2000 },
+        opts
+      );
+      expect(result).toMatch(/own account/);
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
       expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
     });
   });

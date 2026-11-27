@@ -16,6 +16,20 @@ export const upsertWaterIntakeBodySchema = z.object({
 });
 export type UpsertWaterIntakeBody = z.infer<typeof upsertWaterIntakeBodySchema>;
 
+// A one-off amount with no container (#3734): the same client_id replay-key
+// contract as upsertWaterIntakeBodySchema, but carrying the millilitre
+// amount directly instead of a container-derived press count.
+// water_intake_entries.water_ml is numeric(10,3); the max keeps an oversized
+// amount a 400 here instead of a database overflow.
+export const logWaterIntakeAmountBodySchema = z.object({
+  entry_date: z.string(),
+  water_ml: z.number().positive().max(9999999.999),
+  client_id: clientRequestIdSchema.optional(),
+});
+export type LogWaterIntakeAmountBody = z.infer<
+  typeof logWaterIntakeAmountBodySchema
+>;
+
 // The day-totals endpoint returns a single aggregated object. `manual_ml`,
 // `ledger_ml` and `food_ml` are the breakdown added in Phase 4; they are
 // optional because an older server (or a day fetched before this feature
@@ -55,5 +69,6 @@ export const waterIntakeLogEntrySchema = z.object({
   // #2115: set when this drink was logged by a linked container.
   food_entry_id: z.string().nullable().optional(),
   hydration_factor: z.number().nullable().optional(),
+  client_id: z.string().nullable().optional(),
 });
 export type WaterIntakeLogEntry = z.infer<typeof waterIntakeLogEntrySchema>;

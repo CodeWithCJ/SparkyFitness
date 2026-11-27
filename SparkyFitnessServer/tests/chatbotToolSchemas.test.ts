@@ -485,14 +485,17 @@ describe('published (flat) chatbot tool schemas', () => {
     }
   );
 
-  // create_food stores quantity × unit as the serving the nutrients describe and
-  // logs that same amount. A client reading only "Amount consumed" sends
-  // per-100 g values with the amount eaten and stores them per that amount.
-  it('manageFoodInput tells create_food clients that quantity is the serving the nutrients are for', () => {
+  // create_food takes the nutrient basis from serving_size/serving_unit, and
+  // quantity × unit is only the amount logged. A client reading only "Amount
+  // consumed" must not send per-serving values as the amount eaten.
+  it('manageFoodInput tells create_food clients that quantity is the amount logged, not the serving', () => {
     const properties = toJson(manageFoodInput).properties ?? {};
 
     expect(properties.quantity?.description).toContain(
-      'For create_food, also the serving the nutrients are for.'
+      'For create_food, the amount logged when meal_type_id or meal_type is given'
+    );
+    expect(properties.quantity?.description).toContain(
+      'serving_size/serving_unit'
     );
   });
 });

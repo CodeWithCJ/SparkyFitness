@@ -406,9 +406,13 @@ async function clearOldChatHistory(userId: string) {
 // must not reach the model as context in another.
 const IN_ACCOUNT = "COALESCE(metadata->>'account_user_id', user_id::text) = $2";
 
+// A coach's thread is the rows whose metadata.coach_id is that coach. The
+// server sets the marker; the main Sparky thread (coachId null) leaves them
+// out, so an older app that knows nothing about coaches never shows them.
 async function getChatHistoryByUserId(
   userId: string,
-  accountUserId: string = userId
+  accountUserId: string = userId,
+  coachId: string | null = null
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -422,6 +426,7 @@ async function getChatHistoryByUserId(
        FROM (
          SELECT * FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT}
            AND metadata->>'turnHidden' IS DISTINCT FROM 'true'
+           AND COALESCE(metadata->>'coach_id', '') = $3
          ORDER BY created_at DESC LIMIT 50
        ) m
        LEFT JOIN LATERAL (
@@ -435,7 +440,7 @@ async function getChatHistoryByUserId(
                   AND checkpoint.state IS DISTINCT FROM 'complete'
                   AND checkpoint.state IS DISTINCT FROM 'cancelled'
        ORDER BY m.created_at ASC`,
-      [userId, accountUserId]
+      [userId, accountUserId, coachId ?? '']
     );
     return result.rows;
   } finally {

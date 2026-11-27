@@ -7,6 +7,7 @@ import mealTypeRepository from '../models/mealType.js';
 import hydrationTotalsService from '../services/hydrationTotalsService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
+import { getClient } from '../db/poolManager.js';
 
 vi.mock('../models/measurementRepository', async (importOriginal) => {
   const actual =
@@ -17,6 +18,8 @@ vi.mock('../models/measurementRepository', async (importOriginal) => {
       insertWaterIntakeLog: vi.fn(),
       findWaterIntakeLogByClientId: vi.fn(),
       recomputeWaterAggregateForUser: vi.fn(),
+      recomputeWaterAggregate: vi.fn(),
+      incrementWaterData: vi.fn(),
     },
   };
 });
@@ -36,7 +39,12 @@ const TOTALS = { water_ml: 250, manual_ml: 250, ledger_ml: 250 };
 
 const insert = vi.mocked(measurementRepository.insertWaterIntakeLog);
 const find = vi.mocked(measurementRepository.findWaterIntakeLogByClientId);
+const increment = vi.mocked(measurementRepository.incrementWaterData);
+const recomputeAggregate = vi.mocked(
+  measurementRepository.recomputeWaterAggregate
+);
 const totals = vi.mocked(hydrationTotalsService.resolveWaterTotalsForDate);
+const mockGetClient = vi.mocked(getClient);
 
 describe('upsertWaterIntake client_id (offline replay)', () => {
   beforeEach(() => {
@@ -44,6 +52,7 @@ describe('upsertWaterIntake client_id (offline replay)', () => {
     insert.mockReset();
     insert.mockResolvedValue({} as never);
     find.mockResolvedValue(null);
+    increment.mockResolvedValue({} as never);
     totals.mockResolvedValue(TOTALS as never);
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       null as never
@@ -179,6 +188,123 @@ describe('upsertWaterIntake client_id (offline replay)', () => {
   });
 });
 
+describe('logWaterIntakeAmount client_id (offline replay)', () => {
+  const mockClient = {
+    query: vi.fn(),
+    release: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    insert.mockReset();
+    insert.mockResolvedValue({ id: 'drink-new' } as never);
+    find.mockResolvedValue(null);
+    recomputeAggregate.mockReset();
+    recomputeAggregate.mockResolvedValue(180 as never);
+    totals.mockResolvedValue(TOTALS as never);
+    mockClient.query.mockReset();
+    mockClient.query.mockResolvedValue({} as never);
+    mockClient.release.mockReset();
+    mockGetClient.mockResolvedValue(mockClient as never);
+  });
+
+  it('logs the amount with the client id on a first request, in one transaction with the aggregate', async () => {
+    const res = await measurementService.logWaterIntakeAmount(
+      USER,
+      USER,
+      DATE,
+      180,
+      'manual',
+      CLIENT_ID
+    );
+
+    expect(find).toHaveBeenCalledWith(USER, CLIENT_ID);
+    expect(insert).toHaveBeenCalledTimes(1);
+    // The insert and the aggregate recompute run on the same client, inside
+    // one transaction, so a replay can never see one without the other.
+    expect(insert.mock.calls[0][10]).toBe(mockClient);
+    expect(recomputeAggregate).toHaveBeenCalledWith(
+      mockClient,
+      USER,
+      USER,
+      DATE,
+      'manual'
+    );
+    expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(mockClient.query).not.toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+    expect(res).toEqual(TOTALS);
+  });
+
+  it('logs nothing and returns the totals when the id was already used', async () => {
+    find.mockResolvedValue({ id: 'drink-1' } as never);
+
+    const res = await measurementService.logWaterIntakeAmount(
+      USER,
+      USER,
+      DATE,
+      180,
+      'manual',
+      CLIENT_ID
+    );
+
+    expect(insert).not.toHaveBeenCalled();
+    expect(recomputeAggregate).not.toHaveBeenCalled();
+    expect(res).toEqual(TOTALS);
+  });
+
+  it('treats a lost race on the unique index as a duplicate, not an error', async () => {
+    insert.mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'idx_water_intake_entries_user_client_id',
+      })
+    );
+
+    await expect(
+      measurementService.logWaterIntakeAmount(
+        USER,
+        USER,
+        DATE,
+        180,
+        'manual',
+        CLIENT_ID
+      )
+    ).resolves.toEqual(TOTALS);
+    // The copy that landed first already recomputed the aggregate inside its
+    // own transaction; there is nothing here left to repair.
+    expect(recomputeAggregate).not.toHaveBeenCalled();
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('still surfaces other insert failures', async () => {
+    insert.mockRejectedValue(new Error('connection lost'));
+
+    await expect(
+      measurementService.logWaterIntakeAmount(
+        USER,
+        USER,
+        DATE,
+        180,
+        'manual',
+        CLIENT_ID
+      )
+    ).rejects.toThrow('connection lost');
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not look anything up for requests without a client id', async () => {
+    await measurementService.logWaterIntakeAmount(USER, USER, DATE, 180);
+
+    expect(find).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(recomputeAggregate).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('UpsertWaterIntakeBodySchema client_id', () => {
   const base = { entry_date: DATE, container_id: 3 };
 
@@ -218,5 +344,42 @@ describe('UpsertWaterIntakeBodySchema client_id', () => {
       UpsertWaterIntakeBodySchema.safeParse({ ...base, change_drinks: 3 })
         .success
     ).toBe(true);
+  });
+});
+
+describe('getWaterIntakeLogByDate client_id selection', () => {
+  it('selects client_id in both unfiltered and source-filtered queries', async () => {
+    const { getClient } = await import('../db/poolManager.js');
+    const mockQuery = vi.fn().mockResolvedValue({
+      rows: [{ id: 'row-1', client_id: CLIENT_ID, water_ml: 250 }],
+    });
+    const mockRelease = vi.fn();
+    vi.mocked(getClient).mockResolvedValue({
+      query: mockQuery,
+      release: mockRelease,
+    } as never);
+
+    const actualRepo = (
+      await vi.importActual<
+        typeof import('../models/measurementRepository.js')
+      >('../models/measurementRepository.js')
+    ).default;
+
+    const unfiltered = await actualRepo.getWaterIntakeLogByDate(USER, DATE);
+    expect(unfiltered).toEqual([
+      { id: 'row-1', client_id: CLIENT_ID, water_ml: 250 },
+    ]);
+    expect(mockQuery.mock.calls[0][0]).toContain('client_id');
+
+    const filtered = await actualRepo.getWaterIntakeLogByDate(
+      USER,
+      DATE,
+      'manual'
+    );
+    expect(filtered).toEqual([
+      { id: 'row-1', client_id: CLIENT_ID, water_ml: 250 },
+    ]);
+    expect(mockQuery.mock.calls[1][0]).toContain('client_id');
+    expect(mockRelease).toHaveBeenCalledTimes(2);
   });
 });

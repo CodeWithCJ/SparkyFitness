@@ -85,15 +85,31 @@
     <string name="common_skip">Skip</string>
     <string name="common_retry">Retry</string>
     <string name="common_close">Close</string>
+    <string name="keypad_backspace">Delete</string>
+    <string name="stepper_decrease_weight">Decrease weight</string>
+    <string name="stepper_increase_weight">Increase weight</string>
+    <string name="stepper_decrease_weight_by_5">Decrease weight by 5</string>
+    <string name="stepper_increase_weight_by_5">Increase weight by 5</string>
+    <string name="stepper_decrease_body_fat">Decrease body fat</string>
+    <string name="stepper_increase_body_fat">Increase body fat</string>
+    <string name="stepper_decrease_reps">Decrease reps</string>
+    <string name="stepper_increase_reps">Increase reps</string>
+    <string name="stepper_decrease_distance">Decrease distance</string>
+    <string name="stepper_increase_distance">Increase distance</string>
+    <string name="stepper_decrease_effort">Decrease effort</string>
+    <string name="stepper_increase_effort">Increase effort</string>
 
     <!-- Goals Screen -->
     <string name="goals_title">Today\'s Goals</string>
     <string name="goals_open_phone_to_sync">Open SparkyFitness on your phone to sync today\'s nutrition goals.</string>
     <string name="goals_energy_left">%1$d %2$s left</string>
     <string name="goals_energy_over">%1$d %2$s over</string>
+    <string name="goals_energy_burned">%1$s %2$s burned</string>
 
     <!-- Water Screen -->
     <string name="water_title">Hydration</string>
+    <string name="water_quick_add_header">Quick Add</string>
+    <string name="water_containers_header">Containers</string>
     <string name="water_default_glass">Glass</string>
     <string name="water_default_bottle">Bottle</string>
     <string name="water_includes_from_food">Includes %1$s from food</string>
@@ -109,6 +125,9 @@
     <string name="meds_title_empty">Medications</string>
     <string name="meds_title_count">Meds (%1$d/%2$d)</string>
     <string name="meds_none_scheduled">No medications scheduled for today.</string>
+    <string name="meds_status_taken">Taken</string>
+    <string name="meds_status_skipped">Skipped</string>
+    <string name="meds_status_pending">Pending</string>
 
     <!-- Weight & Trend Screens -->
     <string name="weight_title">Weight Check-In</string>
@@ -123,11 +142,19 @@
     <string name="weight_queued">Queued ✓</string>
     <string name="weight_save_delta">Save %1$s%2$.1f</string>
     <string name="weight_starting_title">Starting Weight</string>
+    <string name="trend_page_title">Body Trends</string>
+    <string name="trend_tab_weight">Weight</string>
+    <string name="trend_tab_body_fat">Body Fat</string>
     <string name="trend_body_fat_title">Body Fat Trend</string>
     <string name="trend_weight_title">Weight Trend</string>
+    <string name="trend_bf_delta_unit_pp">pp</string>
     <string name="trend_bf_summary">Last %1$d: %2$s%3$.1f%% (%4$.1f–%5$.1f%%)</string>
+    <string name="trend_bf_summary_pp">Last %1$d: %2$s (%3$s–%4$s)</string>
     <string name="trend_weight_summary">Last %1$d: %2$s%3$.1f %4$s (%5$.1f–%6$.1f)</string>
-    <string name="trend_empty_state">Log at least 2 weight check-ins to see your trend chart.</string>
+    <string name="trend_single_bf_note">One reading · Log on another day in the last 14 days to see a trend.</string>
+    <string name="trend_window_bf_note">No body fat readings in the last 14 days.</string>
+    <string name="trend_empty_bf_state">Sync or log body fat to see your trend.</string>
+    <string name="trend_empty_state">Log weight on 2 different days in the last 14 days to see your trend chart.</string>
 
     <!-- Now Playing Screen -->
     <string name="now_playing_title">Now Playing</string>
@@ -149,9 +176,13 @@
     <!-- Fasting Screen -->
     <string name="fasting_title">Fasting</string>
     <string name="fasting_title_active">Fasting (%1$s)</string>
+    <string name="fasting_elapsed_hm">%1$dh %2$02dm</string>
+    <string name="fasting_duration_hours">%1$dh</string>
     <string name="fasting_progress_of">%1$d%% of %2$dh</string>
     <string name="fasting_end_button">End Fast</string>
     <string name="fasting_start_prompt">Start a Fast</string>
+    <string name="fasting_sync_queued">Fasting update queued</string>
+    <string name="fasting_sync_failed">Fasting sync failed</string>
 
     <!-- Steps Screen -->
     <string name="steps_title">Daily Steps</string>
@@ -198,6 +229,13 @@
     <string name="tile_meds_log_dose">Log Dose</string>
     <string name="tile_meds_turned_off">Turned off</string>
     <string name="tile_meds_turned_off_hint">Turn on in the phone app</string>
+    <string name="tile_meds_card_cd_mark_taken">Mark %1$s (%2$s) as taken</string>
+    <string name="tile_meds_card_cd_mark_taken_failed">%1$s (%2$s), %3$s, tap to mark as taken</string>
+    <string name="tile_meds_card_cd_open">%1$s (%2$s), %3$s, open medications</string>
+    <string name="tile_meds_status_taken">taken</string>
+    <string name="tile_meds_status_skipped">skipped</string>
+    <string name="tile_meds_status_pending">pending</string>
+    <string name="tile_meds_status_failed">failed to sync</string>
     <string name="complication_meds_off_short">Off</string>
     <string name="complication_meds_turned_off_description">Medications turned off</string>
 
@@ -219,6 +257,9 @@
     <string name="tile_water_sync_failed">Sync failed · Open Hydration</string>
     <string name="tile_water_tap_log">Tap a drink to log</string>
     <string name="tile_water_open_log">Open Hydration</string>
+    <string name="tile_water_more_pages">More %1$d/%2$d ▸</string>
+    <string name="tile_water_card_cd_log">Log %1$s (%2$s)</string>
+    <string name="tile_water_card_cd_open">%1$s (%2$s), open hydration</string>
 
     <string name="tile_weight_header">WEIGHT &amp; TREND</string>
     <string name="tile_weight_header_bf">WEIGHT · %1$s</string>
@@ -283,6 +324,7 @@
     <string name="workout_preset_fallback">Preset</string>
     <string name="workout_keypad_reps">Reps</string>
     <string name="workout_set_counter">Set %1$d/%2$d</string>
+    <string name="workout_step_set_short">S%1$d</string>
     <string name="workout_superset_badge">• SS#%1$d</string>
     <string name="workout_reps_label">reps</string>
     <string name="workout_carry_label">carry</string>
@@ -406,6 +448,10 @@
     <plurals name="workout_new_up_next_sets">
         <item quantity="one">%1$d set</item>
         <item quantity="other">%1$d sets</item>
+    </plurals>
+    <plurals name="medication_supplement_servings">
+        <item quantity="one">%1$s serving</item>
+        <item quantity="other">%1$s servings</item>
     </plurals>
     <string name="workout_new_last_exercise">This is the last exercise</string>
     <string name="workout_new_do_first">Do first</string>

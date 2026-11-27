@@ -47,7 +47,7 @@ export function useCurrentFast(options?: QueryOptions) {
   const enabled = options?.enabled ?? true;
   const query = useQuery({
     queryKey: fastingCurrentQueryKey,
-    queryFn: fetchCurrentFast,
+    queryFn: () => fetchCurrentFast(),
     enabled,
   });
   useRefetchOnFocus(query.refetch, enabled, 0);
@@ -252,15 +252,22 @@ async function clearStoredGoalNotification(
   }
 }
 
-/** Cancels and forgets any scheduled goal notification. */
-export async function cancelFastGoalNotification(): Promise<void> {
+/**
+ * Cancels and forgets any scheduled goal notification. When `fastId` is
+ * provided, only cancels if the stored notification belongs to that exact
+ * fast so ending an older fast or switching accounts cannot clear a newer
+ * fast's reminder.
+ */
+export async function cancelFastGoalNotification(
+  fastId?: string
+): Promise<void> {
   const stored = await readStoredGoalNotification();
-  if (stored) {
-    await clearStoredGoalNotification(
-      stored.notificationId,
-      stored.preEndNotificationId
-    );
-  }
+  if (!stored) return;
+  if (fastId !== undefined && stored.fastId !== fastId) return;
+  await clearStoredGoalNotification(
+    stored.notificationId,
+    stored.preEndNotificationId
+  );
 }
 
 /**

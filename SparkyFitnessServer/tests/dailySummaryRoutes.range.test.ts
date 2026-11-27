@@ -155,7 +155,7 @@ describe('GET /daily-summary/range access', () => {
    */
   it('withholds check-in data from a viewer with diary but not checkin', async () => {
     vi.mocked(canAccessUserData).mockImplementation(
-      async (_target: string, permission: string) => permission === 'diary'
+      async (_target: unknown, permission: string) => permission === 'diary'
     );
     const app = await buildApp();
     const res = await request(app).get(

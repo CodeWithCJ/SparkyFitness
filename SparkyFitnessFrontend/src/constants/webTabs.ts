@@ -102,6 +102,8 @@ export function choiceFeatureLabel(
     case 'oralCare':
       // No tab of its own: it lives on Check-In and Reports.
       return t('oralCare.title', 'Oral care');
+    case 'aiCoaches':
+      return t('coaches.settings.title', 'Coaches');
   }
 }
 

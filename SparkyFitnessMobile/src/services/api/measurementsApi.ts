@@ -49,15 +49,27 @@ export const fetchMeasurements = async (
 };
 
 /**
- * Fetches water intake for a given date.
+ * Live server-backed water intake total read without offline cache fallback.
+ * Used by direct-sync acknowledgement gates that must prove fresh server state
+ * rather than an offline `dailySummary` fallback.
  */
-const fetchWaterIntake = async (date: string): Promise<WaterIntake> => {
+export const fetchWaterIntakeLive = async (
+  date: string,
+  serverConfig?: ServerConfig
+): Promise<WaterIntake> => {
   return apiFetch<WaterIntake>({
-    endpoint: `/api/measurements/water-intake/${date}`,
+    endpoint: `/api/measurements/water-intake/${encodeURIComponent(date)}`,
     serviceName: 'Measurements API',
     operation: 'fetch water intake',
+    serverConfig,
   });
 };
+
+/**
+ * Fetches water intake for a given date.
+ */
+const fetchWaterIntake = async (date: string): Promise<WaterIntake> =>
+  fetchWaterIntakeLive(date);
 
 let lastPerRecordWaterSupport: boolean | null = null;
 
@@ -527,8 +539,22 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
 };
 
 /**
- * Changes water intake by adding or removing a drink.
+ * Live server-backed itemized water ledger read without offline cache fallback.
+ * Used by direct-sync acknowledgement gates that must prove the phone has read
+ * fresh server state rather than a cached SQLite copy.
  */
+export const fetchWaterIntakeLogLive = async (
+  date: string,
+  serverConfig?: ServerConfig
+): Promise<WaterIntakeLogEntry[]> => {
+  return apiFetch<WaterIntakeLogEntry[]>({
+    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake log',
+    serverConfig,
+  });
+};
+
 /**
  * Fetches the day's itemized water ledger (#1939): one row per logged drink,
  * each carrying its real `logged_at` timestamp and `source`. Used by
@@ -539,12 +565,7 @@ export const fetchWaterIntakeLog = async (
   date: string
 ): Promise<WaterIntakeLogEntry[]> => {
   return withOfflineFallback<WaterIntakeLogEntry[]>({
-    fetch: () =>
-      apiFetch<WaterIntakeLogEntry[]>({
-        endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
-        serviceName: 'Measurements API',
-        operation: 'fetch water intake log',
-      }),
+    fetch: () => fetchWaterIntakeLogLive(date),
     store: (db, serverConfigId, log) =>
       putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [
         { key: date, payload: log },
@@ -561,6 +582,9 @@ export const fetchWaterIntakeLog = async (
   });
 };
 
+/**
+ * Changes water intake by adding or removing a drink.
+ */
 export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;
@@ -583,6 +607,29 @@ export const changeWaterIntake = async (params: {
       entry_date: params.entryDate,
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
+      ...(params.clientId ? { client_id: params.clientId } : {}),
+    },
+  });
+};
+
+/** Logs a one-off amount with no container (#3734). */
+export const logCustomWaterAmount = async (params: {
+  entryDate: string;
+  waterMl: number;
+  /** Replay key from the mobile offline queue. */
+  clientId?: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
+}): Promise<WaterIntakeResponse> => {
+  return apiFetch<WaterIntakeResponse>({
+    endpoint: '/api/v2/measurements/water-intake/custom',
+    serviceName: 'Measurements API',
+    operation: 'log custom water amount',
+    method: 'POST',
+    serverConfig: params.serverConfig,
+    body: {
+      entry_date: params.entryDate,
+      water_ml: params.waterMl,
       ...(params.clientId ? { client_id: params.clientId } : {}),
     },
   });

@@ -4,7 +4,7 @@ import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
 import type { WaterIntakeLogEntry } from '@workspace/shared';
-import { savedCopyReadable } from './accountGeneration';
+import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getCacheRow } from './cacheStore';
 import { CACHE_COLLECTIONS } from './collections';
 import {
@@ -14,6 +14,19 @@ import {
   listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
+
+/**
+ * True while the signed-in account is still the one that started the
+ * request (`startedUnder`, its `accountGeneration()` at that time). Checked
+ * right before a queue function writes a new row: the `userId` it resolved
+ * is whoever was signed in when it called `signedInUserId`, which an account
+ * switch during the awaits before that can already have moved past the
+ * account the request began under -- `queueAfterConnectionFailure`'s own
+ * check, made before any of those awaits, does not cover this window.
+ */
+function stillStartedAccount(startedUnder: number | undefined): boolean {
+  return startedUnder === undefined || accountGeneration() === startedUnder;
+}
 
 /** One "+" press of a water container, waiting for the server. */
 export const WATER_ADD = 'water.add';
@@ -34,11 +47,14 @@ export interface WaterAddPayload {
  * the caller before the first request, so a press that is queued after a
  * failed request keeps the key that request carried.
  *
- * True once the row is written.
+ * True once the row is written. `startedUnder` is the caller's
+ * `accountGeneration()` from before its first request; passing it refuses
+ * the write if the signed-in account has moved on by the time this runs.
  */
 export async function queueWaterDrink(
   clientId: string,
-  payload: WaterAddPayload
+  payload: WaterAddPayload,
+  startedUnder?: number
 ): Promise<boolean> {
   try {
     const serverConfigId = await getActiveServerConfigId();
@@ -56,6 +72,7 @@ export async function queueWaterDrink(
         isOwnedBy(row, userId)
     );
     if (kept) return true;
+    if (!stillStartedAccount(startedUnder)) return false;
     await enqueueOutbox(db, {
       // A press is its own entity: two presses are two rows, never merged.
       id: newUuid(),
@@ -73,6 +90,150 @@ export async function queueWaterDrink(
     addLog(`[Offline] Could not queue the drink: ${error}`, 'ERROR');
     return false;
   }
+}
+
+/**
+ * A one-off amount with no container (#3734), waiting for the server. Its
+ * own kind rather than `water.add`'s payload: that shape names a container
+ * press, not an arbitrary millilitre amount.
+ */
+export const WATER_ADD_CUSTOM = 'water.addCustom';
+
+/** The payload shape of `water.addCustom`, as this build writes it. */
+export const WATER_ADD_CUSTOM_PAYLOAD_VERSION = 1;
+
+export interface WaterAddCustomPayload {
+  entryDate: string;
+  waterMl: number;
+}
+
+/**
+ * Queues one custom-amount entry for upload. Mirrors `queueWaterDrink`'s
+ * replay-key contract: the row's id is the key sent to the server, so a
+ * request whose upload reached the server but whose answer was lost is
+ * never logged twice. `startedUnder` follows `queueWaterDrink`'s contract.
+ */
+export async function queueWaterCustomAmount(
+  clientId: string,
+  payload: WaterAddCustomPayload,
+  startedUnder?: number
+): Promise<boolean> {
+  try {
+    const serverConfigId = await getActiveServerConfigId();
+    if (!serverConfigId) return false;
+    const db = await getOfflineDb();
+    const userId = await signedInUserId(db, serverConfigId);
+    if (userId == null) return false;
+    const kept = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+      (row) =>
+        row.kind === WATER_ADD_CUSTOM &&
+        row.entityId === clientId &&
+        isOwnedBy(row, userId)
+    );
+    if (kept) return true;
+    if (!stillStartedAccount(startedUnder)) return false;
+    await enqueueOutbox(db, {
+      id: newUuid(),
+      serverConfigId,
+      userId,
+      kind: WATER_ADD_CUSTOM,
+      entityId: clientId,
+      entryDate: payload.entryDate,
+      payload,
+      payloadVersion: WATER_ADD_CUSTOM_PAYLOAD_VERSION,
+    });
+    notifyOutboxChanged();
+    return true;
+  } catch (error) {
+    addLog(`[Offline] Could not queue the custom amount: ${error}`, 'ERROR');
+    return false;
+  }
+}
+
+/**
+ * Cancels one queued offline water drink by its replay key (`entityId`) before
+ * upload begins. Returns `'cancelled'` when deleted untouched, `'uploading'`
+ * when an attempt has already started or was tried, and `'none'` when no
+ * unconfirmed outbox row exists for that replay key.
+ */
+export async function cancelQueuedWaterDrink(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<'cancelled' | 'uploading' | 'none' | 'unreadable'> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return 'none';
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return 'none';
+  const outcome = await deleteUnconfirmedUnlessSending(
+    db,
+    serverConfigId,
+    cleanKey,
+    (row) => isOwnedBy(row, userId),
+    (row) => row.attempts > 0
+  );
+  if (outcome === 'deleted') {
+    notifyOutboxChanged();
+    return 'cancelled';
+  }
+  return outcome;
+}
+
+/**
+ * Checks whether a queued offline water drink is still actively pending/retrying
+ * in the outbox, has permanently failed, or is no longer unconfirmed.
+ */
+export async function getQueuedWaterDrinkStatus(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<'active' | 'failed' | 'none' | 'unreadable'> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return 'none';
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return 'none';
+  const row = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (entry) =>
+      entry.kind === WATER_ADD &&
+      entry.entityId === cleanKey &&
+      isOwnedBy(entry, userId)
+  );
+  if (!row) return 'none';
+  return row.status === 'failed' ? 'failed' : 'active';
+}
+
+/**
+ * Looks up the calendar day (`entryDate`) of a queued offline water drink
+ * from the outbox when a legacy cancellation marker lacked an embedded date.
+ */
+export async function getQueuedWaterDrinkEntryDate(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<string | 'unreadable' | null> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return null;
+  if (!(await savedCopyReadable())) return 'unreadable';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return null;
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return null;
+  const row = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (entry) =>
+      entry.kind === WATER_ADD &&
+      entry.entityId === cleanKey &&
+      isOwnedBy(entry, userId)
+  );
+  return row?.entryDate ?? null;
 }
 
 /** The removal of one drink the server already has, waiting to upload. */
@@ -97,9 +258,13 @@ export interface WaterRemovePayload {
  * to upload is simply cancelled; otherwise the latest drink the phone knows
  * the server has is queued for removal by its id, which is safe to send again
  * (one already gone counts as done). 'none' when there is nothing to take off.
+ * `startedUnder` follows `queueWaterDrink`'s contract and only guards the
+ * removal-queued path below (the cancel path deletes by this account's own
+ * row id, which carries no new attribution to get wrong).
  */
 export async function removeLatestDrinkOffline(
-  entryDate: string
+  entryDate: string,
+  startedUnder?: number
 ): Promise<'cancelled' | 'queued' | 'none' | 'busy'> {
   // The saved drink list belongs to whoever it was made for: it is not read
   // while that is in doubt (just after an account switch), like every other
@@ -119,11 +284,14 @@ export async function removeLatestDrinkOffline(
   const waiting = rows
     .filter(
       (row) =>
-        row.kind === WATER_ADD &&
+        (row.kind === WATER_ADD || row.kind === WATER_ADD_CUSTOM) &&
         row.entryDate === entryDate &&
         row.status !== 'sending'
     )
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
+    // `createdAt` alone cannot break a tie between two drinks queued in the
+    // same millisecond; `rowid` is SQLite's own insertion-order sequence, so
+    // it always resolves to the one queued more recently.
+    .sort((a, b) => b.createdAt - a.createdAt || b.rowid - a.rowid)[0];
   if (waiting) {
     // A drink whose upload was already tried may be on the server (the answer
     // can be lost), and cancelling it would drop the only record of it, so it
@@ -161,6 +329,7 @@ export async function removeLatestDrinkOffline(
     )
     .sort((a, b) => b.logged_at.localeCompare(a.logged_at))[0];
   if (!latest) return 'none';
+  if (!stillStartedAccount(startedUnder)) return 'none';
 
   try {
     const payload: WaterRemovePayload = {

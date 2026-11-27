@@ -8,8 +8,13 @@ import googleHealthRoutes from '../routes/googleHealthRoutes.js';
 // path (delegate lacking diary access to the switched-into user) without
 // re-registering the route. The real middleware logic is covered by
 // checkPermissionMiddleware.test.ts.
-const { permissionState } = vi.hoisted(() => ({
+const { permissionState, actorState } = vi.hoisted(() => ({
   permissionState: { allow: true },
+  // Simulates a switched/delegated context: req.userId is the account being
+  // acted on, req.originalUserId the real signed-in caller. requireSelfActor
+  // (used by /callback) compares the two directly, independent of
+  // checkPermissionMiddleware/permissionState.
+  actorState: { switched: false },
 }));
 
 vi.mock('../integrations/googlehealth/googleHealthService.js', () => ({
@@ -33,6 +38,7 @@ vi.mock('../middleware/authMiddleware.js', () => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authenticate: (req: any, _res: any, next: any) => {
       req.userId = 'test-user-id';
+      req.originalUserId = actorState.switched ? 'delegate-id' : 'test-user-id';
       next();
     },
   },
@@ -78,6 +84,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 beforeEach(() => {
   vi.clearAllMocks();
   permissionState.allow = true;
+  actorState.switched = false;
 });
 
 describe('permission gating (switched-context delegate without diary access)', () => {
@@ -90,8 +97,11 @@ describe('permission gating (switched-context delegate without diary access)', (
     expect(googleHealthService.disconnectGoogleHealth).not.toHaveBeenCalled();
   });
 
-  it('returns 403 from /callback and does not exchange tokens', async () => {
-    permissionState.allow = false;
+  it('returns 403 from /callback in a switched/delegated context and does not exchange tokens', async () => {
+    // /callback is self-only (requireSelfActor), not gated by
+    // checkPermissionMiddleware/permissionState: account linking must never
+    // run as someone other than the real signed-in owner.
+    actorState.switched = true;
     const res = await request(app)
       .post('/api/integrations/googlehealth/callback')
       .send({ code: 'auth-code-abc' });

@@ -27,6 +27,10 @@ import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import { transcribeVoiceAudio } from '../services/voiceTranscriptionService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import {
+  CoachChatError,
+  getCoachChatContext,
+} from '../services/coachChatContextService.js';
 import { createResponseAbortSignal } from '../utils/responseAbortSignal.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
@@ -290,6 +294,10 @@ router.post('/', authenticate, async (req, res, next) => {
   // known slugs (unknown/empty -> undefined so the service falls back to the
   // per-service profile default rather than loading zero tools).
   const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
+  const coachId = coachIdFrom(req.body?.coachId);
+  if (!coachId.success) {
+    return res.status(400).json({ error: 'Invalid coach.' });
+  }
   try {
     if (action === 'save_ai_service_settings') {
       // Check if user AI config is allowed
@@ -384,10 +392,14 @@ router.post('/', authenticate, async (req, res, next) => {
       toolCategories,
       typeof req.body?.conversationId === 'string'
         ? req.body.conversationId
-        : undefined
+        : undefined,
+      coachId.data
     );
     return res.status(200).json({ content, action: actionType, executedTools });
   } catch (error) {
+    if (error instanceof CoachChatError) {
+      return res.status(400).json({ error: error.message });
+    }
     if (
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       error.message.startsWith('Invalid messages format') ||
@@ -435,6 +447,10 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+// The coach whose thread a request is about; absent for the main Sparky chat.
+const coachIdSchema = z.uuid().optional();
+const coachIdFrom = (value: unknown) => coachIdSchema.safeParse(value);
+
 const chatTurns = new ChatTurnStreams();
 const turnParams = z.object({ turnId: z.uuid() });
 // The converter reads both SDK parts and legacy array-form content.
@@ -564,6 +580,10 @@ router.post('/stream', authenticate, async (req, res, next) => {
   const capability = chatApprovalCapabilitySchema.safeParse(req.body);
   if (!capability.success)
     return res.status(400).json({ error: 'Invalid approval capability.' });
+  const coachId = coachIdFrom(req.body?.coachId);
+  if (!coachId.success) {
+    return res.status(400).json({ error: 'Invalid coach.' });
+  }
   const conversationId =
     typeof req.body.conversationId === 'string'
       ? req.body.conversationId
@@ -575,6 +595,14 @@ router.post('/stream', authenticate, async (req, res, next) => {
     });
   }
   try {
+    // Refuse a coach that is not the person's before a turn is claimed.
+    if (coachId.data) {
+      await getCoachChatContext(
+        req.userId,
+        req.authenticatedUserId,
+        coachId.data
+      );
+    }
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const generate = (signal?: AbortSignal, key?: string) =>
       chatService.processChatMessageStream(
@@ -588,7 +616,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
         capability.data.approvals,
         turnId,
         signal,
-        key
+        key,
+        coachId.data
       );
     if (turnId) {
       const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
@@ -618,7 +647,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
             req.authenticatedUserId,
             req.userId,
             conversationId,
-            deadline
+            deadline,
+            coachId.data
           );
           if (!claimed) return null;
           if (signal.aborted) {
@@ -639,6 +669,9 @@ router.post('/stream', authenticate, async (req, res, next) => {
     const { stream } = await generate();
     pipeUIMessageStreamToResponse({ response: res, stream });
   } catch (error) {
+    if (error instanceof CoachChatError) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 });
@@ -986,9 +1019,19 @@ router.delete(
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
     // The signed-in person's conversation in the account they are working in.
+    const coachId = coachIdFrom(req.query.coachId);
+    if (!coachId.success) {
+      return res.status(400).json({ error: 'Invalid coach.' });
+    }
+    if (coachId.data && req.userId !== req.authenticatedUserId) {
+      return res
+        .status(403)
+        .json({ error: 'Coaches are only for the account owner.' });
+    }
     const history = await chatService.getSparkyChatHistory(
       req.authenticatedUserId,
-      req.userId
+      req.userId,
+      coachId.data ?? null
     );
     res.status(200).json(history);
   } catch (error) {

@@ -148,6 +148,8 @@ export const PREFERENCE_DEFAULTS = {
   checkinRemindersEnabled: false,
   checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
   oralCareRemindersEnabled: false,
+  coachNotificationsEnabled: true,
+  mutedCoachNotificationIds: [] as string[],
   oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
   challengeWeekNotificationsEnabled: true,
   liquidGlassTabBarEnabled: false,
@@ -257,6 +259,10 @@ export type AppPreferencesData = {
   checkinRemindersEnabled: boolean;
   checkinReminderTimes: string[];
   oralCareRemindersEnabled: boolean;
+  /** Phone notifications for AI coach messages (#2013). */
+  coachNotificationsEnabled: boolean;
+  /** Coaches whose messages do not notify; they still arrive in chat. */
+  mutedCoachNotificationIds: string[];
   oralCareReminderTimes: string[];
   challengeWeekNotificationsEnabled: boolean;
   liquidGlassTabBarEnabled: boolean;
@@ -443,6 +449,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setCheckinRemindersEnabled: (enabled: boolean) => void;
   setCheckinReminderTimes: (times: string[]) => void;
   setOralCareRemindersEnabled: (enabled: boolean) => void;
+  setCoachNotificationsEnabled: (enabled: boolean) => void;
+  setCoachNotificationMuted: (coachId: string, muted: boolean) => void;
   setOralCareReminderTimes: (times: string[]) => void;
   setChallengeWeekNotificationsEnabled: (enabled: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
@@ -642,6 +650,14 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ checkinReminderTimes: normalizeCheckinReminderTimes(times) }),
       setOralCareRemindersEnabled: (enabled) =>
         set({ oralCareRemindersEnabled: enabled }),
+      setCoachNotificationsEnabled: (enabled) =>
+        set({ coachNotificationsEnabled: enabled }),
+      setCoachNotificationMuted: (coachId, muted) =>
+        set((state) => ({
+          mutedCoachNotificationIds: muted
+            ? [...new Set([...state.mutedCoachNotificationIds, coachId])]
+            : state.mutedCoachNotificationIds.filter((id) => id !== coachId),
+        })),
       setOralCareReminderTimes: (times) =>
         set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
       setChallengeWeekNotificationsEnabled: (enabled) =>
@@ -884,6 +900,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         checkinRemindersEnabled: state.checkinRemindersEnabled,
         checkinReminderTimes: state.checkinReminderTimes,
         oralCareRemindersEnabled: state.oralCareRemindersEnabled,
+        coachNotificationsEnabled: state.coachNotificationsEnabled,
+        mutedCoachNotificationIds: state.mutedCoachNotificationIds,
         oralCareReminderTimes: state.oralCareReminderTimes,
         challengeWeekNotificationsEnabled:
           state.challengeWeekNotificationsEnabled,

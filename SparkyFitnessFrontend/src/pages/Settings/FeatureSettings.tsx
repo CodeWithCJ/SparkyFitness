@@ -1,11 +1,12 @@
 import type { ReactElement } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { ToggleRight, type LucideIcon } from 'lucide-react';
+import { Sparkles, ToggleRight, type LucideIcon } from 'lucide-react';
 import {
   FEATURE_GROUPS,
   FEATURE_KEYS,
   OPTIONAL_FEATURES,
+  isFeatureOffered,
   type ChoiceFeatureKey,
   type FeatureGroup,
   type FeatureKey,
@@ -223,6 +224,21 @@ function OralCareFeatureRow() {
   );
 }
 
+function AiCoachesFeatureRow() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRow
+      feature="aiCoaches"
+      icon={Sparkles}
+      label={choiceFeatureLabel(t, 'aiCoaches')}
+      description={t(
+        'settings.features.aiCoaches.description',
+        'AI coaches that watch your food, training and sleep and send a short message when something is worth saying. Set them up in Settings → Wellness → Coaches.'
+      )}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own row here. */
 function FeatureRow({ feature }: { feature: FeatureKey }): ReactElement {
   switch (feature) {
@@ -234,6 +250,8 @@ function FeatureRow({ feature }: { feature: FeatureKey }): ReactElement {
       return <LabResultsFeatureRow />;
     case 'oralCare':
       return <OralCareFeatureRow />;
+    case 'aiCoaches':
+      return <AiCoachesFeatureRow />;
   }
 }
 
@@ -269,7 +287,9 @@ export const FeatureSettings = () => {
         ) : (
           FEATURE_GROUPS.map((group) => {
             const keys = FEATURE_KEYS.filter(
-              (key) => OPTIONAL_FEATURES[key].group === group
+              (key) =>
+                OPTIONAL_FEATURES[key].group === group &&
+                isFeatureOffered(key, 'web')
             );
             if (keys.length === 0) return null;
             return (

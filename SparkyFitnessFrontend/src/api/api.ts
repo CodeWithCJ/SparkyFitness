@@ -187,11 +187,9 @@ export async function apiCall<T = any>(
   }
 
   if (options?.body) {
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Request body for ${endpoint}:`,
-      options.body
-    );
+    // Do not log the request body: it can contain health data, passwords, and
+    // integration credentials, which must never reach the browser console even
+    // at the user's DEBUG log level.
     if (!options.isFormData && typeof options.body === 'object') {
       config.body = JSON.stringify(options.body);
     } else {
@@ -202,8 +200,7 @@ export async function apiCall<T = any>(
   try {
     logging.debug(
       userLoggingLevel,
-      `API Call: Sending request to ${url} with config:`,
-      config
+      `API Call: Sending ${config.method ?? 'GET'} request to ${url}`
     );
     const response = await fetch(url, config);
     logging.debug(

@@ -1001,29 +1001,84 @@ async function logWaterIntakeAmount(
   actingUserId: string,
   entryDate: string,
   waterMl: number,
-  source = 'manual'
+  source = 'manual',
+  // Mobile offline-queue idempotency key for a custom-amount entry (#3734),
+  // same contract as upsertWaterIntake's clientId.
+  clientId: string | null = null
 ) {
   try {
-    // 1. Insert the itemized log entry.
-    const logEntry = await measurementRepository.insertWaterIntakeLog(
+    if (clientId) {
+      const alreadyLogged =
+        await measurementRepository.findWaterIntakeLogByClientId(
+          authenticatedUserId,
+          clientId
+        );
+      if (alreadyLogged) {
+        return await hydrationTotalsService.resolveWaterTotalsForDate(
+          authenticatedUserId,
+          actingUserId,
+          entryDate
+        );
+      }
+    }
+
+    // The itemized log entry and the aggregate it feeds are written in one
+    // transaction, so a replayed clientId can never read totals from a commit
+    // whose aggregate update didn't happen. The aggregate update is a
+    // from-source-of-truth SUM (recomputeWaterAggregate), not an incremental
+    // add, so it stays correct however many times a retried transaction
+    // repeats it.
+    const client = await getClient(authenticatedUserId, actingUserId);
+    try {
+      await client.query('BEGIN');
+      await measurementRepository.insertWaterIntakeLog(
+        authenticatedUserId,
+        actingUserId,
+        entryDate,
+        waterMl,
+        null,
+        null,
+        source,
+        null,
+        null,
+        null,
+        client,
+        clientId
+      );
+      await measurementRepository.recomputeWaterAggregate(
+        client,
+        authenticatedUserId,
+        actingUserId,
+        entryDate,
+        source
+      );
+      await client.query('COMMIT');
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      // A copy of this same request committed first (insert and aggregate
+      // landed together, so there is nothing left to repair).
+      if (
+        clientId &&
+        isUniqueViolationOn(txError, WATER_ENTRY_CLIENT_ID_INDEX)
+      ) {
+        return await hydrationTotalsService.resolveWaterTotalsForDate(
+          authenticatedUserId,
+          actingUserId,
+          entryDate
+        );
+      }
+      throw txError;
+    } finally {
+      client.release();
+    }
+
+    // Return the latest totals through the same owner the GET uses, matching
+    // upsertWaterIntake's response shape.
+    return await hydrationTotalsService.resolveWaterTotalsForDate(
       authenticatedUserId,
       actingUserId,
-      entryDate,
-      waterMl,
-      null,
-      null,
-      source
+      entryDate
     );
-    // 2. Add the amount to the aggregated daily total for this source so the
-    //    dashboard (which SUMs water_intake) reflects the logged water.
-    await measurementRepository.incrementWaterData(
-      authenticatedUserId,
-      actingUserId,
-      waterMl,
-      entryDate,
-      source
-    );
-    return logEntry;
   } catch (error) {
     log(
       'error',

@@ -6,6 +6,7 @@ import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import {
   fetchWaterContainers,
   changeWaterIntake,
+  logCustomWaterAmount,
 } from '../../src/services/api/measurementsApi';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
 import {
@@ -21,14 +22,18 @@ import {
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchWaterContainers: jest.fn(),
   changeWaterIntake: jest.fn(),
+  logCustomWaterAmount: jest.fn(),
 }));
 
 const mockQueueWaterDrink = jest.fn();
 const mockRemoveLatestDrink = jest.fn();
+const mockQueueWaterCustomAmount = jest.fn();
 jest.mock('../../src/offline/waterHandOver', () => ({
   queueWaterDrink: (...args: unknown[]) => mockQueueWaterDrink(...args),
   removeLatestDrinkOffline: (...args: unknown[]) =>
     mockRemoveLatestDrink(...args),
+  queueWaterCustomAmount: (...args: unknown[]) =>
+    mockQueueWaterCustomAmount(...args),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -50,6 +55,9 @@ const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<
 >;
 const mockChangeWaterIntake = changeWaterIntake as jest.MockedFunction<
   typeof changeWaterIntake
+>;
+const mockLogCustomWaterAmount = logCustomWaterAmount as jest.MockedFunction<
+  typeof logCustomWaterAmount
 >;
 
 const primaryContainer = {
@@ -315,10 +323,14 @@ describe('useWaterIntakeMutation', () => {
       await waitFor(() => expect(mockQueueWaterDrink).toHaveBeenCalledTimes(1));
       // The key the failed request carried is the key the upload will carry.
       const sentKey = mockChangeWaterIntake.mock.calls[0][0].clientId;
-      expect(mockQueueWaterDrink).toHaveBeenCalledWith(sentKey, {
-        entryDate: testDate,
-        containerId: 1,
-      });
+      expect(mockQueueWaterDrink).toHaveBeenCalledWith(
+        sentKey,
+        {
+          entryDate: testDate,
+          containerId: 1,
+        },
+        expect.any(Number)
+      );
       // The press stays on screen and no error is shown.
       const cached = queryClient.getQueryData<DailySummaryRawData>(
         dailySummaryQueryKey(testDate)
@@ -372,7 +384,10 @@ describe('useWaterIntakeMutation', () => {
           expect.objectContaining({ type: 'info' })
         )
       );
-      expect(mockRemoveLatestDrink).toHaveBeenCalledWith(testDate);
+      expect(mockRemoveLatestDrink).toHaveBeenCalledWith(
+        testDate,
+        expect.any(Number)
+      );
       expect(mockQueueWaterDrink).not.toHaveBeenCalled();
     });
 
@@ -608,6 +623,94 @@ describe('useWaterIntakeMutation', () => {
         });
       });
       invalidateSpy.mockRestore();
+    });
+
+    test('logCustomAmount calls logCustomWaterAmount with the given amount', async () => {
+      mockLogCustomWaterAmount.mockResolvedValue({
+        id: '1',
+        water_ml: 430,
+        entry_date: testDate,
+      });
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.logCustomAmount(180);
+      });
+
+      await waitFor(() => {
+        expect(mockLogCustomWaterAmount).toHaveBeenCalledWith({
+          entryDate: testDate,
+          waterMl: 180,
+          clientId: expect.any(String),
+        });
+      });
+    });
+
+    test("invalidates the day's water log after a custom amount is logged", async () => {
+      mockLogCustomWaterAmount.mockResolvedValue({
+        id: '1',
+        water_ml: 430,
+        entry_date: testDate,
+      });
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.logCustomAmount(180);
+      });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: waterIntakeLogQueryKey(testDate),
+        });
+      });
+      invalidateSpy.mockRestore();
+    });
+
+    test('a custom amount logged while the server is unreachable is kept for upload', async () => {
+      mockLogCustomWaterAmount.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      mockQueueWaterCustomAmount.mockResolvedValue(true);
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.logCustomAmount(180);
+      });
+
+      await waitFor(() =>
+        expect(mockQueueWaterCustomAmount).toHaveBeenCalledTimes(1)
+      );
+      const sentKey = mockLogCustomWaterAmount.mock.calls[0][0].clientId;
+      expect(mockQueueWaterCustomAmount).toHaveBeenCalledWith(
+        sentKey,
+        {
+          entryDate: testDate,
+          waterMl: 180,
+        },
+        expect.any(Number)
+      );
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'info',
+          text1: 'Saved on this phone',
+        })
+      );
     });
 
     test('optimistic decrement clamps to zero', async () => {

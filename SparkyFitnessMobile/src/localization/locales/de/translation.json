@@ -11173,7 +11173,7 @@
       "startsIn_other": "Startet in {{count}} Tagen"
     },
     "target": "Ziel: {{target}}",
-    "title": "Challenges",
+    "title": "Herausforderungen",
     "unavailableSubtitle": "Challenges sind auf dem Server deaktiviert oder ein Update fehlt. Frag deinen Administrator.",
     "unavailableTitle": "Challenges nicht verfügbar",
     "value": {

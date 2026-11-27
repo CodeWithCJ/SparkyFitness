@@ -1,4 +1,5 @@
 import SyncScreen from '../screens/SyncScreen';
+import CoachSettingsScreen from '../screens/CoachSettingsScreen';
 import ImportHistoryScreen from '../screens/ImportHistoryScreen';
 import LogScreen from '../screens/LogScreen';
 import { useFoodSearchSelectionStore } from '../stores/foodSearchSelectionStore';
@@ -263,6 +264,7 @@ export const SafeCustomNutrientForm = withErrorBoundary(CustomNutrientFormScreen
 export const SafeNutrientDisplaySettings = withErrorBoundary(NutrientDisplaySettingsScreen, 'NutrientDisplaySettings', { canGoBack: true });
 export const SafeAllergenSettings = withErrorBoundary(AllergenSettingsScreen, 'AllergenSettings', { canGoBack: true });
 export const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
+export const SafeCoachSettings = withErrorBoundary(CoachSettingsScreen, 'CoachSettings', { canGoBack: true });
 export const SafeHealthTrendsSettings = withErrorBoundary(HealthTrendsSettingsScreen, 'HealthTrendsSettings', { canGoBack: true });
 export const SafeWatchSettings = withErrorBoundary(WatchSettingsScreen, 'WatchSettings', { canGoBack: true });
 export const SafeWatchComplications = withErrorBoundary(WatchComplicationsScreen, 'WatchComplications', { canGoBack: true });

@@ -10,6 +10,7 @@ import FeatureSettingsScreen from '../../src/screens/FeatureSettingsScreen';
 import {
   FEATURE_KEYS,
   featureStorage,
+  isFeatureOffered,
   type FeatureKey,
 } from '@workspace/shared';
 import type { CycleSwitchState } from '../../src/hooks/useMobileFeatures';
@@ -79,9 +80,10 @@ jest.mock('../../src/hooks/useFeatureChoices', () => ({
 
 const renderScreen = () => render(<FeatureSettingsScreen {...({} as never)} />);
 
-// One row each for the features switched per platform (`feature_choices`).
+// One row each for the features switched per platform (`feature_choices`)
+// that this app offers.
 const CHOICE_FEATURE_COUNT = FEATURE_KEYS.filter(
-  (key) => featureStorage(key) === 'choices'
+  (key) => featureStorage(key) === 'choices' && isFeatureOffered(key, 'mobile')
 ).length;
 
 const featureRow = (feature: FeatureKey) =>
@@ -213,6 +215,7 @@ describe('FeatureSettingsScreen', () => {
       'feature-row-medications',
       'feature-row-labResults',
       'feature-row-oralCare',
+      'feature-row-aiCoaches',
     ]);
   });
 
@@ -244,6 +247,16 @@ describe('FeatureSettingsScreen', () => {
     expect(toggle.props.value).toBe(false);
     fireEvent(toggle, 'valueChange', true);
     expect(mockSetFeatureOn).toHaveBeenLastCalledWith('oralCare', true);
+  });
+
+  it('turns coaches on in this app', () => {
+    renderScreen();
+    fireEvent(
+      screen.getByTestId('feature-switch-aiCoaches'),
+      'valueChange',
+      true
+    );
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('aiCoaches', true);
   });
 
   it('turns medications off in this app', () => {

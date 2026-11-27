@@ -182,6 +182,7 @@ describe('/api/chat/stream approval capability', () => {
         approvals ?? false,
         undefined,
         undefined,
+        undefined,
         undefined
       );
     }
@@ -291,7 +292,8 @@ describe('resumable chat turns', () => {
       true,
       first,
       expect.any(AbortSignal),
-      expect.any(String)
+      expect.any(String),
+      undefined
     );
     expect(claimChatTurn).toHaveBeenCalledTimes(1);
     const key = vi.mocked(claimChatTurn).mock.calls[0]![0];
@@ -440,7 +442,8 @@ it('records a claimed approval continuation setup failure and returns its durabl
     'owner',
     'owner',
     undefined,
-    expect.any(Number)
+    expect.any(Number),
+    undefined
   );
   expect(markChatTurnFailed).toHaveBeenCalledWith(
     expect.any(String),

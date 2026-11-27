@@ -21,6 +21,7 @@ import ActiveWorkoutBar, {
   setActiveWorkoutBarTabBarHeight,
 } from './ActiveWorkoutBar';
 import CustomTabBar from './CustomTabBar';
+import { ReadableWidthLayout } from './ReadableWidthLayout';
 import WhatsNewBanner, {
   WhatsNewBannerContent,
   useWhatsNewBannerState,
@@ -81,6 +82,42 @@ const NativeTab = createNativeBottomTabNavigator<TabParamList>();
 // Fallback Tab Navigator (Android / iOS < 26)
 const FallbackTab = createBottomTabNavigator<TabParamList>();
 
+// Centres each native tab's content on wide windows (iPad); see
+// ReadableWidthLayout. Native tabs skip HorizontalInsetsFrame, so these screens
+// pad the side insets themselves.
+function renderReadableWidthScreen({
+  children,
+  route,
+}: {
+  children: React.ReactElement;
+  route: { name: string };
+}) {
+  // Side insets keep tab screens clear of iPhone Duo's vertical bar; the
+  // readable column centres them on wide windows (iPad).
+  return (
+    <ScreenSideInsets>
+      <ReadableWidthLayout routeName={route.name}>
+        {children}
+      </ReadableWidthLayout>
+    </ScreenSideInsets>
+  );
+}
+
+// The fallback tab bar (Android, iOS below 26 or with Liquid Glass off) sits
+// inside App.tsx's HorizontalInsetsFrame, which already pads the side insets,
+// so its screens only take the readable column.
+function renderFallbackTabScreen({
+  children,
+  route,
+}: {
+  children: React.ReactElement;
+  route: { name: string };
+}) {
+  return (
+    <ReadableWidthLayout routeName={route.name}>{children}</ReadableWidthLayout>
+  );
+}
+
 type DashboardStackParamList = {
   DashboardRoot: undefined;
 };
@@ -105,10 +142,6 @@ const ScreenSideInsets = ({ children }: { children: React.ReactNode }) => {
     </View>
   );
 };
-const sideInsetsLayout = ({ children }: { children: React.ReactNode }) => (
-  <ScreenSideInsets>{children}</ScreenSideInsets>
-);
-
 const DashboardStack = createNativeStackNavigator<DashboardStackParamList>();
 const DiaryStack = createNativeStackNavigator<DiaryStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
@@ -161,7 +194,7 @@ function DashboardStackScreen() {
     <View className="flex-1">
       <DashboardStack.Navigator
         screenOptions={screenOptions}
-        screenLayout={sideInsetsLayout}
+        screenLayout={renderReadableWidthScreen}
       >
         <DashboardStack.Screen
           name="DashboardRoot"
@@ -192,7 +225,7 @@ function DiaryStackScreen() {
     <View className="flex-1">
       <DiaryStack.Navigator
         screenOptions={screenOptions}
-        screenLayout={sideInsetsLayout}
+        screenLayout={renderReadableWidthScreen}
       >
         <DiaryStack.Screen
           name="DiaryRoot"
@@ -221,7 +254,7 @@ function LibraryStackScreen() {
     <View className="flex-1">
       <LibraryStack.Navigator
         screenOptions={screenOptions}
-        screenLayout={sideInsetsLayout}
+        screenLayout={renderReadableWidthScreen}
       >
         <LibraryStack.Screen
           name="LibraryRoot"
@@ -252,7 +285,7 @@ function SettingsStackScreen() {
     <View className="flex-1">
       <SettingsStack.Navigator
         screenOptions={screenOptions}
-        screenLayout={sideInsetsLayout}
+        screenLayout={renderReadableWidthScreen}
       >
         <SettingsStack.Screen
           name="SettingsRoot"
@@ -399,6 +432,7 @@ export function FallbackTabsLayout({
       screenOptions={{
         headerShown: false,
       }}
+      screenLayout={renderFallbackTabScreen}
       tabBar={(props) => (
         <View collapsable={false}>
           <WhatsNewBanner reserveAddButtonClearance />

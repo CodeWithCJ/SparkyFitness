@@ -10,6 +10,10 @@ _Last updated: 2026-11-25_
 - Validate changes from consuming packages (server, frontend, mobile), not in isolation.
 - Every schema change here potentially touches three packages.
 
+## AI Coaches
+
+`src/coaches/` holds what the server job and the web Preview both read: `signals.ts` (the fixed list of numbers a rule may use, ids and kinds only), `rules.ts` (rule and override schemas, at most 8 rules of 4 conditions), `catalog.ts` (`BUILTIN_COACHES`: key, tool categories, default rules) and `evaluate.ts` (pure `evaluateCoachRules`, `mergeBuiltinRules`, `slotPartOf`). No user-facing text lives here; each app words coaches, signals and rules in its own locale files. API contract: `schemas/api/Coaches.api.zod.ts` (also `readChatCoachMessage` for a chat row's coach details); tables: `CoachProfile`, `UserCoaches`, `CoachNudges` in `schemas/database/`. `dailyOutlook.ts` works out the morning verdict in code, `suggestions.ts` is what a message proposes. `utils/loggingStreak.ts` is the logging streak used by the coaches and the assistant's streak tool.
+
 ## Food Assistant State
 
 `schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. All state is owner-only; these additive contracts do not change existing chat clients.

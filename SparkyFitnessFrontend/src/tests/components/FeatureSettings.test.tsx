@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import {
   FEATURE_KEYS,
   featureStorage,
+  isFeatureOffered,
   type FeatureKey,
   type SharedCycleSettings,
 } from '@workspace/shared';
@@ -55,9 +56,10 @@ jest.mock('@/hooks/Settings/useFeatureChoices', () => ({
   }),
 }));
 
-// One row each for the features switched per platform (`feature_choices`).
+// One row each for the features switched per platform (`feature_choices`)
+// that this website offers.
 const CHOICE_FEATURE_COUNT = FEATURE_KEYS.filter(
-  (key) => featureStorage(key) === 'choices'
+  (key) => featureStorage(key) === 'choices' && isFeatureOffered(key, 'web')
 ).length;
 
 function renderSettings() {
@@ -189,6 +191,16 @@ describe('FeatureSettings', () => {
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);
     expect(mockSetFeatureOn).toHaveBeenLastCalledWith('oralCare', true);
+  });
+
+  it('lists AI coaches under Wellbeing, for this website only, and turns them on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['aiCoaches']);
+    renderSettings();
+    expect(screen.getByText('Wellbeing')).toBeInTheDocument();
+    const toggle = screen.getByRole('switch', { name: 'Coaches' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('aiCoaches', true);
   });
 
   it('turns lab results off on this website', () => {

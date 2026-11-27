@@ -3103,7 +3103,7 @@
       "restDay": "休息日",
       "today": "今日",
       "vsTarget": "對比您每日目標 {{change}} {{unit}}（{{percent}}）",
-      "modeOffShort": "關閉",
+      "modeOffShort": "關",
       "modeTrainingRestShort": "訓練／休息",
       "modeCustomShort": "自訂",
       "chartTarget": "每日目標 {{value}}",
@@ -3124,7 +3124,9 @@
       "footnote": "日誌同設定永遠都會顯示。隱藏分頁只係改呢個網站：唔會刪任何嘢，手機 App 有自己嘅設定.",
       "saveError": "儲存唔到您嘅分頁選擇。再試一次.",
       "loadError": "載入唔到您嘅分頁選擇.",
-      "actingOnBehalf": "只可以改您自己帳戶嘅分頁."
+      "actingOnBehalf": "只可以改您自己帳戶嘅分頁.",
+      "someFeaturesOff": "有啲功能已關閉",
+      "manageFeatures": "管理"
     },
     "features": {
       "title": "功能",
@@ -3155,6 +3157,36 @@
       "labResults": {
         "description": "記錄驗血結果，長期追蹤每個指標."
       }
+    },
+    "foodProviders": {
+      "common": {
+        "getApiKey": "攞 API 金鑰",
+        "terms": "條款"
+      },
+      "cooktool": {
+        "help": "免費方案每日包 1,000 次查詢。要用您自己嘅金鑰接受 CookTool 嘅條款。查詢結果會快取 24 小時。",
+        "portalLabel": "CookTool 文件"
+      },
+      "nutrientgraph": {
+        "help": "免費方案每月包 2,500 次用量。涵蓋 USDA、法國 CIQUAL 同美國品牌產品，支援五種語言。查詢結果會快取 24 小時。",
+        "portalLabel": "NutrientGraph 文件"
+      },
+      "food-info": {
+        "help": "免費方案每日包 100 次請求。可以查多個國家食物資料庫嘅參考食物。查詢結果會快取 24 小時.",
+        "portalLabel": "Food Info 開發者入口"
+      }
+    },
+    "zeppBridgeProvider": {
+      "warningTitle": "第三方整合：需要 ZeppBridge",
+      "warningInstall": "ZeppBridge 係獨立嘅開源項目，唔係由 SparkyFitness 開發、維護或者支援。只有您自己安裝同運行 ZeppBridge，呢個整合先會生效。想知佢係咩、點設定，請睇 <repo>GitHub 上嘅 ZeppBridge 項目</repo>.",
+      "warningDueDiligence": "ZeppBridge 會登入您嘅 Zepp 帳戶，並喺您自己嘅電腦保存一份健康資料副本。安裝之前請自行做好評估：睇清楚佢嘅說明文件同 <privacy>私隱說明</privacy>，了解佢要求咩權限，再決定信唔信得過。使用風險由您自己承擔.",
+      "warningExperimental": "呢個整合屬實驗性質，係根據 ZeppBridge 公開嘅 API 建立，喺真實裝置上測試有限.",
+      "baseUrlLabel": "ZeppBridge 位址",
+      "tokenLabel": "拉取權杖",
+      "tokenPlaceholder": "設定為 ZEPPBRIDGE_PULL_TOKEN 嘅權杖",
+      "overviewNote": "SparkyFitness 只會讀取您自己嘅 ZeppBridge 伺服器（用 `zeppbridge-cli serve` 運行）。佢永遠唔會連去 Zepp，亦睇唔到您嘅 Zepp 登入資料.",
+      "urlNote": "請輸入完整地址，要包埋 http://（或 https://）。如果用 Docker，請將兩個容器放喺同一個網絡，並用容器名，例如 http://zeppbridge-serve:43921.",
+      "privateNetworkNote": "私人或者區域網絡地址只可以用喺管理員帳戶。如果伺服器有多個用戶，管理員要先允許私人網絡供應商."
     }
   },
   "admin": {
@@ -3770,7 +3802,7 @@
       "activityBaselineCapped": "經過基於 BMR 嘅合理上限後，自適應基準係 {{baseline}} {{unit}}。目標模式同您嘅安全下限會套用落呢個基準.",
       "activityExcludedBaselineValue": "自適應基準 = {{energy}} {{energyUnitString}}",
       "activitySeparatedCredit": "今日嘅步數同運動會另外計一次，唔會再加 BMR。紀錄未夠之前，基準用 BMR × 您嘅非運動活動係數。穩定嘅飲食、體重同活動紀錄可以令估算更準.",
-      "oxfordMaleMathHenry2005": "公式：（{{slope}} × 體重 + {{intercept}}）× 239，按您年齡 \n計算：（{{slope}} × {{weight}} + {{intercept}}）× 239 = {{result}} kcal",
+      "oxfordMaleMathHenry2005": "公式：（{{slope}} × 體重 + {{intercept}}）× 239，按您年齡\n計算：（{{slope}} × {{weight}} + {{intercept}}）× 239 = {{result}} kcal",
       "oxfordFemaleMathHenry2005": "公式：（{{slope}} × 體重 + {{intercept}}）× 239，按您年齡\n計算：（{{slope}} × {{weight}} + {{intercept}}）× 239 = {{result}} kcal",
       "fallbackOverlap": "因為最近體重觀察期合資格熱量日少過 {{required}} 日，所以用公式基準（{{value}} {{unit}}）。需要有新嘅完整體重日，而重疊食物紀錄足夠，即使現時清單數字已達標.",
       "fallbackAlignedOverlap": "因為最近體重觀察期合資格食物日少過 {{required}} 日，所以用公式基準（{{value}} {{unit}}）。第一個體重日計，最後一個唔計。需要有新嘅完整體重日同足夠相配食物紀錄，即使 {{window}} 日清單已達標.",
@@ -4766,7 +4798,7 @@
     "formatStandard": "標準（組數同次數）",
     "timeCapLabel": "時間上限（分鐘）",
     "rampLabel": "每組增加（今次訓練，{{unit}}）",
-    "rampPlaceholder": "關閉",
+    "rampPlaceholder": "關",
     "rampHint": "同一場訓練入面，第一組之後嘅每組正式組會自動預填加重呢個量；用負數就可以遞減，熱身組同降重組會跳過."
   },
   "addWorkoutPlanDialog": {
@@ -7515,7 +7547,18 @@
     "intervalsRemoveTitle": "已移除推送嘅營養數據",
     "intervalsRemoveDetails": "清咗 {{cleared}} 日，另外有 {{kept}} 日被其他 App 改過就保留，{{failed}} 個失敗.",
     "intervalsRemoveError": "移除唔到已推送嘅營養數據。再試一次.",
-    "intervalsPushToggleError": "儲存唔到 Intervals.icu 營養推送設定."
+    "intervalsPushToggleError": "儲存唔到 Intervals.icu 營養推送設定.",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge 同步成功",
+    "zeppbridgeSyncDetails": "已同步：{{sleepImported}} 段睡眠、{{workoutsImported}} 次運動（其中 {{workoutDetailsImported}} 次有路線或心率）、{{metricDays}} 日指標（{{failed}} 項失敗，{{workoutDetailsFailed}} 項運動詳情缺失）.",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge 同步有問題",
+    "zeppbridgeSyncError": "ZeppBridge 同步失敗。請檢查設定入面嘅 ZeppBridge 位址同拉取權杖，並確認 ZeppBridge 伺服器正在運行.",
+    "zeppbridgeTestSuccessTitle": "ZeppBridge 連接正常",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} 有回應.",
+    "zeppbridgeTestError": "連唔到 ZeppBridge。請檢查位址（要包埋 http://）同拉取權杖.",
+    "zeppbridgeTestButton": "測試連接",
+    "zeppbridgeDisconnectConfirm": "確定要中斷 ZeppBridge 嘅連接？呢個整合會停用，直到您再開啟為止。已經匯入嘅資料會保留.",
+    "zeppbridgeThirdPartyNote": "第三方整合：需要 <repo>ZeppBridge</repo>，呢個係獨立項目，唔由 SparkyFitness 支援，要喺您自己嘅電腦運行.",
+    "zeppbridgeDuplicateNote": "如果 Zepp 應用程式同時寫入 Apple Health 或者 Health Connect，而您又喺呢度同步嗰邊，同一晚睡眠或者同一節運動可能會出現兩次。揀其中一個就得."
   },
   "mealCreation": {
     "convertToMeal": "由日記建立餐膳",
@@ -9545,7 +9588,9 @@
       "loadingCameraModule": "載入緊相機模組…"
     },
     "foodResultCard": {
-      "gi": "GI：{{glycemic_index}}"
+      "gi": "GI：{{glycemic_index}}",
+      "tapForFullNutrition": "撳一下睇完整營養",
+      "tapForNutrition": "撳一下睇營養"
     },
     "searchingBarcode": "搜尋緊條碼",
     "lookingUp": "查緊：{{barcode}}…",
@@ -11452,7 +11497,8 @@
       "miles": "{{value}} mi",
       "km": "{{value}} km",
       "days_other": "{{count}} 日",
-      "metres": "{{value}} m"
+      "metres": "{{value}} m",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "分",
@@ -11461,7 +11507,8 @@
       "miles": "英里",
       "km": "公里",
       "days": "日",
-      "metres": "米"
+      "metres": "米",
+      "feet": "呎"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

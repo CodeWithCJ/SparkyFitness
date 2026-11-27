@@ -12,8 +12,11 @@ const TMP_UPLOADS = path.join(os.tmpdir(), `sparky-imgup-test-${process.pid}`);
 const priorUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY;
 process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY = TMP_UPLOADS;
 
-const { finalizeUploadedImages, removeEntityImageDir } =
-  await import('../middleware/imageUpload.js');
+const {
+  finalizeUploadedImages,
+  removeEntityImageDir,
+  validateAndSanitizeStagedFiles,
+} = await import('../middleware/imageUpload.js');
 const { isSafePathSegment } = await import('../utils/uploadsPath.js');
 
 if (priorUploadsDir === undefined) {
@@ -92,5 +95,42 @@ describe('finalizeUploadedImages', () => {
       removeEntityImageDir('foods', '../..')
     ).resolves.toBeUndefined();
     expect(fs.existsSync(TMP_UPLOADS)).toBe(true);
+  });
+
+  it('validates magic bytes and normalizes extensions', async () => {
+    const dir = path.join(TMP_UPLOADS, '_staging', 'magic-test');
+    await fsp.mkdir(dir, { recursive: true });
+
+    // Valid PNG disguised as jpg
+    const pngPath = path.join(dir, 'disguised.jpg');
+    const pngBytes = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    ]);
+    await fsp.writeFile(pngPath, pngBytes);
+
+    // The function resolves each file under stagingDirFor(imageUploadId), not
+    // the path the caller supplies, so the request must carry the same id the
+    // files were staged under.
+    const reqValid = {
+      imageUploadId: 'magic-test',
+      files: [{ filename: 'disguised.jpg', path: pngPath }],
+    };
+    await validateAndSanitizeStagedFiles(reqValid);
+    // Renamed to .png matching detected magic bytes
+    expect(reqValid.files[0].filename).toBe('disguised.png');
+    expect(fs.existsSync(path.join(dir, 'disguised.png'))).toBe(true);
+
+    // Non-image content disguised as png
+    const textPath = path.join(dir, 'fake.png');
+    await fsp.writeFile(textPath, '<html>malicious payload</html>');
+    const reqInvalid = {
+      imageUploadId: 'magic-test',
+      files: [{ filename: 'fake.png', path: textPath }],
+    };
+    await expect(
+      validateAndSanitizeStagedFiles(reqInvalid)
+    ).rejects.toMatchObject({
+      name: 'ValidationError',
+    });
   });
 });

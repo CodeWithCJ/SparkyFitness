@@ -28,12 +28,19 @@ type RunnerContext = {
   userId: string;
   authenticatedUserId: string;
   entryDate: string;
+  entryTime?: string;
+  mealTypeIdOverride?: string;
+  waterMlOverride?: number;
 };
 
 type LoggedRow = NonNullable<ScanActionTagResponse['logged']>;
 
 /** `null` means the thing the tag points at no longer exists; nothing was logged. */
-type RunnerResult = { summary: string; logged?: LoggedRow } | null;
+type RunnerResult = {
+  summary: string;
+  logged?: LoggedRow;
+  drinks?: number;
+} | null;
 
 type FoodAction = Extract<TagAction, { type: 'food' }>;
 type MealAction = Extract<TagAction, { type: 'meal' }>;
@@ -55,6 +62,39 @@ function amountSummary(quantity: number, unit: string, name: string): string {
   return unit === 'serving'
     ? `${quantity} × ${name}`
     : `${quantity} ${unit} ${name}`;
+}
+
+function entryHourMinute(
+  entryTime: string | undefined,
+  tz: string
+): { hour: number; minute: number } {
+  if (entryTime) {
+    const match = entryTime.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (match) {
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        return { hour, minute };
+      }
+    }
+  }
+  return userHourMinute(tz);
+}
+
+function normalizeTime(rawTime: string | undefined, tz: string): string {
+  if (!rawTime) return clockInZone(tz);
+  return rawTime.length === 5 ? `${rawTime}:00` : rawTime;
+}
+
+function containerVolumeInMl(volume: unknown): number {
+  const numericVolume = Number(volume);
+  return Number.isFinite(numericVolume) && numericVolume > 0
+    ? numericVolume
+    : 250;
+}
+
+function formatMlLabel(ml: number): string {
+  return Number.isInteger(ml) ? String(ml) : String(Number(ml.toFixed(2)));
 }
 
 /**
@@ -100,7 +140,9 @@ async function loadMealTarget(userId: string, action: MealAction) {
 async function resolveMealTypeId(
   userId: string,
   choice: TagMealChoice,
-  tz: string
+  tz: string,
+  mealTypeIdOverride?: string,
+  entryTime?: string
 ): Promise<string | null> {
   const allTypes: MealTypeRow[] =
     await mealTypeRepository.getAllMealTypes(userId);
@@ -109,12 +151,23 @@ async function resolveMealTypeId(
   // the time of day, which is also what the app shows for it.
   const visible = allTypes.filter((type) => type.is_visible !== false);
   const mealTypes = visible.length > 0 ? visible : allTypes;
+
+  if (mealTypeIdOverride) {
+    const wantedOverride = mealTypeIdOverride.toLowerCase();
+    const matchedOverride = mealTypes.find(
+      (type) => type.id.toLowerCase() === wantedOverride
+    );
+    if (matchedOverride) return matchedOverride.id;
+  }
+
   if (choice.mode === 'fixed') {
     const wanted = choice.meal_type_id.toLowerCase();
     const fixed = mealTypes.find((type) => type.id.toLowerCase() === wanted);
     if (fixed) return fixed.id;
   }
-  return pickMealTypeForTime(mealTypes, userHourMinute(tz))?.id ?? null;
+  return (
+    pickMealTypeForTime(mealTypes, entryHourMinute(entryTime, tz))?.id ?? null
+  );
 }
 
 type Runner<T extends TagAction> = (
@@ -135,21 +188,77 @@ const RUNNERS: {
       context.userId
     );
     if (!container) return null;
+
+    const linkedFoodId = (container as { linked_food_id?: unknown })
+      .linked_food_id;
+
+    if (context.waterMlOverride !== undefined && !linkedFoodId) {
+      const mlToLog = Math.min(
+        10000,
+        Math.max(1, Number(context.waterMlOverride.toFixed(2)))
+      );
+      const logEntry = await measurementService.logWaterIntakeAmount(
+        context.userId,
+        context.authenticatedUserId,
+        context.entryDate,
+        mlToLog,
+        'manual'
+      );
+      const entryId =
+        logEntry && typeof logEntry === 'object' && 'id' in logEntry
+          ? String((logEntry as { id?: unknown }).id ?? '')
+          : '';
+      return {
+        summary: `${formatMlLabel(mlToLog)} ml (${container.name})`,
+        logged: entryId
+          ? { kind: 'water_intake_entry', id: entryId }
+          : undefined,
+      };
+    }
+
+    let effectiveDrinks = action.drinks;
+    if (context.waterMlOverride !== undefined && linkedFoodId) {
+      const servingsPerContainer = Math.max(
+        1,
+        Number(
+          (container as { servings_per_container?: unknown })
+            .servings_per_container ?? 1
+        ) || 1
+      );
+      const drinkMl =
+        containerVolumeInMl(container.volume) / servingsPerContainer;
+      if (drinkMl > 0) {
+        effectiveDrinks = Math.min(
+          20,
+          Math.max(1, Math.round(context.waterMlOverride / drinkMl))
+        );
+      }
+    }
+
     await measurementService.upsertWaterIntake(
       context.userId,
       context.authenticatedUserId,
       context.entryDate,
-      action.drinks,
+      effectiveDrinks,
       action.container_id
     );
-    return { summary: `${action.drinks} × ${container.name}` };
+    return {
+      summary: `${effectiveDrinks} × ${container.name}`,
+      drinks: effectiveDrinks,
+    };
   },
   food: async (context, action) => {
     const target = await loadFoodTarget(context.userId, action);
     if (!target) return null;
     const { food, variant } = target;
     const tz = await loadUserTimezone(context.userId);
-    const mealTypeId = await resolveMealTypeId(context.userId, action.meal, tz);
+    const mealTypeId = await resolveMealTypeId(
+      context.userId,
+      action.meal,
+      tz,
+      context.mealTypeIdOverride,
+      context.entryTime
+    );
     const unit: string = variant.serving_unit || 'serving';
     const entry = await foodRepository.createFoodEntry(
       {
@@ -160,7 +269,7 @@ const RUNNERS: {
         quantity: action.quantity,
         unit,
         entry_date: context.entryDate,
-        entry_time: clockInZone(tz),
+        entry_time: normalizeTime(context.entryTime, tz),
         food_entry_meal_id: null,
         meal_plan_template_id: null,
         ...buildFoodEntrySnapshot(food, variant),
@@ -180,7 +289,13 @@ const RUNNERS: {
     const meal = await loadMealTarget(context.userId, action);
     if (!meal) return null;
     const tz = await loadUserTimezone(context.userId);
-    const mealTypeId = await resolveMealTypeId(context.userId, action.meal, tz);
+    const mealTypeId = await resolveMealTypeId(
+      context.userId,
+      action.meal,
+      tz,
+      context.mealTypeIdOverride,
+      context.entryTime
+    );
     const logged = await foodEntryService.createFoodEntryMeal(
       context.userId,
       context.authenticatedUserId,
@@ -189,7 +304,7 @@ const RUNNERS: {
         meal_template_id: meal.id,
         meal_type_id: mealTypeId,
         entry_date: context.entryDate,
-        entry_time: clockInZone(tz),
+        entry_time: normalizeTime(context.entryTime, tz),
         quantity: action.quantity,
         unit: action.unit,
         // The serving model current clients use (issue #1023).
@@ -253,9 +368,23 @@ export async function scanActionTag(
   );
   if (!tag) return { status: 'unknown_tag', tag: null, summary: null };
 
-  if (tag.ask_before_running && !body.confirmed) {
+  const allowsAdjustment = Boolean(tag.allow_amount_adjustment);
+  if (
+    (tag.ask_before_running ||
+      allowsAdjustment ||
+      Boolean(tag.allow_custom_timestamp)) &&
+    !body.confirmed
+  ) {
     return { status: 'needs_confirmation', tag, summary: null };
   }
+
+  const effectiveAction: TagAction = allowsAdjustment
+    ? tag.action.type === 'water' && body.drinks_override !== undefined
+      ? { ...tag.action, drinks: body.drinks_override }
+      : tag.action.type !== 'water' && body.quantity_override !== undefined
+        ? { ...tag.action, quantity: body.quantity_override }
+        : tag.action
+    : tag.action;
 
   const claim = await claimActionTagRun(
     userId,
@@ -267,16 +396,32 @@ export async function scanActionTag(
 
   try {
     const result = await runAction(
-      { userId, authenticatedUserId, entryDate: body.entry_date },
-      tag.action
+      {
+        userId,
+        authenticatedUserId,
+        entryDate: body.entry_date,
+        // Only apply a custom timestamp when explicitly enabled on the tag.
+        entryTime: tag.allow_custom_timestamp ? body.entry_time : undefined,
+        mealTypeIdOverride: body.confirmed ? body.meal_type_id : undefined,
+        waterMlOverride:
+          tag.action.type === 'water' && allowsAdjustment
+            ? body.water_ml_override
+            : undefined,
+      },
+      effectiveAction
     );
     if (!result) {
       await releaseActionTagRun(userId, tag.id, claim, authenticatedUserId);
       return { status: 'target_missing', tag, summary: null };
     }
+    const resolvedAction: TagAction =
+      result.drinks !== undefined && effectiveAction.type === 'water'
+        ? { ...effectiveAction, drinks: result.drinks }
+        : effectiveAction;
+
     return {
       status: 'done',
-      tag,
+      tag: { ...tag, action: resolvedAction },
       summary: result.summary,
       logged: result.logged ?? null,
     };

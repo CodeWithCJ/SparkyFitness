@@ -12,6 +12,7 @@ import {
   hiddenFeatureCustomCategories,
   isFeatureEnabled,
   isFeatureEnabledAnywhere,
+  isFeatureOffered,
   isFeatureExplicitlyOff,
   isFeatureKey,
   platformFeatureChoicesSchema,
@@ -28,12 +29,13 @@ function keys(count: number, value: boolean | null = true) {
 }
 
 describe('optional features registry', () => {
-  it('lists cycle, stored in cycle_settings, then medications, lab results and oral care, chosen per app', () => {
+  it('lists cycle, stored in cycle_settings, then medications, lab results, oral care and AI coaches, chosen per app', () => {
     expect(FEATURE_KEYS).toEqual([
       'cycle',
       'medications',
       'labResults',
       'oralCare',
+      'aiCoaches',
     ]);
     expect(featureStorage('cycle')).toBe('cycleSettings');
     expect(featureStorage('medications')).toBe('choices');
@@ -465,5 +467,40 @@ describe('featureChoicesPatchSchema', () => {
     expect(featureChoicesPatchSchema.safeParse({ web: keys(65) }).success).toBe(
       false
     );
+  });
+});
+
+describe('AI coaches', () => {
+  it('is off until someone turns it on, and both apps offer it', () => {
+    expect(
+      isFeatureEnabled('aiCoaches', 'web', {
+        choices: null,
+        cycleEnabled: null,
+      })
+    ).toBe(false);
+    expect(isFeatureOffered('aiCoaches', 'web')).toBe(true);
+    expect(isFeatureOffered('aiCoaches', 'mobile')).toBe(true);
+  });
+
+  it('is on for the server when either app turned it on', () => {
+    expect(
+      isFeatureEnabledAnywhere('aiCoaches', {
+        choices: { web: { aiCoaches: true } },
+        cycleEnabled: null,
+      })
+    ).toBe(true);
+    expect(
+      isFeatureEnabledAnywhere('aiCoaches', {
+        choices: { web: { aiCoaches: false } },
+        cycleEnabled: null,
+      })
+    ).toBe(false);
+  });
+
+  it('offers every other feature on both platforms', () => {
+    for (const key of ['cycle', 'medications', 'labResults'] as const) {
+      expect(isFeatureOffered(key, 'web')).toBe(true);
+      expect(isFeatureOffered(key, 'mobile')).toBe(true);
+    }
   });
 });

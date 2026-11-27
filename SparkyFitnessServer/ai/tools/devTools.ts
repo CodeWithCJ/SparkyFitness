@@ -79,7 +79,14 @@ async function runReadOnlyQuery(
     await client.query(
       `SET LOCAL statement_timeout = '${READ_ONLY_STATEMENT_TIMEOUT}'`
     );
-    const result = await client.query(sql);
+    // Explicitly force node-postgres to use the extended query protocol
+    // (Parse/Bind/Execute), which Postgres restricts to exactly ONE statement.
+    // Multi-statement input like `SELECT 1; COMMIT; DROP TABLE x; --` is rejected
+    // by Postgres itself at parse time with 42601.
+    const result = await client.query({
+      text: sql,
+      queryMode: 'extended',
+    } as unknown as import('pg').QueryConfig);
     await client.query('ROLLBACK');
     return result.rows;
   } catch (error) {

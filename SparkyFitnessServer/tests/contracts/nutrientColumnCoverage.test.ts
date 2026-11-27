@@ -67,9 +67,10 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'user_goals/goal_presets have no water_ml column — water_goal_ml is the one water goal (NON_GOAL_NUTRIENT_KEYS).',
   },
   {
-    file: /^services\/goalService\.ts$/,
+    file: /^services\/(goalService|coachSuggestionService)\.ts$/,
     columns: ['water_ml'],
-    reason: 'Water is not a nutrient goal; see goalRepository above.',
+    reason:
+      'Water is not a nutrient goal; see goalRepository above. The coach suggestion service repeats a goal row column by column.',
   },
   {
     file: /^models\/coachRepository\.ts$/,

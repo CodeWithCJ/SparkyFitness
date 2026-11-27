@@ -1,17 +1,25 @@
-import { changeWaterIntake } from '../services/api/measurementsApi';
+import {
+  changeWaterIntake,
+  logCustomWaterAmount,
+} from '../services/api/measurementsApi';
 import { ApiError } from '../services/api/errors';
 import type { WaterIntakeResponse } from '../types/measurements';
 import { newUuid } from '../utils/ids';
 import { accountGeneration } from './accountGeneration';
 import { queueAfterConnectionFailure } from './queueAfterFailure';
-import { queueWaterDrink, removeLatestDrinkOffline } from './waterHandOver';
+import {
+  queueWaterDrink,
+  queueWaterCustomAmount,
+  removeLatestDrinkOffline,
+} from './waterHandOver';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** What logging a drink came to: the server's answer, or a waiting upload. */
 export type DrinkResult =
-  { queued: false; response: WaterIntakeResponse } | { queued: true };
+  | { queued: false; response: WaterIntakeResponse }
+  | { queued: true; replayKey?: string };
 
 /**
  * Logs one drink. It carries a replay key from the first request on, so a
@@ -45,10 +53,14 @@ export async function logDrinkOrQueue(
   } catch (error) {
     const queued = await queueAfterConnectionFailure(
       error,
-      () => queueWaterDrink(clientId, { entryDate, containerId }),
+      () => queueWaterDrink(clientId, { entryDate, containerId }, startedUnder),
       startedUnder
     );
-    if (queued) return { queued: true };
+    if (queued) {
+      return pressKey !== undefined
+        ? { queued: true, replayKey: clientId }
+        : { queued: true };
+    }
     throw error;
   }
 }
@@ -94,7 +106,7 @@ export async function removeDrinkOrQueue(
     const kept = await queueAfterConnectionFailure(
       error,
       async () => {
-        result = await removeLatestDrinkOffline(entryDate);
+        result = await removeLatestDrinkOffline(entryDate, startedUnder);
         // Nothing was written when there was nothing to take off, the phone
         // could not store it, or the drink is mid-upload: not a kept change.
         return result !== 'none' && result !== 'busy';
@@ -102,6 +114,35 @@ export async function removeDrinkOrQueue(
       startedUnder
     );
     if (kept) return { kept: true, result };
+    throw error;
+  }
+}
+
+/**
+ * Logs a custom one-off amount, with no container (#3734). Follows the same
+ * replay-key and queue-on-connection-failure rules as `logDrinkOrQueue`.
+ */
+export async function logCustomAmountOrQueue(
+  entryDate: string,
+  waterMl: number
+): Promise<DrinkResult> {
+  const clientId = newUuid();
+  const startedUnder = accountGeneration();
+  try {
+    const response = await logCustomWaterAmount({
+      entryDate,
+      waterMl,
+      clientId,
+    });
+    return { queued: false, response };
+  } catch (error) {
+    const queued = await queueAfterConnectionFailure(
+      error,
+      () =>
+        queueWaterCustomAmount(clientId, { entryDate, waterMl }, startedUnder),
+      startedUnder
+    );
+    if (queued) return { queued: true };
     throw error;
   }
 }

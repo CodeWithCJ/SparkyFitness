@@ -68,6 +68,33 @@ describe('sparky_get_barcode', () => {
     );
   });
 
+  it('rounds float noise and string numerics in the serving line', async () => {
+    svc.lookupBarcode.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: {
+        name: 'Granola Bar',
+        brand: null,
+        default_variant: {
+          ...VARIANT,
+          serving_size: '30.00',
+          calories: 405.00000000000006,
+          protein: 44.500000000000014,
+          carbs: '2.25',
+          fat: 0.04,
+        },
+      },
+    });
+
+    const result = await tools.sparky_get_barcode.execute!(
+      { barcode: '01234567' },
+      opts
+    );
+
+    expect(result).toContain(
+      '- Per 30 g: 405 kcal, P 44.5g / C 2.3g / F 0.04g'
+    );
+  });
+
   it('omits brand paren and ID line when absent', async () => {
     svc.lookupBarcode.mockResolvedValue({
       source: 'local',

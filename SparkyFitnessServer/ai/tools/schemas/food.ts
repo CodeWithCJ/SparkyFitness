@@ -309,12 +309,35 @@ const createFoodSchema = z
       .describe(
         'Glycemic Index classification. Include only when supported by the source; omit when unknown.'
       ),
+    serving_size: z.coerce
+      .number()
+      .positive()
+      .optional()
+      .describe(
+        'Serving size the nutrients are for; needs serving_unit. If only serving_unit is given, it is 1 for count units and 100 otherwise. Without either serving field, quantity is the serving.'
+      ),
+    serving_unit: z
+      .string()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe(
+        'Serving unit the nutrients are for. A leading count such as "4 pieces" is split into serving_size 4. Without serving_unit, unit is the serving unit.'
+      ),
     quantity: z.coerce
       .number()
       .min(0)
       .optional()
-      .describe('Default serving size value'),
-    unit: z.string().max(50).optional().describe('Default serving size unit'),
+      .describe(
+        'Amount logged when meal_type_id or meal_type is given (omit to log one serving). Without serving_unit it is also the serving the nutrients are for.'
+      ),
+    unit: z
+      .string()
+      .max(50)
+      .optional()
+      .describe(
+        'Unit of the amount logged; omitted, quantity counts servings. Without serving_unit it is also the serving unit.'
+      ),
     meal_type: mealTypeEnum
       .optional()
       .describe(
@@ -823,13 +846,17 @@ export const manageFoodInput = z.object({
     .number()
     .min(0)
     .optional()
-    .describe('For update_food_variant: updated serving size value'),
+    .describe(
+      'For update_food_variant: updated serving size value. For create_food: the serving size the nutrients are for (> 0, needs serving_unit); quantity/unit then only give the amount logged.'
+    ),
   serving_unit: z
     .string()
     .min(1)
     .max(50)
     .optional()
-    .describe('For update_food_variant: updated serving unit'),
+    .describe(
+      'For update_food_variant: updated serving unit. For create_food: the serving unit the nutrients are for; a leading count such as "4 pieces" is split into serving_size 4, and without serving_size it is 1 for count units and 100 otherwise.'
+    ),
   brand: z
     .string()
     .max(200)
@@ -844,7 +871,7 @@ export const manageFoodInput = z.object({
     .min(0)
     .optional()
     .describe(
-      "Amount consumed (units defined by 'unit'). For create_food, also the serving the nutrients are for."
+      "Amount consumed (units defined by 'unit'). For create_food, the amount logged when meal_type_id or meal_type is given (omit to log one serving); the serving the nutrients are for is set by serving_size/serving_unit, falling back to quantity/unit when serving_unit is omitted."
     ),
   unit: z
     .string()

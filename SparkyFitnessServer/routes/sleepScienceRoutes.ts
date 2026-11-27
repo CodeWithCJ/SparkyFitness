@@ -72,7 +72,9 @@ router.get(
 router.post(
   '/calculate-baseline',
   authenticate,
-  checkPermissionMiddleware('reports'),
+  // Writes checkin-tier tables (sleep_need_calculations, daily_sleep_need), so
+  // it must require the checkin permission, not the weaker reports tier.
+  checkPermissionMiddleware('checkin'),
   async (req, res, next) => {
     try {
       const userId = req.userId;

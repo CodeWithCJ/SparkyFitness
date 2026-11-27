@@ -858,7 +858,14 @@ async function restoreHoldingLock(
     tempRestoreDir = path.join(BACKUP_DIR, `restore_temp_${Date.now()}`);
     await fsp.mkdir(tempRestoreDir, { recursive: true });
     log('info', `Extracting combined backup archive: ${backupFilePath}`);
-    await executeCommand('tar', ['-xzf', backupFilePath, '-C', tempRestoreDir]);
+    await executeCommand('tar', [
+      '-xzf',
+      backupFilePath,
+      '--no-same-owner',
+      '--no-same-permissions',
+      '-C',
+      tempRestoreDir,
+    ]);
     const extractedFiles = await fsp.readdir(tempRestoreDir);
     const dbDumpFile = extractedFiles.find(
       (f) => f.startsWith('sparkyfitness_db_backup_') && f.endsWith('.sql.gz')
@@ -905,6 +912,8 @@ async function restoreHoldingLock(
     await executeCommand('tar', [
       '-xzf',
       path.join(tempRestoreDir, uploadsTarFile),
+      '--no-same-owner',
+      '--no-same-permissions',
       '-C',
       uploadsStaging,
     ]);
