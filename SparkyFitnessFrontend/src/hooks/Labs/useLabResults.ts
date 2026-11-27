@@ -19,7 +19,7 @@ export { LAB_HISTORY_LIMIT } from '@/api/Labs/labResultsApi';
 // Anything that changes a result also changes the marker list (a custom marker
 // appears or goes), the newest-result list and every marker's history, so the
 // whole family refreshes together.
-const invalidateLabs = (queryClient: QueryClient) =>
+export const invalidateLabs = (queryClient: QueryClient) =>
   queryClient.invalidateQueries({ queryKey: labKeys.all });
 
 export const useLabMarkers = () =>
