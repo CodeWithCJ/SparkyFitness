@@ -1,12 +1,23 @@
 ---
-id: 20261024-sparkyfitness-github-apk
+id: 20261127-exercise-library-videos
 active: true
-title: Android App - Github APK! 🌟
+title: 🏋️ Help Build Our Exercise Video Library! 🎥
 ---
 
-## 🌍 Only for Android users installing APK from Github
+We're expanding the **[SparkyFitness Exercise Library](https://github.com/CodeWithCJ/SparkyFitnessExerciseLibrary)** with exercise demonstration videos for all 1,900+ exercises, and we'd love your help!
 
+### 🌟 2 Ways You Can Contribute:
 
-Signing certificate is updated to PROD release instead of debug. So there could be a warning when you install. So you might need to uninstall and install or ignore the warning. 
+1. **📹 Share Your Own Workout Clips**:
+   - If you're comfortable sharing your lifts, record a clean 5–15 second video demonstrating accurate form and submit it to the library.
+
+2. **🔄 Record Perfect Form + AI Styling (Hybrid)**:
+   - Record your own workout movement so the biomechanics and form are 100% accurate.
+   - Then use video-to-video / character transfer with the repository's prompts and character reference to transform it into the SparkyFitness character without showing your face or personal environment!
+
+---
+
+👉 **Check out the guide, prompts, and sample videos:**
+**[github.com/CodeWithCJ/SparkyFitnessExerciseLibrary](https://github.com/CodeWithCJ/SparkyFitnessExerciseLibrary)**
 
 
