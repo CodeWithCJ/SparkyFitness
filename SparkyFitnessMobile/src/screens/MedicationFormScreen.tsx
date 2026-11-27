@@ -37,10 +37,13 @@ import { useSupplementLookup } from '../hooks/useSupplementLookup';
 import { useSupplementLabelScan } from '../hooks/useSupplementLabelScan';
 import { prepareLabelPhoto } from '../utils/labelPhoto';
 import { useExternalProviders } from '../hooks/useExternalProviders';
+import { usePreferences } from '../hooks/usePreferences';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import {
   GLP1_DRUG_PROFILES,
   SUPPLEMENT_LOOKUP_PROVIDER_TYPE,
   type SupplementLookupProduct,
+  type CreateScheduleInput,
 } from '@workspace/shared';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
@@ -169,7 +172,10 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
+  const [textMuted, accentPrimary] = useCSSVariable([
+    '--color-text-muted',
+    '--color-accent-primary',
+  ]) as [string, string];
 
   const { data: existingMed } = useMedicationDetail(medicationId ?? '', {
     enabled: isEditing,
@@ -187,8 +193,83 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
   });
   const canLookUpSupplements = lookupProviders.length > 0;
   const { customNutrients: customNutrientDefs } = useCustomNutrients();
+  const { preferences } = usePreferences();
 
   const [edits, setEdits] = useState<Partial<FormState>>({});
+
+  // Multi-dose schedule times when creating a new medication
+  const [scheduleFrequency, setScheduleFrequency] = useState<
+    'none' | 'once' | 'bid' | 'tid' | 'qid' | 'custom'
+  >('once');
+  const [scheduleTimes, setScheduleTimes] = useState<
+    { time: string; doseOverride: string }[]
+  >([{ time: '09:00', doseOverride: '' }]);
+  const [activeTimeSlotIndex, setActiveTimeSlotIndex] = useState<number | null>(
+    null
+  );
+  const timeSheetRef = useRef<TimeSheetRef>(null);
+
+  const handleFrequencyChange = (
+    freq: 'none' | 'once' | 'bid' | 'tid' | 'qid' | 'custom'
+  ) => {
+    setScheduleFrequency(freq);
+    if (freq === 'none') {
+      setScheduleTimes([]);
+    } else if (freq === 'once') {
+      setScheduleTimes([{ time: '09:00', doseOverride: '' }]);
+    } else if (freq === 'bid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'tid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '15:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'qid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '13:00', doseOverride: '' },
+        { time: '17:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'custom' && scheduleTimes.length === 0) {
+      setScheduleTimes([{ time: '09:00', doseOverride: '' }]);
+    }
+  };
+
+  const openTimePickerForSlot = (index: number) => {
+    setActiveTimeSlotIndex(index);
+    timeSheetRef.current?.present();
+  };
+
+  const handleTimeSelected = (time: string) => {
+    if (activeTimeSlotIndex !== null) {
+      setScheduleTimes((prev) =>
+        prev.map((slot, i) =>
+          i === activeTimeSlotIndex ? { ...slot, time } : slot
+        )
+      );
+    }
+  };
+
+  const addScheduleTimeSlot = () => {
+    setScheduleFrequency('custom');
+    setScheduleTimes((prev) => [...prev, { time: '12:00', doseOverride: '' }]);
+  };
+
+  const removeScheduleTimeSlot = (index: number) => {
+    setScheduleFrequency('custom');
+    setScheduleTimes((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateScheduleDoseOverride = (index: number, doseOverride: string) => {
+    setScheduleTimes((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, doseOverride } : slot))
+    );
+  };
 
   const baseForm = useMemo(
     () => baseFromMed(existingMed, startAsSupplement),
@@ -738,10 +819,24 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
         navigation.goBack();
       } else {
         let med;
+        const initialSchedules: CreateScheduleInput[] | undefined =
+          scheduleTimes.length > 0
+            ? scheduleTimes.map((slot) => ({
+                schedule_type_id: 'daily',
+                time_of_day: slot.time || null,
+                dose_amount:
+                  slot.doseOverride.trim() &&
+                  !Number.isNaN(parseFloat(slot.doseOverride))
+                    ? parseFloat(slot.doseOverride)
+                    : null,
+              }))
+            : undefined;
+
         try {
           med = await createMedication.mutateAsync({
             ...base,
             is_active: form.isActive,
+            ...(initialSchedules ? { schedules: initialSchedules } : {}),
           });
         } catch (error) {
           Alert.alert(
@@ -781,6 +876,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
     medicationId,
     existingMed,
     nutrientRows,
+    scheduleTimes,
     createMedication,
     updateMedication,
     updateSchedule,
@@ -953,6 +1049,168 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
                   />
                 </View>
               </View>
+
+              {/* Schedule & Dosing times (only when creating a new medication) */}
+              {!medicationId && (
+                <View className="gap-2.5 p-3 rounded-xl bg-card border border-chrome-border">
+                  <Text className="text-text-primary text-base font-semibold">
+                    {t('medications.form.scheduleAndFrequency', {
+                      defaultValue: 'Schedule & Times',
+                    })}
+                  </Text>
+                  <Text className="text-text-secondary text-xs">
+                    {t('medications.form.scheduleHint', {
+                      defaultValue:
+                        'Configure how often and when this medication is taken throughout the day.',
+                    })}
+                  </Text>
+
+                  {/* Frequency presets */}
+                  <View className="flex-row flex-wrap gap-2 pt-1">
+                    {[
+                      {
+                        id: 'once',
+                        label: t('medications.frequency.onceDaily', {
+                          defaultValue: 'Once daily',
+                        }),
+                      },
+                      {
+                        id: 'bid',
+                        label: t('medications.frequency.bid', {
+                          defaultValue: '2x daily (BID)',
+                        }),
+                      },
+                      {
+                        id: 'tid',
+                        label: t('medications.frequency.tid', {
+                          defaultValue: '3x daily (TID)',
+                        }),
+                      },
+                      {
+                        id: 'qid',
+                        label: t('medications.frequency.qid', {
+                          defaultValue: '4x daily (QID)',
+                        }),
+                      },
+                      {
+                        id: 'none',
+                        label: t('medications.frequency.prn', {
+                          defaultValue: 'As needed',
+                        }),
+                      },
+                      {
+                        id: 'custom',
+                        label: t('medications.frequency.custom', {
+                          defaultValue: 'Custom',
+                        }),
+                      },
+                    ].map((item) => {
+                      const isSelected = scheduleFrequency === item.id;
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          onPress={() =>
+                            handleFrequencyChange(
+                              item.id as
+                                | 'none'
+                                | 'once'
+                                | 'bid'
+                                | 'tid'
+                                | 'qid'
+                                | 'custom'
+                            )
+                          }
+                          className={`px-3 py-1.5 rounded-full border ${
+                            isSelected
+                              ? 'bg-accent-primary border-accent-primary'
+                              : 'bg-background border-chrome-border'
+                          }`}
+                          accessibilityRole="button"
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            className={`text-xs font-medium ${
+                              isSelected ? 'text-white' : 'text-text-primary'
+                            }`}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Time slot rows */}
+                  {scheduleTimes.length > 0 && (
+                    <View className="gap-2 pt-2">
+                      {scheduleTimes.map((slot, index) => (
+                        <View
+                          key={index}
+                          className="flex-row items-center gap-2"
+                        >
+                          <TouchableOpacity
+                            onPress={() => openTimePickerForSlot(index)}
+                            className="flex-1 py-2 px-3 rounded-lg border border-chrome-border bg-background flex-row justify-between items-center"
+                            accessibilityRole="button"
+                            activeOpacity={0.7}
+                          >
+                            <Text className="text-sm font-medium text-text-primary">
+                              {formatLocalizedTimeOfDay(
+                                slot.time,
+                                undefined,
+                                preferences?.time_format
+                              )}
+                            </Text>
+                            <Icon name="timer" size={16} color={textMuted} />
+                          </TouchableOpacity>
+
+                          <View className="w-24">
+                            <FormInput
+                              placeholder={
+                                form.doseAmount
+                                  ? `${form.doseAmount}`
+                                  : t('medications.form.doseOverride', {
+                                      defaultValue: 'Dose',
+                                    })
+                              }
+                              value={slot.doseOverride}
+                              onChangeText={(v) =>
+                                updateScheduleDoseOverride(index, v)
+                              }
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+
+                          {scheduleTimes.length > 1 && (
+                            <TouchableOpacity
+                              onPress={() => removeScheduleTimeSlot(index)}
+                              className="p-2"
+                              accessibilityRole="button"
+                              activeOpacity={0.6}
+                            >
+                              <Icon name="trash" size={18} color={textMuted} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      ))}
+
+                      <TouchableOpacity
+                        onPress={addScheduleTimeSlot}
+                        className="flex-row items-center gap-1.5 pt-1 self-start"
+                        accessibilityRole="button"
+                        activeOpacity={0.7}
+                      >
+                        <Icon name="add" size={16} color={accentPrimary} />
+                        <Text className="text-xs font-medium text-accent-primary">
+                          {t('medications.form.addTimeSlot', {
+                            defaultValue: 'Add another time',
+                          })}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
             </>
           )}
 
@@ -1172,6 +1430,16 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
           </Text>
         </View>
       )}
+      <TimeSheet
+        ref={timeSheetRef}
+        value={
+          activeTimeSlotIndex !== null
+            ? scheduleTimes[activeTimeSlotIndex]?.time || ''
+            : ''
+        }
+        timeFormat={preferences?.time_format}
+        onSelectTime={handleTimeSelected}
+      />
     </View>
   );
 };

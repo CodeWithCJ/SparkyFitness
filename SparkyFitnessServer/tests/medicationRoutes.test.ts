@@ -150,6 +150,50 @@ describe('Medication Routes V2', () => {
       expect(res.body).toEqual(created);
     });
 
+    it('creates a medication with initial schedules', async () => {
+      const created = {
+        id: UID,
+        name: 'Amoxicillin',
+        schedules: [
+          { id: 'sched-1', schedule_type_id: 'daily', time_of_day: '08:00' },
+          { id: 'sched-2', schedule_type_id: 'daily', time_of_day: '20:00' },
+        ],
+      };
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue(
+        created as any
+      );
+      const res = await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({
+          name: 'Amoxicillin',
+          dose_amount: 500,
+          dose_unit: 'mg',
+          schedules: [
+            { schedule_type_id: 'daily', time_of_day: '08:00' },
+            { schedule_type_id: 'daily', time_of_day: '20:00' },
+          ],
+        });
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toEqual(created);
+      expect(medicationRepository.createMedication).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          name: 'Amoxicillin',
+          schedules: [
+            expect.objectContaining({
+              schedule_type_id: 'daily',
+              time_of_day: '08:00',
+            }),
+            expect.objectContaining({
+              schedule_type_id: 'daily',
+              time_of_day: '20:00',
+            }),
+          ],
+        })
+      );
+    });
+
     it('returns 400 when name is missing', async () => {
       const res = await request(app)
         .post('/api/v2/medications')

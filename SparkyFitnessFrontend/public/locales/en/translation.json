@@ -508,6 +508,21 @@
       "clear": "Clear",
       "inactive": "Inactive"
     },
+    "form": {
+      "scheduleAndFrequency": "Schedule & Times",
+      "scheduleHint": "Configure how often and when this medication is taken throughout the day.",
+      "doseOverride": "Dose",
+      "defaultDosePlaceholder": "{{dose}} (default)",
+      "addTimeSlot": "Add another time"
+    },
+    "frequency": {
+      "onceDaily": "Once daily",
+      "bid": "2x daily (BID)",
+      "tid": "3x daily (TID)",
+      "qid": "4x daily (QID)",
+      "prn": "As needed",
+      "custom": "Custom"
+    },
     "today": {
       "medicationsTitle": "Today's medications",
       "medicationsDescription": "Track scheduled doses and log as-needed medications",

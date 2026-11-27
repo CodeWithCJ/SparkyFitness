@@ -21,6 +21,7 @@ const SCHEDULE_COLS = `id, medication_id, user_id, schedule_type_id, time_of_day
 async function createMedication(userId: string, data: CreateMedicationBody) {
   const client = await getClient(userId);
   try {
+    await client.query('BEGIN');
     const result = await client.query(
       `INSERT INTO medications (
          user_id, name, display_name, type_id, route_id, strength_value, strength_unit,
@@ -62,7 +63,49 @@ async function createMedication(userId: string, data: CreateMedicationBody) {
         data.custom_fields ? JSON.stringify(data.custom_fields) : null,
       ]
     );
-    return result.rows[0];
+    const med = result.rows[0];
+
+    const schedules: any[] = [];
+    if (data.schedules && data.schedules.length > 0) {
+      for (const sched of data.schedules) {
+        const schedRes = await client.query(
+          `INSERT INTO medication_schedules (
+             medication_id, user_id, schedule_type_id, time_of_day, dose_amount,
+             days_of_week, interval_days, day_of_month, cycle_on_days, cycle_off_days,
+             with_meal, prn_reason, prn_max_per_day, start_date, end_date, active,
+             source, custom_fields)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+             COALESCE($16, TRUE), COALESCE($17, 'manual'), COALESCE($18, '{}'::jsonb))
+           RETURNING ${SCHEDULE_COLS}`,
+          [
+            med.id,
+            userId,
+            sched.schedule_type_id,
+            sched.time_of_day ?? null,
+            sched.dose_amount ?? null,
+            sched.days_of_week ?? null,
+            sched.interval_days ?? null,
+            sched.day_of_month ?? null,
+            sched.cycle_on_days ?? null,
+            sched.cycle_off_days ?? null,
+            sched.with_meal ?? null,
+            sched.prn_reason ?? null,
+            sched.prn_max_per_day ?? null,
+            sched.start_date ?? null,
+            sched.end_date ?? null,
+            sched.active ?? null,
+            sched.source ?? null,
+            sched.custom_fields ? JSON.stringify(sched.custom_fields) : null,
+          ]
+        );
+        schedules.push(schedRes.rows[0]);
+      }
+    }
+    await client.query('COMMIT');
+    return { ...med, schedules };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
   } finally {
     client.release();
   }

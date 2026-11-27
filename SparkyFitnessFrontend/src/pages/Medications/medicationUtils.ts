@@ -224,6 +224,38 @@ export const formatScheduleDescription = (
   }
 };
 
+/**
+ * Summarises all active schedules for a medication, grouping multiple same-day times.
+ * e.g. "Daily at 08:00 & 20:00" or "As needed"
+ */
+export const formatAllSchedulesSummary = (
+  schedules: MedicationSchedule[] | undefined | null,
+  timeFormat: string
+): string => {
+  if (!schedules || schedules.length === 0) return '';
+  const active = schedules.filter((s) => s.active !== false);
+  if (active.length === 0) return '';
+
+  // If there's only one schedule, use formatScheduleDescription directly
+  if (active.length === 1 && active[0]) {
+    return formatScheduleDescription(active[0], timeFormat);
+  }
+
+  // Check if all active schedules are daily with times
+  const allDaily = active.every((s) => s.schedule_type_id === 'daily');
+  if (allDaily) {
+    const times = active
+      .filter((s) => Boolean(s.time_of_day))
+      .sort((a, b) => (a.time_of_day || '').localeCompare(b.time_of_day || ''))
+      .map((s) => formatTimeOfDayString(s.time_of_day!, timeFormat));
+    if (times.length > 0) {
+      return `${i18n.t('medications.scheduleDesc.daily', 'Daily')} (${times.join(', ')})`;
+    }
+  }
+
+  return active.map((s) => formatScheduleDescription(s, timeFormat)).join('; ');
+};
+
 // Normalises a free-text number input into a `dose_amount` the API will accept. The
 // server requires dose_amount to be positive, but these are plain number inputs saved
 // via onClick rather than a native form submit, so their `min` attribute never triggers

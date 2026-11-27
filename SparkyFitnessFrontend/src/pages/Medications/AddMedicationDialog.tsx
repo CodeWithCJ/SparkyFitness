@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Star, Pill, HelpCircle } from 'lucide-react';
+import { Plus, Star, Pill, HelpCircle, X } from 'lucide-react';
 import {
   FOOD_VARIANT_NUTRIENT_FIELDS,
   MACRO_PICKER_FIELDS,
@@ -8,6 +8,7 @@ import {
   normalizeNutrientName,
   resolveMacroFieldKey,
 } from '@workspace/shared';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -225,6 +226,65 @@ export default function AddMedicationDialog({
   );
   const [photoPath, setPhotoPath] = useState(editMed?.photo_path ?? '');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Multi-dose schedule setup during medication creation
+  const [scheduleFrequency, setScheduleFrequency] = useState<
+    'none' | 'once' | 'bid' | 'tid' | 'qid' | 'custom'
+  >('once');
+  const [scheduleTimes, setScheduleTimes] = useState<
+    Array<{ time: string; doseOverride: string }>
+  >([{ time: '09:00', doseOverride: '' }]);
+
+  const handleFrequencyChange = (
+    freq: 'none' | 'once' | 'bid' | 'tid' | 'qid' | 'custom'
+  ) => {
+    setScheduleFrequency(freq);
+    if (freq === 'none') {
+      setScheduleTimes([]);
+    } else if (freq === 'once') {
+      setScheduleTimes([{ time: '09:00', doseOverride: '' }]);
+    } else if (freq === 'bid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'tid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '15:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'qid') {
+      setScheduleTimes([
+        { time: '09:00', doseOverride: '' },
+        { time: '13:00', doseOverride: '' },
+        { time: '17:00', doseOverride: '' },
+        { time: '21:00', doseOverride: '' },
+      ]);
+    } else if (freq === 'custom' && scheduleTimes.length === 0) {
+      setScheduleTimes([{ time: '09:00', doseOverride: '' }]);
+    }
+  };
+
+  const addScheduleTimeSlot = () => {
+    setScheduleFrequency('custom');
+    setScheduleTimes((prev) => [...prev, { time: '12:00', doseOverride: '' }]);
+  };
+
+  const removeScheduleTimeSlot = (index: number) => {
+    setScheduleFrequency('custom');
+    setScheduleTimes((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateScheduleTimeSlot = (
+    index: number,
+    field: 'time' | 'doseOverride',
+    val: string
+  ) => {
+    setScheduleTimes((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, [field]: val } : slot))
+    );
+  };
 
   const createMutation = useCreateMedicationMutation();
   const updateMutation = useUpdateMedicationMutation();
@@ -592,6 +652,15 @@ export default function AddMedicationDialog({
       );
       return;
     }
+
+    if (!isEdit && scheduleTimes.length > 0) {
+      body.schedules = scheduleTimes.map((slot) => ({
+        schedule_type_id: 'daily',
+        time_of_day: slot.time || null,
+        dose_amount: positiveDoseOrNull(slot.doseOverride),
+      }));
+    }
+
     createMutation.mutate(body, {
       onSuccess: () => {
         setOpen(false);
@@ -611,6 +680,8 @@ export default function AddMedicationDialog({
         setIsSupplement(defaultIsSupplement);
         setSelectedNutrients([]);
         setPendingNutrients({});
+        setScheduleFrequency('once');
+        setScheduleTimes([{ time: '09:00', doseOverride: '' }]);
         // These two belong with the nutrient state above. Left set, the next supplement
         // opened from this dialog shows a ticked macro block whose values getNutrients()
         // then drops, because the keys are no longer selected: fields that look live and
@@ -779,6 +850,148 @@ export default function AddMedicationDialog({
               </div>
             </div>
           )}
+
+          {/* Schedule & Dosing times (only when creating a medication) */}
+          {!isEdit && (
+            <div className="space-y-3 rounded-md border p-3 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">
+                    {t(
+                      'medications.form.scheduleAndFrequency',
+                      'Schedule & Times'
+                    )}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      'medications.form.scheduleHint',
+                      'Configure how often and when this medication is taken throughout the day.'
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Frequency presets */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  {
+                    id: 'once',
+                    label: t('medications.frequency.onceDaily', 'Once daily'),
+                  },
+                  {
+                    id: 'bid',
+                    label: t('medications.frequency.bid', '2x daily (BID)'),
+                  },
+                  {
+                    id: 'tid',
+                    label: t('medications.frequency.tid', '3x daily (TID)'),
+                  },
+                  {
+                    id: 'qid',
+                    label: t('medications.frequency.qid', '4x daily (QID)'),
+                  },
+                  {
+                    id: 'none',
+                    label: t('medications.frequency.prn', 'As needed'),
+                  },
+                  {
+                    id: 'custom',
+                    label: t('medications.frequency.custom', 'Custom'),
+                  },
+                ].map((item) => (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    size="sm"
+                    variant={
+                      scheduleFrequency === item.id ? 'default' : 'outline'
+                    }
+                    className="h-7 text-xs px-2.5"
+                    onClick={() =>
+                      handleFrequencyChange(
+                        item.id as
+                          'none' | 'once' | 'bid' | 'tid' | 'qid' | 'custom'
+                      )
+                    }
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Scheduled time rows */}
+              {scheduleTimes.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {scheduleTimes.map((slot, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-32 shrink-0">
+                        <TimeInput
+                          value={slot.time}
+                          onChange={(newTime) =>
+                            updateScheduleTimeSlot(index, 'time', newTime)
+                          }
+                        />
+                      </div>
+                      <div className="flex-1 flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          placeholder={
+                            displayedDoseAmount
+                              ? t(
+                                  'medications.form.defaultDosePlaceholder',
+                                  '{{dose}} (default)',
+                                  {
+                                    dose: displayedDoseAmount,
+                                  }
+                                )
+                              : t('medications.form.doseOverride', 'Dose')
+                          }
+                          className="h-8 text-xs"
+                          value={slot.doseOverride}
+                          onChange={(e) =>
+                            updateScheduleTimeSlot(
+                              index,
+                              'doseOverride',
+                              e.target.value
+                            )
+                          }
+                        />
+                        {displayedDoseUnit && (
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {displayedDoseUnit}
+                          </span>
+                        )}
+                      </div>
+                      {scheduleTimes.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => removeScheduleTimeSlot(index)}
+                          aria-label={t('common.remove', 'Remove')}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-primary px-2"
+                    onClick={addScheduleTimeSlot}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    {t('medications.form.addTimeSlot', 'Add another time')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* GLP-1 is a medication concept — hidden on the dedicated supplement form. */}
           {!isSupplement && (
             <div className="flex items-center justify-between rounded-md border p-3">
