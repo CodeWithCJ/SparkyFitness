@@ -13,8 +13,10 @@ import {
   Dumbbell,
   Upload,
   Activity,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react';
+import ClinicalRecordImportDialog from '@/pages/Settings/ClinicalRecordImportDialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import FoodImportFromCSV from '@/pages/Foods/FoodImportFromCSV';
@@ -258,6 +260,28 @@ export const DataImportSettings = () => {
         >
           {(_, onDirtyChange) => (
             <ExerciseImportFit onDirtyChange={onDirtyChange} />
+          )}
+        </ImportLauncher>
+
+        <ImportLauncher
+          icon={FileSpreadsheet}
+          title={t(
+            'settings.dataImport.clinical.launcherTitle',
+            'C-CDA Health Records'
+          )}
+          description={t(
+            'settings.dataImport.clinical.launcherDescription',
+            'Import vitals and lab panels from MyChart C-CDA XML or Lucy .zip packages.'
+          )}
+        >
+          {(close) => (
+            <ClinicalRecordImportDialog
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) close();
+              }}
+              onImportComplete={close}
+            />
           )}
         </ImportLauncher>
       </div>
