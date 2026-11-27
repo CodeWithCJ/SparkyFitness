@@ -54,6 +54,48 @@ it('describes a food entry from its saved snapshot, never model text', async () 
     'owner'
   );
 });
+it('summarises an update_food_variant that rewrites diary entries', async () => {
+  vi.mocked(foodRepository.getFoodById).mockResolvedValue({ name: 'Skyr' });
+  expect(
+    await getChatApprovalSummary(
+      'sparky_manage_food',
+      {
+        action: 'update_food_variant',
+        food_id: 'food',
+        update_existing_entries: true,
+      },
+      'owner'
+    )
+  ).toEqual({ text: 'Rewrite all diary entries of Skyr', kind: 'change' });
+  expect(foodRepository.getFoodById).toHaveBeenCalledWith('food', 'owner');
+  expect(
+    await getChatApprovalSummary(
+      'sparky_manage_food',
+      {
+        update_food_variant: { food_id: 'food', update_existing_entries: true },
+      },
+      'owner'
+    )
+  ).toEqual({ text: 'Rewrite all diary entries of Skyr', kind: 'change' });
+  expect(
+    await getChatApprovalSummary(
+      'sparky_manage_food',
+      {
+        action: 'update_food_variant',
+        variant_id: 'v',
+        update_existing_entries: true,
+      },
+      'owner'
+    )
+  ).toEqual({ text: 'Rewrite all diary entries of this food', kind: 'change' });
+  expect(
+    await getChatApprovalSummary(
+      'sparky_manage_food',
+      { action: 'update_food_variant', food_id: 'food', calories: 1 },
+      'owner'
+    )
+  ).toBeUndefined();
+});
 it('describes medication entries under the same user context', async () => {
   vi.mocked(getEntryById).mockResolvedValue({
     med_name_snapshot: 'Vitamin D',

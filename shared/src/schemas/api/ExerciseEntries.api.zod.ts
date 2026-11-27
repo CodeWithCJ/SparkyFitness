@@ -654,10 +654,15 @@ export const exerciseProgressResponseSchema = z.object({
   provider_name: z.string().nullable(),
   exercise_preset_entry_id: z.string().nullable().optional(),
   exercise_preset_entry_name: z.string().nullable().optional(),
+  /** Format of the logged workout session (standard, amrap, ...), as stored when it was logged; null for an entry outside a session. Kept a plain string so a new format can't fail the whole list. */
+  workout_format: z.string().nullable().optional(),
   has_telemetry: z.boolean().nullable().optional(),
   category: z.string().nullable().optional(),
   /** The entry's modality; `bodyweight_reps` sets add body weight to load. */
   modality: exerciseModalitySchema.nullable().optional(),
+  /** The entry's own stored modality (null when unset), as training_review reads it. */
+  entry_modality: z.string().nullable().optional(),
+  exercise_name: z.string().nullable().optional(),
   /** The lifter's body weight that day (kg), null with no check-ins. */
   body_weight_kg: z.number().nullable().optional(),
   sets: z.array(exerciseProgressSetSchema),

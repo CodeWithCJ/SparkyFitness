@@ -18,6 +18,7 @@ import {
   setTypeEnum,
   paginationSchema,
   uuidSchema,
+  withDayNote,
 } from './common.js';
 
 /**
@@ -390,7 +391,7 @@ const updateExerciseEntrySchema = z
     entry_id: uuidSchema.describe('UUID of the exercise entry to update'),
     entry_date: dateSchema
       .optional()
-      .describe('New date for the entry (YYYY-MM-DD)'),
+      .describe(withDayNote('New date for the entry (YYYY-MM-DD)')),
     entry_time: optionalEntryTimeSchema,
     duration_minutes: z.coerce
       .number()
@@ -563,8 +564,10 @@ const getExerciseProgressSchema = z
       .describe('Name of the exercise (alternative to ID)'),
     start_date: dateSchema
       .optional()
-      .describe('Start date for progress tracking'),
-    end_date: dateSchema.optional().describe('End date for progress tracking'),
+      .describe(withDayNote('Start date for progress tracking')),
+    end_date: dateSchema
+      .optional()
+      .describe(withDayNote('End date for progress tracking')),
     ...paginationSchema.shape,
   })
   .strict();
@@ -857,7 +860,9 @@ export const manageExerciseInput = z.object({
     ),
   health_activity_type: healthActivityTypeField,
   // log
-  entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
+  entry_date: dateSchema
+    .optional()
+    .describe(withDayNote('Date for the entry (YYYY-MM-DD)')),
   entry_time: optionalEntryTimeSchema,
   duration_minutes: z.coerce
     .number()
@@ -971,6 +976,8 @@ export const manageExerciseInput = z.object({
   // progress range
   start_date: dateSchema
     .optional()
-    .describe('Start date for progress tracking'),
-  end_date: dateSchema.optional().describe('End date for progress tracking'),
+    .describe(withDayNote('Start date for progress tracking')),
+  end_date: dateSchema
+    .optional()
+    .describe(withDayNote('End date for progress tracking')),
 });
