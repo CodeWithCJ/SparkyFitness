@@ -108,6 +108,9 @@ const COUNT_BASED_UNITS = [
   'bottle',
   'item',
   'pack',
+  'packet',
+  'scoop',
+  'bar',
 ];
 
 // One detail read while the chat waits on a lookup; the OpenFoodFacts default
@@ -1037,7 +1040,7 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. food_name is searched again, so with provider_type "usda" quote such a name as described under lookup_food_nutrition. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, serving_size?, serving_unit?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Set serving_unit (and serving_size; it defaults to 1 for serving, piece, slice, portion, unit, can, bottle, item, pack, packet, scoop and bar, to the count in a unit such as "250 ml", and to 100 otherwise, so give it for other countable units) to the serving the nutrients are for; quantity/unit is then only the amount logged, read like log_food when logging: no quantity logs one serving, no unit counts servings. Example, 380 kcal per piece and 2 eaten: {serving_size:1, serving_unit:"piece", quantity:2, unit:"piece"}. Without serving_unit, nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
@@ -1952,7 +1955,16 @@ Actions:
             }
 
             case 'create_food': {
-              const rawUnit = args.unit || 'serving';
+              // serving_unit (with an optional serving_size) sets the basis the
+              // nutrients are for. Without it, quantity/unit do, exactly as before.
+              const servingUnit = args.serving_unit?.trim() || undefined;
+              const usesServingFields = servingUnit !== undefined;
+              if (args.serving_size !== undefined && !usesServingFields) {
+                return ERRORS.VALIDATION(
+                  'serving_size needs serving_unit, for example {"serving_size":30,"serving_unit":"g"}. quantity/unit are then the amount eaten, logged when meal_type_id or meal_type is set.'
+                );
+              }
+              const rawUnit = servingUnit ?? (args.unit?.trim() || 'serving');
               // A unit that already encodes a count ("4 pieces", "2 cups") must be
               // split into a numeric serving_size and a bare unit. Stored verbatim it
               // becomes serving_size=1, serving_unit="4 pieces" — which then renders as
@@ -1965,14 +1977,24 @@ Actions:
                 ? Number(countPrefix![1])
                 : 1;
               const targetUnit = countPrefix ? countPrefix[2].trim() : rawUnit;
+              // normalizePortionUnit folds case and plurals ("Pieces" -> "piece").
               const isCountUnit = COUNT_BASED_UNITS.includes(
-                targetUnit.toLowerCase()
+                normalizePortionUnit(targetUnit)
               );
+              if (
+                usesServingFields &&
+                args.serving_size !== undefined &&
+                hasPositivePrefix
+              ) {
+                return ERRORS.VALIDATION(
+                  `"${rawUnit}" already includes a serving size. Put the number in serving_size or in the unit, not both.`
+                );
+              }
               // A numeric prefix already states the serving size ("250 ml" is one
               // 250 ml serving), so the implicit base is 1 — not the 100 default
               // used for bare mass/volume units, which would store 25,000 ml.
               const targetQuantity =
-                (args.quantity ||
+                ((usesServingFields ? args.serving_size : args.quantity) ||
                   (hasPositivePrefix || isCountUnit ? 1 : 100)) *
                 unitMultiplier;
               const mealType =
@@ -1995,6 +2017,54 @@ Actions:
                 return ERRORS.VALIDATION(
                   'Quick Add foods are hidden from the food list and search, so they must be logged in the same call. Add meal_type_id (or meal_type) to this create_food call, or drop is_quick_food to save it to the food list.'
                 );
+              }
+              // Amount to log. Without serving fields it is the serving itself. With
+              // them, quantity/unit is what was eaten, read the way log_food reads
+              // it: no quantity is one serving, no unit is a count of servings, and
+              // another unit is converted to the serving unit. Checked before
+              // anything is created.
+              let loggedQuantity = targetQuantity;
+              let loggedUnit = targetUnit;
+              if (
+                usesServingFields &&
+                mealType &&
+                args.quantity !== undefined
+              ) {
+                const eatenUnit = args.unit?.trim() || 'serving';
+                if (args.quantity <= 0) {
+                  return ERRORS.VALIDATION(
+                    'quantity is the amount eaten and must be above 0. Leave it out to log one serving.'
+                  );
+                }
+                if (isAmbiguousLegacyFoodUnit(eatenUnit)) {
+                  return ERRORS.VALIDATION(
+                    `Unit "${eatenUnit}" includes a count. With serving_size/serving_unit, put the amount eaten in quantity and a bare unit in unit, for example {"quantity":2,"unit":"piece"}.`
+                  );
+                }
+                if (
+                  normalizePortionUnit(eatenUnit) ===
+                  normalizePortionUnit(targetUnit)
+                ) {
+                  loggedQuantity = args.quantity;
+                } else {
+                  const converted = resolveFoodPortion({
+                    quantity: args.quantity,
+                    unit: eatenUnit,
+                    variants: [
+                      {
+                        serving_size: targetQuantity,
+                        serving_unit: targetUnit,
+                      },
+                    ],
+                  });
+                  if (!converted.ok) {
+                    return ERRORS.VALIDATION(
+                      `Cannot log ${args.quantity} ${eatenUnit} against a food served per ${targetQuantity} ${targetUnit}: the units cannot be converted without a guess. Nothing was created. Log in "${targetUnit}" or "serving", or set serving_unit to match the amount eaten.`
+                    );
+                  }
+                  loggedQuantity = converted.quantity;
+                  loggedUnit = converted.unit;
+                }
               }
               const rawFoodName = args.food_name?.trim() || 'Food';
               const notes = args.notes ?? null;
@@ -2043,8 +2113,8 @@ Actions:
                     food_id: food.id,
                     variant_id: v?.id,
                     entry_date: entryDate,
-                    quantity: targetQuantity,
-                    unit: targetUnit,
+                    quantity: loggedQuantity,
+                    unit: loggedUnit,
                     meal_type_id: mealType.id,
                     entry_time: resolveEntryTime(
                       args.entry_time,
@@ -2054,7 +2124,9 @@ Actions:
                     ),
                   }
                 );
-                msg += ` Also logged to ${mealType.name} for ${entryDate}.`;
+                msg += usesServingFields
+                  ? ` Also logged ${loggedQuantity} ${loggedUnit} to ${mealType.name} for ${entryDate}.`
+                  : ` Also logged to ${mealType.name} for ${entryDate}.`;
               }
               if (args.is_quick_food) {
                 msg +=

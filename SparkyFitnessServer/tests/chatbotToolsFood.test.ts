@@ -3416,7 +3416,7 @@ describe('log_external_food', () => {
 describe('create_food', () => {
   it('describes nutrient values as per quantity × unit', () => {
     expect(tools.sparky_manage_food.description).toContain(
-      'Nutrients are per quantity × unit.'
+      'Without serving_unit, nutrients are per quantity × unit.'
     );
   });
 
@@ -3784,6 +3784,579 @@ describe('create_food', () => {
       'user-1',
       expect.objectContaining({ is_quick_food: false })
     );
+  });
+
+  // Both pairs used to be one quantity/unit: "380 kcal per piece, ate 2" could
+  // only be saved as "per 2 piece". serving_size/serving_unit now carry the
+  // nutrient basis and quantity/unit only the amount logged.
+  it('takes the serving apart from the amount logged', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Dumpling',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 1,
+        serving_unit: 'piece',
+        calories: 380,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Dumpling',
+        calories: 380,
+        protein: 36,
+        carbs: 28,
+        fat: 13,
+        serving_size: 1,
+        serving_unit: 'piece',
+        quantity: 2,
+        unit: 'piece',
+        meal_type: 'dinner',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Food "Dumpling" created with 380 kcal per 1piece. Also logged 2 piece to Dinner for 2026-06-10.'
+    );
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'piece' })
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        variant_id: VARIANT_ID,
+        quantity: 2,
+        unit: 'piece',
+      })
+    );
+  });
+
+  it('keeps a gram serving separate from a larger gram amount logged', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Granola',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 30,
+        serving_unit: 'g',
+        calories: 130,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Granola',
+        calories: 130,
+        protein: 3,
+        carbs: 18,
+        fat: 5,
+        serving_size: 30,
+        serving_unit: 'g',
+        quantity: 45,
+        unit: 'g',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 30, serving_unit: 'g' })
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ quantity: 45, unit: 'g' })
+    );
+  });
+
+  it('converts a serving count into the serving unit the way log_food does', async () => {
+    // "ate 2 servings" of a 30 g serving food is 60 g in the diary, the same
+    // stored shape log_food writes.
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Granola',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 30,
+        serving_unit: 'g',
+        calories: 130,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Granola',
+        calories: 130,
+        protein: 3,
+        carbs: 18,
+        fat: 5,
+        serving_size: 30,
+        serving_unit: 'g',
+        quantity: 2,
+        unit: 'serving',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ quantity: 60, unit: 'g' })
+    );
+  });
+
+  it('logs exactly one serving when quantity is omitted', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Granola',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 30,
+        serving_unit: 'g',
+        calories: 130,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Granola',
+        calories: 130,
+        protein: 3,
+        carbs: 18,
+        fat: 5,
+        serving_size: 30,
+        serving_unit: 'g',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ quantity: 30, unit: 'g' })
+    );
+  });
+
+  it('splits a count-bearing serving_unit ("4 pieces") into serving_size + bare unit', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Chicken Fingers',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 4,
+        serving_unit: 'pieces',
+        calories: 520,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Chicken Fingers',
+        calories: 520,
+        protein: 40,
+        carbs: 30,
+        fat: 26,
+        serving_unit: '4 pieces',
+        meal_type: 'dinner',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 4, serving_unit: 'pieces' })
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ quantity: 4, unit: 'pieces' })
+    );
+  });
+
+  it('defaults the serving size to 1 for a count serving_unit given alone', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Egg',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 1,
+        serving_unit: 'piece',
+        calories: 70,
+      },
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Egg',
+        calories: 70,
+        protein: 6,
+        carbs: 0.5,
+        fat: 5,
+        serving_unit: 'piece',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'piece' })
+    );
+  });
+
+  it('refuses a logged unit that cannot convert to the serving unit before creating anything', async () => {
+    // 1 ml cannot be turned into grams without a density guess, so the food is
+    // not saved with a wrong nutrition basis.
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Granola',
+        calories: 130,
+        protein: 3,
+        carbs: 18,
+        fat: 5,
+        serving_size: 30,
+        serving_unit: 'g',
+        quantity: 1,
+        unit: 'ml',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(result).toContain('Error [VALIDATION]');
+    expect(result).toContain('ml');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  // create_food with serving fields: what reaches createFood and createFoodEntry.
+  const createServing = async (args: Record<string, unknown>) => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Snack',
+      brand: null,
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 30,
+        serving_unit: 'g',
+        calories: 150,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+    return tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Snack',
+        calories: 150,
+        protein: 3,
+        carbs: 20,
+        fat: 6,
+        ...args,
+      },
+      opts
+    );
+  };
+  const loggedEntry = () =>
+    vi.mocked(foodEntryService.createFoodEntry).mock.calls[0]?.[2];
+
+  it('logs one serving when unit is serving and quantity is omitted', async () => {
+    await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      unit: 'serving',
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 30, unit: 'g' });
+  });
+
+  it('logs one serving when quantity is omitted, whatever the unit', async () => {
+    await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      unit: 'oz',
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 30, unit: 'g' });
+  });
+
+  it('reads quantity without unit as servings, like log_food', async () => {
+    await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      quantity: 2,
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 60, unit: 'g' });
+  });
+
+  it('stores the serving unit spelling when unit is an alias of it', async () => {
+    await createServing({
+      serving_size: 4,
+      serving_unit: 'pieces',
+      quantity: 2,
+      unit: 'piece',
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 2, unit: 'pieces' });
+  });
+
+  it('converts a metric amount into the serving unit', async () => {
+    await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      quantity: 0.1,
+      unit: 'kg',
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 100, unit: 'g' });
+  });
+
+  it('refuses a count in the logged unit next to serving fields', async () => {
+    const result = await createServing({
+      serving_size: 1,
+      serving_unit: 'piece',
+      quantity: 2,
+      unit: '4 pieces',
+      meal_type: 'snacks',
+    });
+    expect(result).toContain('Error [VALIDATION]');
+    expect(result).toContain('includes a count');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+  });
+
+  it('defaults the serving for serving_unit alone and logs quantity apart', async () => {
+    await createServing({
+      serving_unit: 'g',
+      quantity: 45,
+      unit: 'g',
+      meal_type: 'snacks',
+    });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 100, serving_unit: 'g' })
+    );
+    expect(loggedEntry()).toMatchObject({ quantity: 45, unit: 'g' });
+  });
+
+  it('defaults a count serving_unit alone to one piece and logs quantity apart', async () => {
+    await createServing({
+      serving_unit: 'piece',
+      quantity: 2,
+      unit: 'piece',
+      meal_type: 'snacks',
+    });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'piece' })
+    );
+    expect(loggedEntry()).toMatchObject({ quantity: 2, unit: 'piece' });
+  });
+
+  it('converts the logged amount against the defaulted serving', async () => {
+    await createServing({
+      serving_unit: 'g',
+      quantity: 0.045,
+      unit: 'kg',
+      meal_type: 'snacks',
+    });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 100, serving_unit: 'g' })
+    );
+    expect(loggedEntry()).toMatchObject({ quantity: 45, unit: 'g' });
+  });
+
+  it('treats a plural count serving_unit as a count unit', async () => {
+    await createServing({ serving_unit: 'Pieces' });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'Pieces' })
+    );
+  });
+
+  it.each([
+    'serving',
+    'piece',
+    'slice',
+    'portion',
+    'unit',
+    'can',
+    'bottle',
+    'item',
+    'pack',
+    'packet',
+    'scoop',
+    'bar',
+  ])('defaults serving_size to 1 for the count unit %s', async (unit) => {
+    await createServing({ serving_unit: unit });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: unit })
+    );
+  });
+
+  it('lists the count units that default to one in the description', () => {
+    expect(tools.sparky_manage_food.description).toContain(
+      'it defaults to 1 for serving, piece, slice, portion, unit, can, bottle, item, pack, packet, scoop and bar,'
+    );
+  });
+
+  it('treats a plural count unit as a count unit without serving fields', async () => {
+    await createServing({ unit: 'Pieces' });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'Pieces' })
+    );
+  });
+
+  it('refuses serving_size with a blank serving_unit', async () => {
+    const result = await createServing({
+      serving_size: 30,
+      serving_unit: '  ',
+      meal_type: 'snacks',
+    });
+    expect(result).toContain('serving_size needs serving_unit');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  it('trims padded units', async () => {
+    await createServing({ serving_unit: ' piece ' });
+    expect(foodCoreService.createFood).toHaveBeenLastCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'piece' })
+    );
+    await createServing({ unit: ' piece ' });
+    expect(foodCoreService.createFood).toHaveBeenLastCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'piece' })
+    );
+  });
+
+  it('treats a blank unit as servings', async () => {
+    await createServing({ unit: '  ' });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 1, serving_unit: 'serving' })
+    );
+  });
+
+  it('counts servings when the logged unit is blank', async () => {
+    await createServing({
+      serving_unit: 'piece',
+      quantity: 2,
+      unit: '  ',
+      meal_type: 'snacks',
+    });
+    expect(loggedEntry()).toMatchObject({ quantity: 2, unit: 'piece' });
+  });
+
+  it('ignores a blank serving_unit', async () => {
+    await createServing({ serving_unit: '  ', quantity: 50, unit: 'g' });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 50, serving_unit: 'g' })
+    );
+  });
+
+  it('takes the serving size from a count in serving_unit', async () => {
+    await createServing({ serving_unit: '250 ml', meal_type: 'snacks' });
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 250, serving_unit: 'ml' })
+    );
+    expect(loggedEntry()).toMatchObject({ quantity: 250, unit: 'ml' });
+  });
+
+  it('logs one defaulted serving when only serving_unit and a meal type are given', async () => {
+    await createServing({ serving_unit: 'piece', meal_type: 'snacks' });
+    expect(loggedEntry()).toMatchObject({ quantity: 1, unit: 'piece' });
+  });
+
+  it('refuses serving_size without serving_unit', async () => {
+    const result = await createServing({
+      serving_size: 30,
+      quantity: 45,
+      unit: 'g',
+      meal_type: 'snacks',
+    });
+    expect(result).toContain('serving_size needs serving_unit');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  it('refuses a serving size given twice', async () => {
+    const result = await createServing({
+      serving_size: 2,
+      serving_unit: '4 pieces',
+    });
+    expect(result).toContain('Error [VALIDATION]');
+    expect(result).toContain('already includes a serving size');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+  });
+
+  it('refuses a logged quantity of 0', async () => {
+    const result = await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      quantity: 0,
+      unit: 'g',
+      meal_type: 'snacks',
+    });
+    expect(result).toContain('Error [VALIDATION]');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+  });
+
+  it('ignores the logged amount when nothing is logged', async () => {
+    const result = await createServing({
+      serving_size: 30,
+      serving_unit: 'g',
+      quantity: 250,
+      unit: 'ml',
+    });
+    expect(result).not.toContain('Error');
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 30, serving_unit: 'g' })
+    );
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
 });
 
