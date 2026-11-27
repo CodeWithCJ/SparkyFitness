@@ -39,6 +39,12 @@ import CalendarSheet, {
 } from '../components/CalendarSheet';
 import CheckInPhotosSummary from '../components/CheckInPhotosSummary';
 import DateNavigator from '../components/DateNavigator';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
+import DiaryEntrySelectionBar, {
+  createDiaryEntrySelectionHeader,
+} from '../components/DiaryEntrySelectionBar';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import ExerciseSummary from '../components/ExerciseSummary';
@@ -52,6 +58,7 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import OfflineBanner from '../components/OfflineBanner';
 import { useOfflineDiaryDay } from '../hooks/useOfflineDiaryDay';
+import { useDiaryEntrySelection } from '../hooks/useDiaryEntrySelection';
 import { mergeWaitingFood, mergeWaitingWorkouts } from '../offline/diaryDay';
 import Button from '../components/ui/Button';
 import {
@@ -108,10 +115,12 @@ import {
   makeDefaultStartSet,
 } from '../utils/workoutSession';
 import type { LiveExerciseConfig } from '../utils/workoutSession';
+import { setNativeHeaderDatePickerOptions } from '../utils/nativeHeaderDatePicker';
 import {
-  setNativeHeaderDatePickerOptions,
-  type NativeHeaderDatePickerNavigation,
-} from '../utils/nativeHeaderDatePicker';
+  createNativeHeaderIconButtonItem,
+  setNativeHeaderItems,
+  type NativeHeaderNavigation,
+} from '../utils/nativeHeaderItems';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -204,11 +213,77 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
 
-  const syncNativeHeaderDatePicker = useCallback(() => {
+  const { summary, isLoading, isError, refetch } = useDailySummary({
+    date: selectedDate,
+    // With the server away the day's totals come from the phone's copy plus
+    // what is waiting to upload.
+    enabled: isConnected || isOffline,
+  });
+  const moveSheetRef = useRef<CopyMealSheetRef>(null);
+  const diarySelection = useDiaryEntrySelection({
+    date: selectedDate,
+    entries: summary?.foodEntries ?? [],
+    enabled: isConnected,
+    moveSheetRef,
+  });
+  const {
+    cancelSelection,
+    confirmDelete,
+    isPending,
+    isSelecting,
+    openMove,
+    selectedCount,
+  } = diarySelection;
+  const selectionActions = useRef({ cancelSelection, confirmDelete, openMove });
+  useLayoutEffect(() => {
+    selectionActions.current = { cancelSelection, confirmDelete, openMove };
+  }, [cancelSelection, confirmDelete, openMove]);
+  useEffect(
+    () => navigation.addListener('blur', cancelSelection),
+    [navigation, cancelSelection]
+  );
+
+  const syncNativeHeader = useCallback(() => {
     if (!usesNativeTabs) return;
-    // Beside a vertical bar, wait for the first measurement: setting all three
-    // date buttons and collapsing a moment later makes the pill jump.
-    if (dateColumnCollapsed === null) return;
+    const headerNavigation = navigation as unknown as NativeHeaderNavigation;
+    if (isSelecting) {
+      const selection = createDiaryEntrySelectionHeader(t, {
+        selectedCount,
+        isPending,
+        cancelSelection: () => selectionActions.current.cancelSelection(),
+        confirmDelete: () => selectionActions.current.confirmDelete(),
+        openMove: () => selectionActions.current.openMove(),
+      });
+      setNativeHeaderItems(headerNavigation, {
+        title: selection.title,
+        headerLargeTitleEnabled: false,
+        leftItems: [
+          createNativeHeaderIconButtonItem({
+            ...selection.left,
+            sfSymbol: 'xmark',
+            tintColor: nativeHeaderActionColor,
+          }),
+        ],
+        rightItems: selection.right.map((action) =>
+          createNativeHeaderIconButtonItem({
+            ...action,
+            tintColor: nativeHeaderActionColor,
+          })
+        ),
+      });
+      return;
+    }
+
+    const headerPresentation = {
+      title: t('navigation.diary', { defaultValue: 'Diary' }),
+      headerLargeTitleEnabled: true,
+    };
+    // Beside a vertical bar, wait for the first measurement before adding date
+    // buttons. Restore the title and clear any selection actions immediately.
+    if (dateColumnCollapsed === null) {
+      setNativeHeaderItems(headerNavigation, headerPresentation);
+      return;
+    }
     // The system swaps native bar items with no animation: when the group
     // changes under an already-visible pill, dissolve it instead of popping.
     // Only on the screen being looked at: the screen under a pushed one still
@@ -231,37 +306,35 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           ? dateFutureColor
           : nativeHeaderActionColor;
 
-    setNativeHeaderDatePickerOptions(
-      navigation as unknown as NativeHeaderDatePickerNavigation,
-      {
-        selectedDate,
-        onPreviousDate: goToPreviousDay,
-        onDatePress: openCalendar,
-        onNextDate: goToNextDay,
-        tintColor: nativeHeaderActionColor,
-        dateTintColor,
-        compactCalendarButton: verticalBar,
-        collapseToCalendar: dateColumnCollapsed ?? false,
-        accessibilityLabel: t('diary.chooseDate', {
-          defaultValue: 'Choose diary date',
-        }),
-        previousDayLabel: t('common.previousDay', {
-          defaultValue: ': previous day',
-        }),
-        nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
-        dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
-        t,
-        locale: dateLocale,
-        leadingAction: hasFamilyDiaries
-          ? {
-              sfSymbol: 'person.2.fill',
-              onPress: openFamilyDiaries,
-              accessibilityLabel: familyDiariesAccessibilityLabel,
-              identifier: 'family-diaries',
-            }
-          : undefined,
-      }
-    );
+    setNativeHeaderDatePickerOptions(headerNavigation, {
+      selectedDate,
+      onPreviousDate: goToPreviousDay,
+      onDatePress: openCalendar,
+      onNextDate: goToNextDay,
+      tintColor: nativeHeaderActionColor,
+      dateTintColor,
+      compactCalendarButton: verticalBar,
+      collapseToCalendar: dateColumnCollapsed ?? false,
+      accessibilityLabel: t('diary.chooseDate', {
+        defaultValue: 'Choose diary date',
+      }),
+      previousDayLabel: t('common.previousDay', {
+        defaultValue: ': previous day',
+      }),
+      nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
+      dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
+      t,
+      locale: dateLocale,
+      headerPresentation,
+      leadingAction: hasFamilyDiaries
+        ? {
+            sfSymbol: 'person.2.fill',
+            onPress: openFamilyDiaries,
+            accessibilityLabel: familyDiariesAccessibilityLabel,
+            identifier: 'family-diaries',
+          }
+        : undefined,
+    });
   }, [
     dateFutureColor,
     dateLocale,
@@ -270,10 +343,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     goToNextDay,
     goToPreviousDay,
     hasFamilyDiaries,
+    isPending,
+    isSelecting,
     nativeHeaderActionColor,
     navigation,
     openCalendar,
     openFamilyDiaries,
+    selectedCount,
     selectedDate,
     t,
     usesNativeTabs,
@@ -282,13 +358,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   ]);
 
   useLayoutEffect(() => {
-    syncNativeHeaderDatePicker();
-  }, [syncNativeHeaderDatePicker]);
+    syncNativeHeader();
+  }, [syncNativeHeader]);
 
   useFocusEffect(
     useCallback(() => {
-      syncNativeHeaderDatePicker();
-    }, [syncNativeHeaderDatePicker])
+      syncNativeHeader();
+    }, [syncNativeHeader])
   );
 
   const swipeGesture = useMemo(
@@ -339,12 +415,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const heightMode = preferences?.default_measurement_unit ?? 'cm';
   const { getImageSource } = useExerciseImageSource();
 
-  const { summary, isLoading, isError, refetch } = useDailySummary({
-    date: selectedDate,
-    // With the server away the day's totals come from the phone's copy plus
-    // what is waiting to upload.
-    enabled: isConnected || isOffline,
-  });
   const { measurements, refetch: refetchMeasurements } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
@@ -851,7 +921,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onAdjustServing={(entry) =>
                 servingSheetRef.current?.present(entry)
               }
-              onPressMealType={openMealTypeDetail}
+              onPressMealType={
+                diarySelection.isSelecting ? undefined : openMealTypeDetail
+              }
+              getRowSelection={diarySelection.rowSelection}
             />
             <ExerciseSummary
               exerciseEntries={mergeWaitingWorkouts(
@@ -925,6 +998,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   };
 
   const renderedContent = renderContent();
+  const moveSheet = (
+    <CopyMealSheet
+      ref={moveSheetRef}
+      move={diarySelection.move}
+      isPending={isPending}
+    />
+  );
 
   if (usesNativeTabs) {
     return (
@@ -934,6 +1014,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             {renderedContent ?? <View className="flex-1 bg-background" />}
           </View>
         </GestureDetector>
+        {moveSheet}
         <CalendarSheet
           ref={calendarRef}
           selectedDate={selectedDate}
@@ -952,7 +1033,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const content = (
     <>
-      {!isConnectionLoading && (isConnected || isOffline) ? (
+      {isSelecting ? (
+        <DiaryEntrySelectionBar {...diarySelection} />
+      ) : !isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('diary.title', { defaultValue: 'Diary' })}
           selectedDate={selectedDate}
@@ -980,6 +1063,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         )
       )}
       {renderedContent}
+      {moveSheet}
       <CalendarSheet
         ref={calendarRef}
         selectedDate={selectedDate}

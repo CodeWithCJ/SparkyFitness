@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +17,8 @@ import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
+import { createDiaryEntrySelectionHeader } from '../components/DiaryEntrySelectionBar';
+import { useDiaryEntrySelection } from '../hooks/useDiaryEntrySelection';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -94,6 +102,19 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       ),
     [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes]
   );
+  const moveSheetRef = useRef<CopyMealSheetRef>(null);
+  const diarySelection = useDiaryEntrySelection({
+    date,
+    entries,
+    enabled: isConnected,
+    moveSheetRef,
+  });
+  const { cancelSelection } = diarySelection;
+  useEffect(
+    () => navigation.addListener('blur', cancelSelection),
+    [navigation, cancelSelection]
+  );
+
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const isSystemMealType = resolvedType ? resolvedType.user_id === null : false;
   const targetCalories = useMemo(
@@ -223,6 +244,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
               key={entry.id || index}
               entry={entry}
               nutrition={calculateEntryNutrition(entry)}
+              selection={diarySelection.rowSelection(entry)}
               onAdjustServing={(foodEntry) =>
                 servingSheetRef.current?.present(foodEntry)
               }
@@ -233,9 +255,22 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     );
   };
 
+  const { isSelecting } = diarySelection;
+  const selectionHeader = isSelecting
+    ? createDiaryEntrySelectionHeader(t, diarySelection)
+    : null;
   const header = useScreenHeader({
-    left: { kind: 'back' },
-    right: [
+    title: selectionHeader?.title,
+    nativeTitle:
+      selectionHeader?.title ??
+      mealLabel ??
+      t('screens.meal', { defaultValue: 'Meal' }),
+    nativeOptions: {
+      headerBackVisible: !isSelecting,
+      gestureEnabled: !isSelecting,
+    },
+    left: selectionHeader?.left ?? { kind: 'back' },
+    right: selectionHeader?.right ?? [
       {
         kind: 'icon',
         sfSymbol: 'plus',
@@ -294,6 +329,20 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
             },
           ]
         : []),
+      ...(diarySelection.canMoveMeal
+        ? [
+            {
+              kind: 'icon' as const,
+              sfSymbol: 'arrow.left.arrow.right',
+              ionicon: 'swap-horizontal-outline' as const,
+              onPress: () => diarySelection.openMove(entries),
+              accessibilityLabel: t('diarySelection.moveMeal', {
+                defaultValue: 'Move meal',
+              }),
+              identifier: 'meal-type-detail-move',
+            },
+          ]
+        : []),
     ],
   });
 
@@ -311,6 +360,11 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
         ref={copySheetRef}
         isPending={isCopying}
         onCopy={(payload) => copyMeal(payload)}
+      />
+      <CopyMealSheet
+        ref={moveSheetRef}
+        isPending={diarySelection.isPending}
+        move={diarySelection.move}
       />
     </View>
   );

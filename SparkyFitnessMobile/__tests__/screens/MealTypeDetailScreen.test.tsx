@@ -1,5 +1,7 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import MealTypeDetailScreen from '../../src/screens/MealTypeDetailScreen';
 import {
   useDailySummary,
@@ -8,12 +10,17 @@ import {
 } from '../../src/hooks';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { useCopyFoodEntries } from '../../src/hooks/useCopyFoodEntries';
+import { useScreenHeader } from '../../src/hooks/useScreenHeader';
+import type { FoodRowSelection } from '../../src/components/SwipeableFoodRow';
+import type { CopyMealSheetRef } from '../../src/components/CopyMealSheet';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { MealType } from '../../src/types/mealTypes';
 import type { DailyGoals } from '../../src/types/goals';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MealTypeDetail'>;
+
+const mockPresentMealMove = jest.fn();
 
 const mockNavigation = {
   navigate: jest.fn(),
@@ -46,50 +53,48 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
   const ReactModule = require('react');
   const { Pressable } = require('react-native');
   return {
-    useScreenHeader: (config: {
-      right?:
-        | {
-            accessibilityLabel?: string;
-            onPress?: () => void;
-            items?: { label: string; onPress: () => void }[];
-          }
-        | {
-            accessibilityLabel?: string;
-            onPress?: () => void;
-            items?: { label: string; onPress: () => void }[];
-          }[];
-    }) => {
-      const items = Array.isArray(config.right)
-        ? config.right
-        : config.right
-          ? [config.right]
-          : [];
-      return ReactModule.createElement(
-        ReactModule.Fragment,
-        null,
-        items
-          .flatMap(
-            (item) =>
-              item.items?.map((action) => ({
-                accessibilityLabel: action.label,
-                onPress: action.onPress,
-              })) ?? [item]
-          )
-          .map((item, i) =>
-            ReactModule.createElement(Pressable, {
-              key: i,
-              accessibilityLabel: item.accessibilityLabel,
-              onPress: item.onPress,
-            })
-          )
-      );
-    },
+    useScreenHeader: jest.fn(
+      (config: {
+        right?:
+          | {
+              accessibilityLabel?: string;
+              onPress?: () => void;
+              items?: { label: string; onPress: () => void }[];
+            }
+          | {
+              accessibilityLabel?: string;
+              onPress?: () => void;
+              items?: { label: string; onPress: () => void }[];
+            }[];
+      }) => {
+        const items = Array.isArray(config.right)
+          ? config.right
+          : config.right
+            ? [config.right]
+            : [];
+        return ReactModule.createElement(
+          ReactModule.Fragment,
+          null,
+          items
+            .flatMap(
+              (item) =>
+                item.items?.map((action) => ({
+                  accessibilityLabel: action.label,
+                  onPress: action.onPress,
+                })) ?? [item]
+            )
+            .map((item, i) =>
+              ReactModule.createElement(Pressable, {
+                key: i,
+                accessibilityLabel: item.accessibilityLabel,
+                onPress: item.onPress,
+              })
+            )
+        );
+      }
+    ),
   };
 });
-
-jest.mock('../../src/services/nativeTabBarPreference', () => ({
-  useNativeIOSHeadersActive: () => false,
-}));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
@@ -114,12 +119,12 @@ jest.mock('../../src/components/CopyMealSheet', () => {
   return {
     __esModule: true,
     default: ReactModule.forwardRef(
-      (_props: unknown, ref: React.Ref<unknown>) => {
+      ({ move }: { move?: unknown }, ref: React.Ref<CopyMealSheetRef>) => {
         ReactModule.useImperativeHandle(ref, () => ({
-          present: jest.fn(),
+          present: move ? mockPresentMealMove : jest.fn(),
           dismiss: jest.fn(),
         }));
-        return <View testID="copy-sheet" />;
+        return <View testID={move ? 'move-sheet' : 'copy-sheet'} />;
       }
     ),
   };
@@ -145,8 +150,13 @@ jest.mock('../../src/components/FoodNutritionSummary', () => {
 });
 
 jest.mock('../../src/components/SwipeableFoodRow', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="food-row" /> };
+  const { Pressable } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ selection }: { selection?: FoodRowSelection }) => (
+      <Pressable testID="food-row" onLongPress={selection?.onToggle} />
+    ),
+  };
 });
 
 jest.mock('../../src/components/Icon', () => {
@@ -241,11 +251,17 @@ const renderScreen = (params: ScreenProps['route']['params']) => {
     copyMeal: jest.fn(),
     isPending: false,
   } as never);
+  const client = new QueryClient();
   return render(
     <MealTypeDetailScreen
       navigation={mockNavigation}
       route={{ key: 'MealTypeDetail-key', name: 'MealTypeDetail', params }}
-    />
+    />,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    }
   );
 };
 
@@ -256,6 +272,52 @@ describe('MealTypeDetailScreen', () => {
       entry('1', 'custom-pw', 'Pre-Workout'),
       entry('2', 'sys-b', 'breakfast'),
     ]);
+  });
+
+  it('opens Move for the whole meal on iOS and switches the native header while selecting', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      const view = renderScreen({
+        date: '2026-01-01',
+        mealTypeId: 'sys-b',
+        mealType: 'breakfast',
+        mealLabel: 'Breakfast',
+      });
+
+      fireEvent.press(view.getByLabelText('Move meal'));
+      expect(mockPresentMealMove).toHaveBeenCalledWith(
+        '2026-01-01',
+        'sys-b',
+        'breakfast'
+      );
+
+      fireEvent(view.getByTestId('food-row'), 'longPress');
+      const header = jest.mocked(useScreenHeader).mock.lastCall?.[0];
+      expect(header).toMatchObject({
+        title: '1 selected',
+        nativeTitle: '1 selected',
+        left: { kind: 'dismiss', accessibilityLabel: 'Cancel' },
+        right: [
+          { kind: 'icon', accessibilityLabel: 'Move' },
+          { kind: 'icon', accessibilityLabel: 'Delete' },
+        ],
+        nativeOptions: { headerBackVisible: false, gestureEnabled: false },
+      });
+      expect(view.getByLabelText('Move')).toBeTruthy();
+      expect(view.getByLabelText('Delete')).toBeTruthy();
+
+      const cancel = header?.left;
+      if (cancel?.kind !== 'dismiss') throw new Error('Expected Cancel action');
+      act(() => cancel.onPress());
+      expect(jest.mocked(useScreenHeader).mock.lastCall?.[0]).toMatchObject({
+        nativeTitle: 'Breakfast',
+        left: { kind: 'back' },
+        nativeOptions: { headerBackVisible: true, gestureEnabled: true },
+      });
+      expect(view.getByLabelText('Move meal')).toBeTruthy();
+    } finally {
+      os.restore();
+    }
   });
 
   it('opens recipient selection for the own canonical meal and preserves the other-day action', () => {

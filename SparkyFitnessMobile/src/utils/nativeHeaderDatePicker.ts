@@ -2,9 +2,15 @@ import React from 'react';
 import { Text } from 'react-native';
 import type { NativeStackHeaderItem } from '@react-navigation/native-stack';
 import { formatDateLabel } from './dateUtils';
-import { createNativeHeaderIconButtonItem } from './nativeHeaderItems';
+import {
+  createNativeHeaderIconButtonItem,
+  setNativeHeaderItems,
+  type NativeHeaderNavigation,
+  type NativeHeaderPresentation,
+} from './nativeHeaderItems';
 
 export type NativeHeaderDatePickerOptions = {
+  headerPresentation?: NativeHeaderPresentation;
   selectedDate: string;
   onPreviousDate: () => void;
   onDatePress: () => void;
@@ -36,29 +42,20 @@ export type NativeHeaderDatePickerOptions = {
   };
 };
 
-export type NativeHeaderDatePickerNavigation = {
-  setOptions: (options: {
-    unstable_headerRightItems: () => NativeStackHeaderItem[];
-    unstable_headerLeftItems?: () => NativeStackHeaderItem[];
-  }) => void;
-};
-
 export function setNativeHeaderDatePickerOptions(
-  navigation: NativeHeaderDatePickerNavigation,
+  navigation: NativeHeaderNavigation,
   options: NativeHeaderDatePickerOptions
 ) {
   const leadingAction = options.leadingAction;
 
-  navigation.setOptions({
-    unstable_headerRightItems: () => createNativeHeaderDatePickerItems(options),
-    unstable_headerLeftItems: leadingAction
-      ? () => [
+  setNativeHeaderItems(navigation, {
+    ...options.headerPresentation,
+    rightItems: createNativeHeaderDatePickerItems(options),
+    leftItems: leadingAction
+      ? [
           createNativeHeaderIconButtonItem({
-            sfSymbol: leadingAction.sfSymbol,
-            onPress: leadingAction.onPress,
+            ...leadingAction,
             tintColor: options.tintColor,
-            accessibilityLabel: leadingAction.accessibilityLabel,
-            identifier: leadingAction.identifier,
           }),
         ]
       : undefined,

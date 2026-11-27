@@ -1,4 +1,25 @@
 import { z } from 'zod';
+import { isDayString } from '../../utils/timezone.ts';
+
+const diaryDaySchema = z.string().refine(isDayString, 'Expected YYYY-MM-DD');
+const entryIdsSchema = z
+  .array(z.uuid().transform((id) => id.toLowerCase()))
+  .transform((ids) => [...new Set(ids)])
+  .default([]);
+
+export const moveDiaryEntriesBodySchema = z
+  .strictObject({
+    sourceDate: diaryDaySchema,
+    targetDate: diaryDaySchema,
+    targetMealTypeId: z.uuid(),
+    foodEntryIds: entryIdsSchema,
+    loggedMealIds: entryIdsSchema,
+  })
+  .refine((body) => body.foodEntryIds.length + body.loggedMealIds.length > 0, {
+    message: 'Select at least one entry to move.',
+  });
+
+export type MoveDiaryEntriesBody = z.infer<typeof moveDiaryEntriesBodySchema>;
 
 export const foodEntryResponseSchema = z.object({
   id: z.string(),

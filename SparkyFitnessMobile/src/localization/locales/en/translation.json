@@ -5949,6 +5949,19 @@
     "scalingNotes": "Scaling Notes",
     "durationMinutesSeconds": "{{minutes}}m {{seconds}}s"
   },
+  "diarySelection": {
+    "count_one": "{{count}} selected",
+    "count_other": "{{count}} selected",
+    "deleteConfirm_one": "Delete {{count}} selected entry?",
+    "deleteConfirm_other": "Delete {{count}} selected entries?",
+    "deleteFailed": "Some entries could not be deleted",
+    "move": "Move",
+    "moveFailed": "Could not move entries",
+    "moveMeal": "Move meal",
+    "moveTitle": "Move entries",
+    "moveTo": "Move to",
+    "moving": "Moving…"
+  },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",
     "foodTitle": "Copy food: {{food}}",

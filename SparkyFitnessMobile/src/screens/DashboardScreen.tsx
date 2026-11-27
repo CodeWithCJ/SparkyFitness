@@ -111,10 +111,8 @@ import { DASHBOARD_CARD_FEATURES } from '../constants/dashboardCards';
 import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatDateLabel, getDateRelationToToday } from '../utils/dateUtils';
-import {
-  setNativeHeaderDatePickerOptions,
-  type NativeHeaderDatePickerNavigation,
-} from '../utils/nativeHeaderDatePicker';
+import { setNativeHeaderDatePickerOptions } from '../utils/nativeHeaderDatePicker';
+import type { NativeHeaderNavigation } from '../utils/nativeHeaderItems';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import { resolveWeightGoal } from '../utils/healthTrendGoals';
@@ -257,7 +255,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           : nativeHeaderActionColor;
 
     setNativeHeaderDatePickerOptions(
-      navigation as unknown as NativeHeaderDatePickerNavigation,
+      navigation as unknown as NativeHeaderNavigation,
       {
         selectedDate,
         onPreviousDate: goToPreviousDay,

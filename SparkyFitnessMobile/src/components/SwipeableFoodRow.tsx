@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated from 'react-native-reanimated';
 import { DeleteRowAction } from './SwipeableDeleteRow';
 import { useRowCollapse } from '../hooks/useRowCollapse';
@@ -22,22 +24,34 @@ import { diaryEntryImage, diaryEntryImages } from '../utils/foodImages';
 import { useOpenLightbox } from './LightboxProvider';
 import AllergenBadges from './AllergenBadges';
 
+export interface FoodRowSelection {
+  active: boolean;
+  selected: boolean;
+  onToggle?: () => void;
+}
+
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
   nutrition: EntryNutrition;
   onAdjustServing?: (entry: FoodEntry) => void;
+  selection?: FoodRowSelection;
 }
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   entry,
   nutrition,
   onAdjustServing,
+  selection,
 }) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
   const energyUnit = useEnergyUnit();
   const navigation = useNavigation();
-  const swipeableRef = useRef<any>(null);
+  const swipeableRef = useRef<SwipeableMethods>(null);
+  const selecting = selection?.active === true;
+  useEffect(() => {
+    if (selecting) swipeableRef.current?.close();
+  }, [selecting]);
   const invalidateCacheRef = useRef<() => void>(() => {});
   const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
     invalidateCacheRef.current()
@@ -153,11 +167,14 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
-        renderRightActions={renderRightActions}
+        enabled={!selecting}
+        renderRightActions={selecting ? undefined : renderRightActions}
         overshootRight={false}
         rightThreshold={40}
       >
-        <View className="py-1.5 flex-row items-center bg-surface">
+        <View
+          className={`py-1.5 flex-row items-center ${selection?.selected ? 'bg-accent-primary/10' : 'bg-surface'}`}
+        >
           {/* Diary rows are deliberately dense, so this slot collapses to
               nothing when an entry has no photo — a photo-free day keeps the
               exact layout it had before images existed. */}
@@ -168,37 +185,75 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
               size={56}
               showFallback={false}
               style={{ marginRight: 8 }}
-              onPress={() => openLightbox(diaryEntryImages(entry), 0, name)}
+              onPress={
+                selecting
+                  ? undefined
+                  : () => openLightbox(diaryEntryImages(entry), 0, name)
+              }
             />
           ) : null}
           <TouchableOpacity
-            className="flex-1 mr-2"
+            className="flex-1 mr-2 flex-row items-center gap-2"
             activeOpacity={0.7}
-            onPress={
-              detailAvailable || canQuickAdjust ? handlePress : undefined
+            accessibilityRole={selecting ? 'checkbox' : undefined}
+            accessibilityState={
+              selecting
+                ? { checked: selection.selected, disabled: !selection.onToggle }
+                : undefined
             }
-            onLongPress={handleLongPress}
+            disabled={selecting && !selection.onToggle}
+            onPress={
+              selecting
+                ? selection.onToggle
+                : detailAvailable || canQuickAdjust
+                  ? handlePress
+                  : undefined
+            }
+            // Keep the long-press handler when selection starts so releasing
+            // the same gesture does not also trigger a tap.
+            onLongPress={
+              selection?.onToggle ?? (selecting ? undefined : handleLongPress)
+            }
           >
-            <View className="flex-row flex-wrap items-baseline">
-              <Text className="text-md text-text-primary" numberOfLines={1}>
-                {name}
-              </Text>
-              <Text className="text-sm text-text-secondary" numberOfLines={1}>
-                {' · '}
-                {entry.quantity} {entry.unit}
-              </Text>
-              {timeLabel && (
-                <Text
-                  className="text-xs text-text-link ml-1.5"
-                  numberOfLines={1}
-                >
-                  {timeLabel}
+            {selecting && (
+              <View
+                className={`h-5 w-5 rounded border items-center justify-center ${selection.selected ? 'border-accent-primary bg-accent-primary' : 'border-border-strong'}`}
+              >
+                {selection.selected && (
+                  <Text
+                    className="text-white text-xs font-bold"
+                    importantForAccessibility="no"
+                  >
+                    ✓
+                  </Text>
+                )}
+              </View>
+            )}
+            <View className="flex-1">
+              <View className="flex-row flex-wrap items-baseline">
+                <Text className="text-md text-text-primary" numberOfLines={1}>
+                  {name}
                 </Text>
-              )}
+                <Text className="text-sm text-text-secondary" numberOfLines={1}>
+                  {' · '}
+                  {entry.quantity} {entry.unit}
+                </Text>
+                {timeLabel && (
+                  <Text
+                    className="text-xs text-text-link ml-1.5"
+                    numberOfLines={1}
+                  >
+                    {timeLabel}
+                  </Text>
+                )}
+              </View>
+              <AllergenBadges
+                allergens={entry.allergens}
+                traces={entry.traces}
+              />
             </View>
-            <AllergenBadges allergens={entry.allergens} traces={entry.traces} />
           </TouchableOpacity>
-          {canQuickAdjust ? (
+          {canQuickAdjust && !selecting ? (
             <Button
               variant="ghost"
               onPress={() => onAdjustServing!(entry)}
