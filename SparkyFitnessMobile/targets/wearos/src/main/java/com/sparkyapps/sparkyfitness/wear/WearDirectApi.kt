@@ -976,7 +976,8 @@ sealed interface DirectWriteOutcome {
     val medicationDoseId: String? = null,
     val medicationStatus: MedicationDoseStatus? = null,
     val fast: WatchFast? = null,
-    val fastUpdated: Boolean = false
+    val fastUpdated: Boolean = false,
+    val fastStartOutcome: String? = null
   ) : DirectWriteOutcome
 
   data class Rejected(val statusCode: Int) : DirectWriteOutcome
@@ -1629,6 +1630,33 @@ object WearDirectApiClient {
     else -> null
   }
 
+  private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+  internal fun isValidUuid(value: String): Boolean = UUID_REGEX.matches(value.trim())
+
+  internal fun isTerminalFastObject(obj: JSONObject): Boolean {
+    val status = obj.optStringOrNull("status") ?: ""
+    if (
+      status.equals("COMPLETED", ignoreCase = true) ||
+      status.equals("CANCELLED", ignoreCase = true)
+    ) {
+      return true
+    }
+    if (status.equals("ACTIVE", ignoreCase = true)) {
+      return false
+    }
+    return obj.optStringOrNull("end_time") != null
+  }
+
+  internal fun isCompletedFastJson(raw: String?): Boolean {
+    if (raw.isNullOrBlank()) return false
+    return try {
+      isTerminalFastObject(JSONObject(raw.trim()))
+    } catch (_: Throwable) {
+      false
+    }
+  }
+
   internal fun parseFastJson(raw: String?): Pair<WatchFast?, Boolean> {
     if (raw == null) return null to false
     val trimmed = raw.trim()
@@ -1636,6 +1664,9 @@ object WearDirectApiClient {
     return try {
       val obj = JSONObject(trimmed)
       if (obj.optBoolean("is_eating_window", false)) {
+        return null to true
+      }
+      if (isTerminalFastObject(obj)) {
         return null to true
       }
       val startMs = ContextPayloadMapper.parseIsoMs(obj.optStringOrNull("start_time"))
@@ -2483,6 +2514,95 @@ object WearDirectApiClient {
     }
   }
 
+  internal fun buildFastStartRequestBody(
+    startMs: Long,
+    targetMs: Long,
+    fastingType: String,
+    clientId: String
+  ): JSONObject = JSONObject()
+    .put("start_time", ContextPayloadMapper.formatIso(startMs))
+    .put("target_end_time", ContextPayloadMapper.formatIso(targetMs))
+    .put("fasting_type", fastingType)
+    .apply {
+      val cleanId = clientId.trim()
+      if (isValidUuid(cleanId)) {
+        put("client_id", cleanId)
+      }
+    }
+
+  internal fun isMatchingFastJsonForStart(
+    fastObj: JSONObject,
+    clientId: String,
+    requestedStartedAtMs: Long?
+  ): Boolean {
+    val cleanClientId = clientId.trim()
+    if (fastObj.has("client_id")) {
+      val rowClientId = if (!fastObj.isNull("client_id")) {
+        fastObj.optString("client_id", "").trim()
+      } else {
+        ""
+      }
+      if (cleanClientId.isNotEmpty() && isValidUuid(cleanClientId)) {
+        return rowClientId.isNotEmpty() && rowClientId.equals(cleanClientId, ignoreCase = true)
+      }
+      if (rowClientId.isNotEmpty()) {
+        return cleanClientId.isNotEmpty() && rowClientId.equals(cleanClientId, ignoreCase = true)
+      }
+    }
+    if (requestedStartedAtMs == null || requestedStartedAtMs <= 0L) return false
+    val startTime = fastObj.optStringOrNull("start_time") ?: return false
+    val serverStartMs = ContextPayloadMapper.parseIsoMs(startTime) ?: return false
+    return kotlin.math.abs(serverStartMs - requestedStartedAtMs) <= 1_000L
+  }
+
+  internal fun resolveFastStartOutcome(
+    startResBody: String?,
+    clientId: String = "",
+    requestedStartedAtMs: Long? = null,
+    fetchLatestCurrent: () -> String?
+  ): DirectWriteOutcome {
+    val isTerminalReplay = isCompletedFastJson(startResBody)
+    if (!isTerminalReplay) {
+      val (fast, known) = parseFastJson(startResBody)
+      if (known && fast != null) {
+        return DirectWriteOutcome.Applied(
+          syncedDomain = "fasting",
+          fast = fast,
+          fastUpdated = true,
+          fastStartOutcome = "confirmed"
+        )
+      }
+    }
+    val latestBody = fetchLatestCurrent()
+    if (!latestBody.isNullOrBlank()) {
+      val (latestFast, known) = parseFastJson(latestBody)
+      if (known) {
+        val latestOutcome = when {
+          isTerminalReplay || latestFast == null -> "terminal"
+          else -> {
+            val latestObj = try {
+              JSONObject(latestBody.trim())
+            } catch (_: Throwable) {
+              null
+            }
+            if (latestObj != null && isMatchingFastJsonForStart(latestObj, clientId, requestedStartedAtMs)) {
+              "confirmed"
+            } else {
+              "superseded"
+            }
+          }
+        }
+        return DirectWriteOutcome.Applied(
+          syncedDomain = "fasting",
+          fast = latestFast,
+          fastUpdated = true,
+          fastStartOutcome = latestOutcome
+        )
+      }
+    }
+    return DirectWriteOutcome.FallbackToPhone
+  }
+
   internal fun executeFastStart(
     context: Context,
     creds: WearServerCredentials,
@@ -2492,31 +2612,30 @@ object WearDirectApiClient {
     val presetId = payload.optString("presetId", "").trim()
     val (fastingType, hours) = fastingPresetSpec(presetId)
       ?: return DirectWriteOutcome.Rejected(400)
+    val clientId = payload.optString("clientId", "").trim()
+    val requestedStartMs = payload.optLong("startedAt", 0L).takeIf { it > 0L }
     val curRes = request(creds, "GET", "/api/fasting/current")
     if (!curRes.isSuccess) return DirectWriteOutcome.FallbackToPhone
     val curBody = curRes.body ?: return DirectWriteOutcome.FallbackToPhone
     val curTrimmed = curBody.trim()
     if (curTrimmed.isEmpty()) return DirectWriteOutcome.FallbackToPhone
-    val hasManualCurrent = if (curTrimmed == "null") {
-      false
+    val manualCurrentObj: JSONObject? = if (curTrimmed == "null") {
+      null
     } else {
       try {
         val curObj = JSONObject(curTrimmed)
-        !curObj.optBoolean("is_auto_calculated", false)
+        if (curObj.optBoolean("is_auto_calculated", false)) null else curObj
       } catch (_: Throwable) {
         return DirectWriteOutcome.FallbackToPhone
       }
     }
-    if (!hasManualCurrent) {
+    if (manualCurrentObj == null) {
       if (!WearServerCredentialsStore.admitDirectRequest(context, creds, isAccountActive)) {
         return DirectWriteOutcome.FallbackToPhone
       }
-      val startMs = payload.optLong("startedAt", 0L).takeIf { it > 0L } ?: System.currentTimeMillis()
+      val startMs = requestedStartMs ?: System.currentTimeMillis()
       val targetMs = startMs + (hours * 3_600_000.0).toLong()
-      val body = JSONObject()
-        .put("start_time", ContextPayloadMapper.formatIso(startMs))
-        .put("target_end_time", ContextPayloadMapper.formatIso(targetMs))
-        .put("fasting_type", fastingType)
+      val body = buildFastStartRequestBody(startMs, targetMs, fastingType, clientId)
       val startRes = request(creds, "POST", "/api/fasting/start", body)
       if (!startRes.isSuccess) {
         return if (startRes.isValidationFailure) {
@@ -2525,18 +2644,33 @@ object WearDirectApiClient {
           DirectWriteOutcome.FallbackToPhone
         }
       }
-      val (fast, _) = parseFastJson(startRes.body)
-      return DirectWriteOutcome.Applied(
-        syncedDomain = "fasting",
-        fast = fast ?: WatchFast(startMs, targetMs, fastingType),
-        fastUpdated = true
-      )
+      return resolveFastStartOutcome(
+        startResBody = startRes.body,
+        clientId = clientId,
+        requestedStartedAtMs = startMs
+      ) {
+        if (WearServerCredentialsStore.admitDirectRequest(context, creds, isAccountActive)) {
+          request(creds, "GET", "/api/fasting/current").takeIf { it.isSuccess }?.body
+        } else {
+          null
+        }
+      }
     }
-    val (existingFast, _) = parseFastJson(curBody)
+    val (existingFast, existingKnown) = parseFastJson(curBody)
+    if (!existingKnown) return DirectWriteOutcome.FallbackToPhone
+    val existingOutcome = if (
+      existingFast != null &&
+      isMatchingFastJsonForStart(manualCurrentObj, clientId, requestedStartMs)
+    ) {
+      "confirmed"
+    } else {
+      "superseded"
+    }
     return DirectWriteOutcome.Applied(
       syncedDomain = "fasting",
       fast = existingFast,
-      fastUpdated = true
+      fastUpdated = true,
+      fastStartOutcome = existingOutcome
     )
   }
 

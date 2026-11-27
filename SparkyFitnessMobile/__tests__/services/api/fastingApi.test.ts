@@ -31,9 +31,16 @@ describe('fastingApi', () => {
       );
     });
 
-    test('coalesces a null body to null', async () => {
+    test('returns null for a literal null body', async () => {
       mockApiFetch.mockResolvedValueOnce(null);
       await expect(fetchCurrentFast()).resolves.toBeNull();
+    });
+
+    test('rejects an empty (undefined) response instead of treating it as no active fast', async () => {
+      mockApiFetch.mockResolvedValueOnce(undefined);
+      await expect(fetchCurrentFast()).rejects.toThrow(
+        'Empty response while fetching current fast'
+      );
     });
   });
 
@@ -49,6 +56,46 @@ describe('fastingApi', () => {
         expect.objectContaining({
           endpoint: '/api/fasting/start',
           method: 'POST',
+          body: {
+            start_time: '2026-06-21T10:00:00.000Z',
+            target_end_time: '2026-06-22T02:00:00.000Z',
+            fasting_type: '16:8 Leangains',
+          },
+        })
+      );
+    });
+
+    test('includes client_id when clientId is a valid UUID', async () => {
+      const clientId = '11111111-1111-4111-8111-111111111111';
+      mockApiFetch.mockResolvedValueOnce({ id: 'fast-1', client_id: clientId });
+      await startFast({
+        startTime: '2026-06-21T10:00:00.000Z',
+        targetEndTime: '2026-06-22T02:00:00.000Z',
+        fastingType: '16:8 Leangains',
+        clientId,
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            start_time: '2026-06-21T10:00:00.000Z',
+            target_end_time: '2026-06-22T02:00:00.000Z',
+            fasting_type: '16:8 Leangains',
+            client_id: clientId,
+          },
+        })
+      );
+    });
+
+    test('omits client_id when clientId is not a valid UUID', async () => {
+      mockApiFetch.mockResolvedValueOnce({ id: 'fast-1' });
+      await startFast({
+        startTime: '2026-06-21T10:00:00.000Z',
+        targetEndTime: '2026-06-22T02:00:00.000Z',
+        fastingType: '16:8 Leangains',
+        clientId: 'not-a-uuid',
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
           body: {
             start_time: '2026-06-21T10:00:00.000Z',
             target_end_time: '2026-06-22T02:00:00.000Z',

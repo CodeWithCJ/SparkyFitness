@@ -7182,4 +7182,128 @@ class WearOsParityTest {
             )
         )
     }
+
+    @Test
+    fun fastingStartClientIdUuidAndCompletedReplayParity() {
+        val validUuid = "550e8400-e29b-41d4-a716-446655440000"
+        assertTrue(WearDirectApiClient.isValidUuid(validUuid))
+        assertTrue(WearDirectApiClient.isValidUuid("  $validUuid  "))
+        assertFalse(WearDirectApiClient.isValidUuid(""))
+        assertFalse(WearDirectApiClient.isValidUuid("fast-123"))
+
+        // buildFastStartRequestBody includes client_id only for valid UUIDs
+        val withUuid = WearDirectApiClient.buildFastStartRequestBody(1_700_000_000_000L, 1_700_057_600_000L, "16:8 Leangains", validUuid)
+        assertEquals(validUuid, withUuid.getString("client_id"))
+        val withoutUuid = WearDirectApiClient.buildFastStartRequestBody(1_700_000_000_000L, 1_700_057_600_000L, "16:8 Leangains", "synthetic-id")
+        assertFalse(withoutUuid.has("client_id"))
+
+        // parseFastJson returns null to true for COMPLETED or ended fasts
+        val completedJson = JSONObject()
+            .put("id", "f-1")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("target_end_time", "2026-11-26T16:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "COMPLETED")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(completedJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(completedJson))
+
+        val endedJson = JSONObject()
+            .put("id", "f-2")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("end_time", "2026-11-26T10:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(endedJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(endedJson))
+
+        // CANCELLED without end_time is terminal; ACTIVE with end_time remains active (matches /current)
+        val cancelledJson = JSONObject()
+            .put("id", "f-cancel")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "CANCELLED")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(cancelledJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(cancelledJson))
+
+        val activeWithEndTimeJson = JSONObject()
+            .put("id", "f-active-end")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("end_time", "2026-11-26T10:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "ACTIVE")
+            .toString()
+        assertFalse(WearDirectApiClient.isCompletedFastJson(activeWithEndTimeJson))
+        val (parsedActiveWithEnd, activeWithEndKnown) = WearDirectApiClient.parseFastJson(activeWithEndTimeJson)
+        assertTrue(activeWithEndKnown)
+        assertEquals("f-active-end", parsedActiveWithEnd?.id)
+
+        // Replaying an already-completed fast never revives it on the watch (re-fetches /api/fasting/current)
+        val outcomeNull = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = completedJson,
+            fetchLatestCurrent = { "null" }
+        )
+        assertTrue(outcomeNull is DirectWriteOutcome.Applied)
+        val appliedNull = outcomeNull as DirectWriteOutcome.Applied
+        assertNull(appliedNull.fast)
+        assertTrue(appliedNull.fastUpdated)
+        assertEquals("terminal", appliedNull.fastStartOutcome)
+
+        // Unreadable 2xx start body also queries /api/fasting/current instead of fabricating a timer
+        val outcomeUnreadable = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = null,
+            fetchLatestCurrent = { "null" }
+        )
+        assertTrue(outcomeUnreadable is DirectWriteOutcome.Applied)
+        val appliedUnreadable = outcomeUnreadable as DirectWriteOutcome.Applied
+        assertNull(appliedUnreadable.fast)
+        assertTrue(appliedUnreadable.fastUpdated)
+        assertEquals("terminal", appliedUnreadable.fastStartOutcome)
+
+        // Unreadable 2xx start body that re-fetches an unrelated active fast reports superseded
+        val outcomeSuperseded = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = null,
+            clientId = validUuid,
+            requestedStartedAtMs = 1_700_000_000_000L,
+            fetchLatestCurrent = { activeWithEndTimeJson }
+        )
+        assertTrue(outcomeSuperseded is DirectWriteOutcome.Applied)
+        assertEquals("superseded", (outcomeSuperseded as DirectWriteOutcome.Applied).fastStartOutcome)
+
+        // Direct sync notice forwards fastStartOutcome and fastId when present
+        val terminalNotice = WearSessionManager.buildDirectSyncNotice(
+            domain = "fasting",
+            ownerId = "srv-1",
+            entryDate = null,
+            clientId = validUuid,
+            fastStartOutcome = "terminal"
+        )
+        assertEquals("terminal", terminalNotice.getString("fastStartOutcome"))
+        assertFalse(terminalNotice.has("fastId"))
+
+        val confirmedNotice = WearSessionManager.buildDirectSyncNotice(
+            domain = "fasting",
+            ownerId = "srv-1",
+            entryDate = null,
+            clientId = validUuid,
+            fastStartOutcome = "confirmed",
+            fastId = "fast-123"
+        )
+        assertEquals("confirmed", confirmedNotice.getString("fastStartOutcome"))
+        assertEquals("fast-123", confirmedNotice.getString("fastId"))
+
+        // Transient failure or invalid JSON on re-fetch falls back so the idempotent clientId stays persisted and retries
+        val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = endedJson,
+            fetchLatestCurrent = { null }
+        )
+        assertEquals(DirectWriteOutcome.FallbackToPhone, outcomeTransient)
+
+        val outcomeInvalid = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = endedJson,
+            fetchLatestCurrent = { "{}" }
+        )
+        assertEquals(DirectWriteOutcome.FallbackToPhone, outcomeInvalid)
+    }
 }

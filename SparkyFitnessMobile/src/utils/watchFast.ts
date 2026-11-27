@@ -11,6 +11,50 @@ export interface WatchFastPayload {
 }
 
 /**
+ * True when a server fasting row represents a terminal (non-active) fast.
+ * Matches server `getCurrentFast` (`status = 'ACTIVE'`) so an `ACTIVE` row that
+ * also carries an `end_time` is still treated as active, while `COMPLETED` and
+ * `CANCELLED` rows are terminal even without an `end_time`.
+ */
+export function isTerminalFast(
+  fast: Pick<FastingLog, 'status' | 'end_time'> | null | undefined
+): boolean {
+  if (!fast) return false;
+  const status =
+    typeof fast.status === 'string' ? fast.status.trim().toUpperCase() : '';
+  if (status === 'COMPLETED' || status === 'CANCELLED') return true;
+  if (status === 'ACTIVE') return false;
+  return typeof fast.end_time === 'string' && fast.end_time.trim() !== '';
+}
+
+export type ParsedWatchFastResult =
+  { known: true; fast: WatchFastPayload | null } | { known: false };
+
+/**
+ * Strictly classifies a `/api/fasting/current` response for watch ACKs.
+ * Distinguishes confirmed absence (`null`, eating window, or terminal fast)
+ * from unreadable/malformed payloads (`undefined`, non-objects, or active rows
+ * missing a valid `start_time`) so callers defer ACKs instead of clearing the
+ * watch timer with `fastKnown = true, fast = null`.
+ */
+export function parseCurrentWatchFast(
+  fast: FastingLog | null | undefined
+): ParsedWatchFastResult {
+  if (fast === null) return { known: true, fast: null };
+  if (!fast || typeof fast !== 'object' || Array.isArray(fast)) {
+    return { known: false };
+  }
+  if (fast.is_eating_window === true || isTerminalFast(fast)) {
+    return { known: true, fast: null };
+  }
+  if (typeof fast.start_time !== 'string' || fast.start_time.trim() === '') {
+    return { known: false };
+  }
+  const parsed = toWatchFast(fast);
+  return parsed ? { known: true, fast: parsed } : { known: false };
+}
+
+/**
  * The fast as the watch's Fasting page wants it. `undefined` stays undefined
  * (the server has not answered, so the watch keeps what it had); `null` means
  * "not fasting".
@@ -22,7 +66,11 @@ export function toWatchFast(
   if (fast === null) return null;
   // Auto-calculated fasting reports the eating window as an "active" fast too.
   // It is the opposite of fasting, so the watch is told there is no fast.
-  if (fast.is_eating_window) return null;
+  if (fast.is_eating_window === true) return null;
+  if (isTerminalFast(fast)) return null;
+  if (typeof fast.start_time !== 'string' || fast.start_time.trim() === '') {
+    return null;
+  }
   const startedAt = new Date(fast.start_time).getTime();
   if (!Number.isFinite(startedAt)) return null;
   const target = fast.target_end_time

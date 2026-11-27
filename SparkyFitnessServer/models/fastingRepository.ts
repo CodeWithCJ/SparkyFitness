@@ -2,23 +2,62 @@ import { getClient } from '../db/poolManager.js';
 import { dayRangeToUtcRange } from '@workspace/shared';
 import type { PoolClient } from 'pg';
 
+const FASTING_LOG_CLIENT_ID_INDEX = 'idx_fasting_logs_user_client_id';
+
+export interface FastingLogRow {
+  id: string;
+  user_id: string;
+  start_time: Date | string;
+  end_time: Date | string | null;
+  target_end_time: Date | string | null;
+  duration_minutes: number | null;
+  fasting_type: string | null;
+  status: string | null;
+  client_id: string | null;
+  created_at: Date | string | null;
+  updated_at: Date | string | null;
+}
+
 async function createFastingLog(
   userId: string,
   startTime: string | Date,
   targetEndTime: string | Date | null,
-  fastingType: string | null
-) {
+  fastingType: string | null,
+  clientId: string | null = null
+): Promise<FastingLogRow> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `INSERT INTO fasting_logs (user_id, start_time, target_end_time, fasting_type, status)
-       VALUES ($1, $2, $3, $4, 'ACTIVE')
-       RETURNING id, user_id, start_time, target_end_time, fasting_type, status, created_at, updated_at`,
-      [userId, startTime, targetEndTime, fastingType]
+      `INSERT INTO fasting_logs (user_id, start_time, target_end_time, fasting_type, status, client_id)
+       VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
+       RETURNING id, user_id, start_time, end_time, target_end_time, duration_minutes, fasting_type, status, client_id, created_at, updated_at`,
+      [userId, startTime, targetEndTime, fastingType, clientId]
     );
-    return result.rows[0];
+    return result.rows[0] as FastingLogRow;
   } finally {
     client.release();
+  }
+}
+
+async function findFastingLogByClientId(
+  userId: string,
+  clientId: string,
+  dbClient?: PoolClient
+): Promise<FastingLogRow | null> {
+  const client = dbClient ?? (await getClient(userId));
+  try {
+    const result = await client.query(
+      `SELECT id, user_id, start_time, end_time, target_end_time, duration_minutes, fasting_type, status, client_id, created_at, updated_at
+       FROM fasting_logs
+       WHERE user_id = $1 AND client_id = $2
+       LIMIT 1`,
+      [userId, clientId]
+    );
+    return (result.rows[0] as FastingLogRow | undefined) ?? null;
+  } finally {
+    if (!dbClient) {
+      client.release();
+    }
   }
 }
 
@@ -317,6 +356,8 @@ async function deleteFastingLog(id: any, userId: any) {
   }
 }
 export { createFastingLog };
+export { FASTING_LOG_CLIENT_ID_INDEX };
+export { findFastingLogByClientId };
 export { createCompletedFast };
 export { findFastNearStartTime };
 export { endFast };
@@ -329,7 +370,9 @@ export { getFastingLogsByDateRange };
 export { getFastingLogsOverlappingDay };
 export { deleteFastingLog };
 export default {
+  FASTING_LOG_CLIENT_ID_INDEX,
   createFastingLog,
+  findFastingLogByClientId,
   createCompletedFast,
   findFastNearStartTime,
   endFast,

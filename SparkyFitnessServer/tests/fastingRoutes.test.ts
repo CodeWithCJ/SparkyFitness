@@ -551,4 +551,188 @@ describe('Fasting Routes', () => {
       expect(res.body).toEqual(mockCalculated);
     });
   });
+
+  describe('POST /fasting/start client_id idempotency', () => {
+    const CLIENT_UUID = '33333333-3333-4333-8333-333333333333';
+    const baseBody = {
+      start_time: '2026-11-26T10:00:00.000Z',
+      target_end_time: '2026-11-27T02:00:00.000Z',
+      fasting_type: '16:8 Leangains',
+    };
+
+    it('creates a fast with valid UUID client_id and returns 201', async () => {
+      const createdRow = {
+        id: 'fast-1',
+        user_id: 'testUserId',
+        ...baseBody,
+        status: 'ACTIVE',
+        client_id: CLIENT_UUID,
+      };
+      vi.mocked(fastingRepository.findFastingLogByClientId).mockResolvedValue(
+        null
+      );
+      vi.mocked(fastingRepository.getCurrentFast).mockResolvedValue(null);
+      vi.mocked(fastingRepository.createFastingLog).mockResolvedValue(
+        createdRow as never
+      );
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(201);
+      expect(res.body).toEqual(createdRow);
+      expect(fastingRepository.createFastingLog).toHaveBeenCalledWith(
+        'testUserId',
+        baseBody.start_time,
+        baseBody.target_end_time,
+        baseBody.fasting_type,
+        CLIENT_UUID
+      );
+    });
+
+    it('rejects non-UUID client_id with 400', async () => {
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: 'not-a-uuid' });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toEqual('client_id must be a UUID.');
+      expect(fastingRepository.findFastingLogByClientId).not.toHaveBeenCalled();
+    });
+
+    it('replays an active fast with 200 without calling getCurrentFast or createFastingLog', async () => {
+      const existingActive = {
+        id: 'fast-active-1',
+        user_id: 'testUserId',
+        ...baseBody,
+        status: 'ACTIVE',
+        client_id: CLIENT_UUID,
+      };
+      vi.mocked(fastingRepository.findFastingLogByClientId).mockResolvedValue(
+        existingActive as never
+      );
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual(existingActive);
+      expect(fastingRepository.getCurrentFast).not.toHaveBeenCalled();
+      expect(fastingRepository.createFastingLog).not.toHaveBeenCalled();
+    });
+
+    it('replays an already-completed fast with 200', async () => {
+      const existingCompleted = {
+        id: 'fast-done-1',
+        user_id: 'testUserId',
+        ...baseBody,
+        end_time: '2026-11-26T11:00:00.000Z',
+        status: 'COMPLETED',
+        client_id: CLIENT_UUID,
+      };
+      vi.mocked(fastingRepository.findFastingLogByClientId).mockResolvedValue(
+        existingCompleted as never
+      );
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual(existingCompleted);
+      expect(fastingRepository.getCurrentFast).not.toHaveBeenCalled();
+    });
+
+    it('resolves concurrent unique-violation 23505 on idx_fasting_logs_user_client_id with 200', async () => {
+      const winnerRow = {
+        id: 'fast-winner',
+        user_id: 'testUserId',
+        ...baseBody,
+        status: 'ACTIVE',
+        client_id: CLIENT_UUID,
+      };
+      vi.mocked(fastingRepository.findFastingLogByClientId)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(winnerRow as never);
+      vi.mocked(fastingRepository.getCurrentFast).mockResolvedValue(null);
+      vi.mocked(fastingRepository.createFastingLog).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'idx_fasting_logs_user_client_id',
+        })
+      );
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual(winnerRow);
+    });
+
+    it('returns 400 when an active fast exists for a different or omitted client_id', async () => {
+      vi.mocked(fastingRepository.findFastingLogByClientId).mockResolvedValue(
+        null
+      );
+      vi.mocked(fastingRepository.getCurrentFast).mockResolvedValue({
+        id: 'other-fast',
+      } as never);
+
+      const resDifferent = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+      expect(resDifferent.statusCode).toEqual(400);
+
+      const resOmitted = await request(app)
+        .post('/fasting/start')
+        .send(baseBody);
+      expect(resOmitted.statusCode).toEqual(400);
+    });
+
+    it('returns 500 when 23505 race-recovery lookup rejects', async () => {
+      vi.mocked(fastingRepository.findFastingLogByClientId)
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('lookup failed'));
+      vi.mocked(fastingRepository.getCurrentFast).mockResolvedValue(null);
+      vi.mocked(fastingRepository.createFastingLog).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'idx_fasting_logs_user_client_id',
+        })
+      );
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(500);
+      expect(res.body).toEqual({ error: 'Failed to start fast' });
+    });
+
+    it('replays 200 when initial client_id lookup misses, active fast hits, and re-lookup finds the committed row', async () => {
+      const winnerRow = {
+        id: 'fast-raced-active',
+        user_id: 'testUserId',
+        ...baseBody,
+        status: 'ACTIVE',
+        client_id: CLIENT_UUID,
+      };
+      vi.mocked(fastingRepository.findFastingLogByClientId)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(winnerRow as never);
+      vi.mocked(fastingRepository.getCurrentFast).mockResolvedValue({
+        id: 'fast-raced-active',
+      } as never);
+
+      const res = await request(app)
+        .post('/fasting/start')
+        .send({ ...baseBody, client_id: CLIENT_UUID });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual(winnerRow);
+      expect(fastingRepository.createFastingLog).not.toHaveBeenCalled();
+    });
+  });
 });

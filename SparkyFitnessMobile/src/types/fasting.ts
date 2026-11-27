@@ -10,6 +10,7 @@
 export interface FastingLog {
   id: string;
   user_id: string;
+  client_id?: string | null;
   start_time: string;
   end_time: string | null;
   target_end_time: string | null;

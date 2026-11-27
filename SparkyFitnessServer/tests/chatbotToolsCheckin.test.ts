@@ -877,6 +877,16 @@ describe('log_fasting', () => {
   it('creates an active fast without a follow-up update', async () => {
     vi.mocked(fastingRepository.createFastingLog).mockResolvedValue({
       id: 'f1',
+      user_id: 'user-1',
+      start_time: '2026-06-01T20:00:00Z',
+      end_time: null,
+      target_end_time: null,
+      duration_minutes: null,
+      fasting_type: null,
+      status: 'ACTIVE',
+      client_id: null,
+      created_at: null,
+      updated_at: null,
     });
 
     const result = await tools.sparky_manage_checkin.execute!(
@@ -897,6 +907,16 @@ describe('log_fasting', () => {
   it('records a completed window via a follow-up update', async () => {
     vi.mocked(fastingRepository.createFastingLog).mockResolvedValue({
       id: 'f1',
+      user_id: 'user-1',
+      start_time: '2026-06-01T20:00:00Z',
+      end_time: null,
+      target_end_time: null,
+      duration_minutes: null,
+      fasting_type: null,
+      status: 'ACTIVE',
+      client_id: null,
+      created_at: null,
+      updated_at: null,
     });
     vi.mocked(fastingRepository.updateFast).mockResolvedValue({ id: 'f1' });
 
