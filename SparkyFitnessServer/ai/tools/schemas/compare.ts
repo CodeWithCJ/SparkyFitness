@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { COMPARE_METRIC_KEYS } from '@workspace/shared';
-import { optionalDateSchema } from './common.js';
+import { optionalDateSchema, withDayNote } from './common.js';
 
 export const COMPARE_TOOL_ACTIONS = [
   'compare',
@@ -91,12 +91,18 @@ export const compareToolInput = z.object({
       "compare: same_day (default) pairs A and B on the same day (or week); a_then_b pairs A with B the next day (or week); b_then_a pairs A with B the day before. Sleep metrics are dated by the day the person woke, so a day's caffeine with that night's sleep is a_then_b."
     ),
   start_date: optionalDateSchema.describe(
-    'compare: first day of the range (YYYY-MM-DD). Defaults to 90 days (26 weeks by week) before end_date.'
+    withDayNote(
+      'compare: first day of the range (YYYY-MM-DD). Defaults to 90 days (26 weeks by week) before end_date.'
+    )
   ),
   end_date: optionalDateSchema.describe(
-    'compare: last day of the range (YYYY-MM-DD). Defaults to today; today (or the current week) is never counted.'
+    withDayNote(
+      'compare: last day of the range (YYYY-MM-DD). Defaults to today; today (or the current week) is never counted.'
+    )
   ),
   habit_start_date: optionalDateSchema.describe(
-    'since: the day the habit started (YYYY-MM-DD). Omit it to use the suggested start.'
+    withDayNote(
+      'since: the day the habit started (YYYY-MM-DD). Omit it to use the suggested start.'
+    )
   ),
 });

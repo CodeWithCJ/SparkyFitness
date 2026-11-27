@@ -4,6 +4,7 @@ import {
   MAX_EASE_PERCENT,
   MAX_PUSH_PERCENT,
 } from '@workspace/shared';
+import { withDayNote } from './common.js';
 
 export const RUN_PROGRAM_ACTIONS = [
   'get_run_program',
@@ -182,8 +183,16 @@ export const manageRunProgramInput = z.object({
   percent: z.union([z.string(), z.number()]).optional(),
   count: z.union([z.string(), z.number()]).optional(),
   run_days: z.array(z.union([z.string(), z.number()])).optional(),
-  start_date: z.string().nullable().optional(),
-  end_date: z.string().nullable().optional(),
+  start_date: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(withDayNote('Start day (YYYY-MM-DD)')),
+  end_date: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(withDayNote('End day (YYYY-MM-DD)')),
   force: z.boolean().optional(),
   distance: z.string().max(10).optional(),
   confirmed: z.boolean().optional(),

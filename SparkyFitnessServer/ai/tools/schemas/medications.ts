@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { optionalDateSchema, uuidSchema } from './common.js';
+import { optionalDateSchema, uuidSchema, withDayNote } from './common.js';
 
 const listMedicationsSchema = z
   .object({
@@ -374,7 +374,7 @@ export const manageMedicationsInput = z.object({
     .optional()
     .describe('ISO timestamp when the dose was taken'),
   entry_date: optionalDateSchema.describe(
-    'Calendar date for the dose (YYYY-MM-DD, defaults to today)'
+    withDayNote('Calendar date for the dose (YYYY-MM-DD, defaults to today)')
   ),
   notes: z.string().nullable().optional().describe('Notes about the entry'),
   glp1_only: z

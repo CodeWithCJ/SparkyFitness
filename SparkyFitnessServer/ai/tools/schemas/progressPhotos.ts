@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuidSchema, optionalDateSchema } from './common.js';
+import { uuidSchema, optionalDateSchema, withDayNote } from './common.js';
 
 export const PROGRESS_PHOTO_ACTIONS = [
   'list_photo_dates',
@@ -13,7 +13,9 @@ export const manageProgressPhotosSchema = z.discriminatedUnion('action', [
     .object({
       action: z.literal('list_photos'),
       date: optionalDateSchema.describe(
-        'The calendar day (YYYY-MM-DD) whose progress photos to list. Defaults to today.'
+        withDayNote(
+          'The calendar day (YYYY-MM-DD) whose progress photos to list. Defaults to today.'
+        )
       ),
     })
     .strict(),
@@ -31,6 +33,9 @@ export type ManageProgressPhotosInput = z.infer<
 
 export const manageProgressPhotosInput = z.object({
   action: z.enum(PROGRESS_PHOTO_ACTIONS).optional(),
-  date: z.string().optional(),
+  date: z
+    .string()
+    .optional()
+    .describe(withDayNote('Date (YYYY-MM-DD). Defaults to today')),
   photo_id: z.string().optional(),
 });

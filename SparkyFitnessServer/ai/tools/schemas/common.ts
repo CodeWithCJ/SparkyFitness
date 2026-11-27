@@ -13,11 +13,24 @@ const DAY_INPUT_REGEX =
 const DAY_INPUT_MESSAGE =
   'Date must be in YYYY-MM-DD format (or "today", "yesterday", "tomorrow")';
 
+// Shared by the date params: "today" and an omitted date both resolve with the
+// timezone from the active account's profile (loadUserTimezone, which returns UTC when
+// none is set or it is invalid).
+export const DAY_TIMEZONE_NOTE =
+  'Days are calendar days in the active account\'s profile timezone (UTC if none is set), so "today" resolves there.';
+
+// Use at call sites that re-describe a shared date schema: zod's describe()
+// replaces the shared description, so the note has to be added again.
+export const withDayNote = (text: string) =>
+  `${text.replace(/[.\s]+$/, '')}. ${DAY_TIMEZONE_NOTE}`;
+
 // Date validation (YYYY-MM-DD)
 export const dateSchema = z
   .string()
   .regex(DAY_INPUT_REGEX, DAY_INPUT_MESSAGE)
-  .describe('Date in YYYY-MM-DD format, or "today"/"yesterday"/"tomorrow"');
+  .describe(
+    `Date in YYYY-MM-DD format, or "today"/"yesterday"/"tomorrow". ${DAY_TIMEZONE_NOTE}`
+  );
 
 // Wall-clock time of day for a diary entry. Matches the web contract
 // (timeStringSchema in shared/schemas/api/ExerciseEntries.api.zod.ts): 24-hour
@@ -110,4 +123,6 @@ export const optionalDateSchema = z
   .string()
   .regex(DAY_INPUT_REGEX, DAY_INPUT_MESSAGE)
   .optional()
-  .describe('Date in YYYY-MM-DD format (defaults to today)');
+  .describe(
+    `Date in YYYY-MM-DD format (defaults to today). ${DAY_TIMEZONE_NOTE}`
+  );

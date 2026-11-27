@@ -8,8 +8,8 @@ import {
 } from './runIntervals.ts';
 
 /**
- * Changes to a person's run program that keep it safe: only workouts not yet
- * done are touched, running time can come down a lot but only go up a little
+ * Changes to a person's run program that keep it safe: only workouts from the
+ * current place on are touched, running time can come down a lot but only go up a little
  * at a time, and every change says what it did. Pure, so the REST route, the
  * AI tool and tests share one set of rules.
  */
@@ -107,7 +107,8 @@ export function moveTo(state: ProgramState, index: number): AdjustResult {
  * Makes the running in the next `count` workouts shorter (negative `percent`)
  * or a little longer (positive), leaving the walking, warm-up and cool-down.
  * A distance step changes its distance by the same rules as a timed step's
- * time. Workouts already done are never changed.
+ * time. Workouts before the current place are never changed; after the place
+ * was moved back, the window can include workouts already done.
  *
  * With `baseline` (the program as first written), running time in a step can
  * never end up more than 30% under or 10% over the original, however many
