@@ -424,6 +424,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             (a) => a.day_of_week === assignment.day_of_week
           ) || [assignment];
 
+      const isSingleAssignment = sessionAssignments.length === 1;
+      let videoUrl: string | null | undefined;
       const startExercises: PresetSessionExerciseRequest[] = [];
       // Positional with startExercises: the preset's progression/ramp
       // settings, which the server session doesn't carry.
@@ -443,6 +445,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             }
           }
           if (preset && preset.exercises) {
+            if (isSingleAssignment) videoUrl = preset.video_url;
             preset.exercises.forEach((ex) => {
               const modality = resolveExerciseModality(
                 ex.modality,
@@ -521,8 +524,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         targetPlan.plan_name;
 
       const singlePresetId =
-        sessionAssignments.length === 1 &&
-        sessionAssignments[0]?.workout_preset_id
+        isSingleAssignment && sessionAssignments[0]?.workout_preset_id
           ? Number(sessionAssignments[0].workout_preset_id)
           : undefined;
 
@@ -531,6 +533,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         exercises: startExercises,
         exerciseConfigs: startConfigs,
         sourcePresetId: singlePresetId,
+        ...(videoUrl ? { videoUrl } : {}),
         workoutPlanAssignmentId: assignment.id
           ? Number(assignment.id)
           : undefined,

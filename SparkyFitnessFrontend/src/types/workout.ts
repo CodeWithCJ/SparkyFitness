@@ -5,6 +5,7 @@ import {
   ExerciseModality,
   PresetSessionResponse,
   WorkoutFormat,
+  WorkoutVideoTiming,
 } from '@workspace/shared';
 import { Exercise } from './exercises';
 
@@ -19,7 +20,7 @@ export interface PresetExercise {
   exercise_name: string;
 }
 
-export interface WorkoutPresetExercise {
+export interface WorkoutPresetExercise extends WorkoutVideoTiming {
   id?: string;
   exercise_id: string;
   image_url?: string;
@@ -44,6 +45,7 @@ export interface WorkoutPreset {
   is_public?: boolean;
   workout_format?: WorkoutFormat;
   time_cap_seconds?: number | null;
+  video_url?: string | null;
   created_at?: string;
   updated_at?: string;
   exercises: WorkoutPresetExercise[];

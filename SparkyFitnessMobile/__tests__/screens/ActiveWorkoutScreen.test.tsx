@@ -63,7 +63,7 @@ jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
 // finished_at-only PUT after the final flush; keep it off the network here.
 jest.mock('../../src/services/api/exerciseApi', () => ({
   getWorkout: jest.fn(),
-  updateWorkout: jest.fn(async () => null),
+  updateWorkout: jest.fn(),
   deleteWorkout: jest.fn(),
 }));
 const mockGetWorkout = getWorkout as jest.MockedFunction<typeof getWorkout>;
@@ -447,12 +447,24 @@ function makeSession(): PresetSessionResponse {
   };
 }
 
+async function acknowledgeWorkoutFlush(): Promise<boolean> {
+  useActiveWorkoutStore.setState({ hasUnsavedChanges: false });
+  return true;
+}
+
 // Real navigation stops reporting the screen focused once it has navigated
 // away, which is how the screen tells its own Finish/Discard apart from a
 // workout cleared elsewhere (e.g. ended on the watch).
 let screenFocused = true;
 beforeEach(() => {
   screenFocused = true;
+  mockUpdateWorkout.mockImplementation(async (id, payload) => ({
+    ...makeSession(),
+    id,
+    status: 'completed',
+    finished_at: payload.finished_at,
+    revision: (payload.revision ?? 0) + 1,
+  }));
 });
 const navigation = {
   goBack: jest.fn(() => {
@@ -1312,7 +1324,7 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
     __resetActiveWorkoutStoreForTests();
     __resetAppPreferencesStoreForTests();
     (useActiveWorkoutAutosave as jest.Mock).mockReturnValue({
-      flush: jest.fn(async () => true),
+      flush: jest.fn(acknowledgeWorkoutFlush),
     });
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -1419,9 +1431,9 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     (useActiveWorkoutAutosave as jest.Mock).mockReturnValue({
       // Snapshots startedAt at flush time — the finish flow clears the store
       // right after, so this is the value the duration payload was built from.
-      flush: jest.fn(async () => {
+      flush: jest.fn(() => {
         startedAtAtFlush = useActiveWorkoutStore.getState().startedAt;
-        return true;
+        return acknowledgeWorkoutFlush();
       }),
     });
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});

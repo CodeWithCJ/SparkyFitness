@@ -120,6 +120,7 @@ export interface StartLiveWorkoutArgs {
   workoutPlanAssignmentId?: number;
   workoutFormat?: WorkoutFormat;
   timeCapSeconds?: number | null;
+  videoUrl?: string | null;
 }
 
 /**
@@ -325,9 +326,11 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       exerciseConfigs,
       sourcePresetId,
       workoutPlanAssignmentId,
-      workoutFormat,
+      workoutFormat: presetFormat,
       timeCapSeconds,
+      videoUrl,
     }: StartLiveWorkoutArgs) => {
+      const workoutFormat = videoUrl ? 'standard' : presetFormat;
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
@@ -502,6 +505,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           sourceServerConfigId,
           workoutFormat,
           timeCapSeconds,
+          videoUrl,
         });
         armWatchForActiveSession(t);
         // Released once the store owns the session, so the next caller hits

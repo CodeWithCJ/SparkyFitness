@@ -41,6 +41,7 @@ import {
   buildPresetSessionCreateRequestFromDraft,
   buildPresetSessionUpdateRequestFromDraft,
   completeCurrentWorkoutSet,
+  completeWorkoutVideoExercises,
   getCurrentWorkoutSetPointer,
   getWorkoutPlaybackRestRemainingSeconds,
   getWorkoutPlaybackStats,
@@ -74,6 +75,7 @@ import WorkoutPlaybackFinishDialog, {
   type WorkoutFinishSummary,
 } from './WorkoutPlaybackFinishDialog';
 import WorkoutPlaybackSummary from './WorkoutPlaybackSummary';
+import FollowAlongWorkoutPlayer from './FollowAlongWorkoutPlayer';
 // Loaded on first Replace: the exercise dialog pulls in the whole search UI,
 // which the player otherwise never needs.
 const AddExerciseDialog = lazy(
@@ -156,6 +158,23 @@ function getReturnPath(
   return '/';
 }
 
+function getCompletedVolume(draft: WorkoutPlaybackDraft | null): number {
+  if (!draft) return 0;
+
+  return draft.exercises.reduce(
+    (exerciseSum, exercise) =>
+      exerciseSum +
+      exercise.sets.reduce(
+        (setSum, set) =>
+          set.completed
+            ? setSum + (Number(set.weight) || 0) * (Number(set.reps) || 0)
+            : setSum,
+        0
+      ),
+    0
+  );
+}
+
 function startRestTimer(
   draft: WorkoutPlaybackDraft,
   restSeconds: number,
@@ -200,6 +219,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
     getInitialDraft(ownerId, requestedDate, routeState)
   );
   const draftRef = useRef<WorkoutPlaybackDraft | null>(draft);
+  const saveInProgress = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [elapsedTickMs, setElapsedTickMs] = useState(() => Date.now());
   const [setNotesVisibility, setSetNotesVisibility] = useState<
@@ -224,7 +244,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
   useEffect(() => {
     if (!draft || progressionCheckedRef.current) return;
     progressionCheckedRef.current = true;
-    if (draft.load_adjustments_applied) return;
+    if (draft.load_adjustments_applied || draft.video_finish_pending) return;
 
     const isWarmup = (setType?: string | null): boolean => {
       if (!setType) return false;
@@ -472,15 +492,15 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
       const changed =
         hasChanges ||
         rampedExercises.some((exercise, i) => exercise !== updatedExercises[i]);
-      setDraft((current) =>
-        current
-          ? {
-              ...current,
-              ...(changed ? { exercises: rampedExercises } : {}),
-              load_adjustments_applied: true,
-            }
-          : current
-      );
+      setDraft((current) => {
+        if (!current || current.video_finish_pending) return current;
+        const canApply = changed && current.exercises === draft.exercises;
+        return {
+          ...current,
+          ...(canApply ? { exercises: rampedExercises } : {}),
+          load_adjustments_applied: true,
+        };
+      });
     };
 
     void evaluateDraftProgression();
@@ -628,22 +648,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
     return getWorkoutPlaybackStats(draft);
   }, [draft]);
 
-  const totalVolume = useMemo(() => {
-    if (!draft) return 0;
-
-    return draft.exercises.reduce(
-      (exerciseSum, exercise) =>
-        exerciseSum +
-        exercise.sets.reduce(
-          (setSum, set) =>
-            set.completed
-              ? setSum + (Number(set.weight) || 0) * (Number(set.reps) || 0)
-              : setSum,
-          0
-        ),
-      0
-    );
-  }, [draft]);
+  const totalVolume = useMemo(() => getCompletedVolume(draft), [draft]);
 
   const startedAtMs = useMemo(() => {
     if (!draft) {
@@ -661,7 +666,8 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
   const updateDraft = useCallback(
     (updater: (currentDraft: WorkoutPlaybackDraft) => WorkoutPlaybackDraft) => {
       setDraft((currentDraft) => {
-        if (!currentDraft) return currentDraft;
+        if (!currentDraft || currentDraft.video_finish_pending)
+          return currentDraft;
         return updater(currentDraft);
       });
     },
@@ -680,7 +686,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
         let nextDraft = setWorkoutPlaybackPointer(currentDraft, pointer);
         nextDraft = completeCurrentWorkoutSet(nextDraft);
 
-        if (!isWorkoutPlaybackComplete(nextDraft)) {
+        if (!currentDraft.video_url && !isWorkoutPlaybackComplete(nextDraft)) {
           const restSeconds = set.rest_time ?? DEFAULT_REST_SECONDS;
           const targetPointer = getCurrentWorkoutSetPointer(nextDraft);
           nextDraft = startRestTimer(nextDraft, restSeconds, targetPointer);
@@ -1026,81 +1032,122 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
     navigate(returnPath);
   }, [draft, navigate, ownerId, returnPath]);
 
-  const handleFinishWorkout = useCallback(async () => {
-    if (!draft) return;
+  const finishWorkout = useCallback(
+    async (draft: WorkoutPlaybackDraft) => {
+      if (saveInProgress.current) return;
 
-    const payload = buildPresetSessionCreateRequestFromDraft(draft, timezone);
-    if (!payload.exercises || payload.exercises.length === 0) {
-      setSaveError(
-        t(
-          'exercise.workoutPlaybackDialog.completeAtLeastOneSet',
-          'Complete at least one set before finishing.'
-        )
-      );
-      return;
-    }
-
-    try {
-      // A draft resumed from a saved session (#1995 phase 1) updates that
-      // session in place, presenting the revision it last saw; a fresh
-      // draft creates a new one, born finished.
-      const saved = draft.session_id
-        ? await updatePresetSession({
-            presetEntryId: draft.session_id,
-            payload: buildPresetSessionUpdateRequestFromDraft(draft, timezone),
-          })
-        : await createPresetSession(payload);
-      const finalStats = getWorkoutPlaybackStats(draft);
-      clearWorkoutPlaybackDraftFromStorage(ownerId, draft.entry_date);
-      // The summary stays up over the cleared player; closing it returns to
-      // the diary the way finishing always has.
-      setFinishSummary({
-        name: draft.name,
-        durationSeconds: elapsedSeconds,
-        caloriesKcal: (saved?.exercises ?? []).reduce(
-          (sum, exercise) => sum + (Number(exercise.calories_burned) || 0),
-          0
-        ),
-        completedSets: finalStats.completedSets,
-        totalSets: finalStats.totalSets,
-        volume: totalVolume,
-        sessionId: saved?.id,
-        exercises: (saved?.exercises ?? []).map((exercise) => ({
-          id: exercise.id,
-          name: exercise.exercise_snapshot?.name ?? '',
-        })),
-      });
-      setDraft(null);
-      setSaveError(null);
-    } catch (error) {
-      if (isPresetSessionConflictError(error)) {
-        // Another device or tab saved this session after we last loaded it.
-        // The server kept both sides; tell the user instead of overwriting.
+      const payload = buildPresetSessionCreateRequestFromDraft(draft, timezone);
+      if (!payload.exercises || payload.exercises.length === 0) {
         setSaveError(
           t(
-            'exercise.workoutPlaybackDialog.sessionConflictError',
-            'This workout was updated on another device or tab. Close the player, reload the diary, and resume it again.'
+            'exercise.workoutPlaybackDialog.completeAtLeastOneSet',
+            'Complete at least one set before finishing.'
           )
         );
         return;
       }
-      setSaveError(
-        t(
-          'exercise.workoutPlaybackDialog.finishError',
-          'Failed to save workout. Your local progress is still preserved, and you can retry.'
+
+      saveInProgress.current = true;
+      if (draft.video_url && !draft.video_finish_pending) {
+        const pendingDraft = { ...draft, video_finish_pending: true };
+        draftRef.current = pendingDraft;
+        setDraft(pendingDraft);
+      }
+      try {
+        // A draft resumed from a saved session (#1995 phase 1) updates that
+        // session in place, presenting the revision it last saw; a fresh
+        // draft creates a new one, born finished.
+        const saved = draft.session_id
+          ? await updatePresetSession({
+              presetEntryId: draft.session_id,
+              payload: buildPresetSessionUpdateRequestFromDraft(
+                draft,
+                timezone
+              ),
+            })
+          : await createPresetSession(payload);
+        const finalStats = getWorkoutPlaybackStats(draft);
+        clearWorkoutPlaybackDraftFromStorage(ownerId, draft.entry_date);
+        // The summary stays up over the cleared player; closing it returns to
+        // the diary the way finishing always has.
+        setFinishSummary({
+          name: draft.name,
+          durationSeconds: elapsedSeconds,
+          caloriesKcal: (saved?.exercises ?? []).reduce(
+            (sum, exercise) => sum + (Number(exercise.calories_burned) || 0),
+            0
+          ),
+          completedSets: finalStats.completedSets,
+          totalSets: finalStats.totalSets,
+          volume: getCompletedVolume(draft),
+          sessionId: saved?.id,
+          exercises: (saved?.exercises ?? []).map((exercise) => ({
+            id: exercise.id,
+            name: exercise.exercise_snapshot?.name ?? '',
+          })),
+        });
+        draftRef.current = null;
+        setDraft(null);
+        setSaveError(null);
+      } catch (error) {
+        if (isPresetSessionConflictError(error)) {
+          // Another device or tab saved this session after we last loaded it.
+          // The server kept both sides; tell the user instead of overwriting.
+          setSaveError(
+            t(
+              'exercise.workoutPlaybackDialog.sessionConflictError',
+              'This workout was updated on another device or tab. Close the player, reload the diary, and resume it again.'
+            )
+          );
+          return;
+        }
+        setSaveError(
+          t(
+            'exercise.workoutPlaybackDialog.finishError',
+            'Failed to save workout. Your local progress is still preserved, and you can retry.'
+          )
+        );
+      } finally {
+        saveInProgress.current = false;
+      }
+    },
+    [
+      createPresetSession,
+      elapsedSeconds,
+      ownerId,
+      t,
+      timezone,
+      updatePresetSession,
+    ]
+  );
+
+  const handleFinishWorkout = () => {
+    if (draftRef.current) void finishWorkout(draftRef.current);
+  };
+
+  const handleVideoComplete = useCallback(
+    (exerciseIndexes: readonly number[], ended: boolean) => {
+      const current = draftRef.current;
+      if (!current || current.video_finish_pending || saveInProgress.current)
+        return;
+      const updated = completeWorkoutVideoExercises(current, exerciseIndexes);
+      if (updated !== current) {
+        draftRef.current = updated;
+        setDraft(updated);
+      }
+      if (
+        ended &&
+        updated.exercises.some(
+          (exercise) =>
+            exercise.video_start_seconds != null &&
+            exercise.sets.some((set) => set.completed)
         )
-      );
-    }
-  }, [
-    createPresetSession,
-    draft,
-    elapsedSeconds,
-    ownerId,
-    t,
-    timezone,
-    totalVolume,
-    updatePresetSession,
-  ]);
+      ) {
+        void finishWorkout(updated);
+      }
+    },
+    [finishWorkout]
+  );
 
   const handleCloseFinishSummary = useCallback(() => {
     setFinishSummary(null);
@@ -1176,24 +1223,36 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
         onStartTimeChange={handleStartTimeChange}
       />
 
-      {draft.workout_format && draft.workout_format !== 'standard' && (
-        <WorkoutPlaybackIntervalHud
-          workoutFormat={draft.workout_format}
-          timeCapSeconds={draft.time_cap_seconds}
-          startedAtIso={draft.started_at}
-          roundsCompleted={draft.interval_rounds_completed ?? 0}
-          repsCompleted={draft.interval_reps_completed ?? 0}
-          status={draft.interval_status ?? 'rx'}
+      {draft.video_url && !draft.video_finish_pending && (
+        <FollowAlongWorkoutPlayer
+          key={draft.video_session_id ?? draft.video_url}
+          url={draft.video_url}
           exercises={draft.exercises}
-          onAddRound={handleAddRound}
-          onDecrementRound={handleDecrementRound}
-          onSetReps={handleSetIntervalReps}
-          onSetStatus={handleSetIntervalStatus}
-          onCompletePhaseWork={handleCompleteIntervalPhase}
+          onComplete={handleVideoComplete}
         />
       )}
 
+      {!draft.video_url &&
+        draft.workout_format &&
+        draft.workout_format !== 'standard' && (
+          <WorkoutPlaybackIntervalHud
+            workoutFormat={draft.workout_format}
+            timeCapSeconds={draft.time_cap_seconds}
+            startedAtIso={draft.started_at}
+            roundsCompleted={draft.interval_rounds_completed ?? 0}
+            repsCompleted={draft.interval_reps_completed ?? 0}
+            status={draft.interval_status ?? 'rx'}
+            exercises={draft.exercises}
+            onAddRound={handleAddRound}
+            onDecrementRound={handleDecrementRound}
+            onSetReps={handleSetIntervalReps}
+            onSetStatus={handleSetIntervalStatus}
+            onCompletePhaseWork={handleCompleteIntervalPhase}
+          />
+        )}
+
       {guidedWorkoutEnabled &&
+        !draft.video_url &&
         (!draft.workout_format || draft.workout_format === 'standard') && (
           <WorkoutPlaybackGuidedCard
             draft={draft}
@@ -1204,22 +1263,24 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
           />
         )}
 
-      <WorkoutPlaybackExercisesList
-        exercises={draft.exercises}
-        setNotesVisibility={setNotesVisibility}
-        onToggleSetNotesVisibility={toggleSetNotesVisibility}
-        onSelectSet={handleSelectSet}
-        onCompleteSet={handleCompleteSet}
-        onUncompleteSet={handleUncompleteSet}
-        onSetFieldChange={handleSetFieldChange}
-        onOpenRestEditor={handleOpenRestEditor}
-        onRemoveSet={handleRemoveSet}
-        onAddSet={handleAddSet}
-        onAddDropSets={handleAddDropSets}
-        onReplaceExercise={setReplaceExerciseIndex}
-        onAdaptiveDeclined={handleAdaptiveDeclined}
-        weightUnit={weightUnit}
-      />
+      {!draft.video_finish_pending && (
+        <WorkoutPlaybackExercisesList
+          exercises={draft.exercises}
+          setNotesVisibility={setNotesVisibility}
+          onToggleSetNotesVisibility={toggleSetNotesVisibility}
+          onSelectSet={handleSelectSet}
+          onCompleteSet={handleCompleteSet}
+          onUncompleteSet={handleUncompleteSet}
+          onSetFieldChange={handleSetFieldChange}
+          onOpenRestEditor={handleOpenRestEditor}
+          onRemoveSet={handleRemoveSet}
+          onAddSet={handleAddSet}
+          onAddDropSets={handleAddDropSets}
+          onReplaceExercise={setReplaceExerciseIndex}
+          onAdaptiveDeclined={handleAdaptiveDeclined}
+          weightUnit={weightUnit}
+        />
+      )}
 
       {replaceExerciseIndex !== null && (
         <Suspense fallback={null}>

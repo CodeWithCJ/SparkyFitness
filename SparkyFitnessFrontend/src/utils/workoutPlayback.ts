@@ -4,11 +4,13 @@ import {
   calculateDropSetWeightsKg,
   calculateRampedWeightKg,
   findDropSetBaseIndex,
+  getWorkoutVideoExerciseDurationMinutes,
   instantHourMinute,
   isWeightRampActive,
   resolveExerciseModality,
   setsDurationMinutes,
   weightRampStepIndexes,
+  workoutVideoSetCompletion,
   type AdaptiveAdjustment,
   type AdaptiveAdjustmentKind,
   type AdaptiveReason,
@@ -17,6 +19,8 @@ import {
   type PresetSessionResponse,
   type UpdatePresetSessionRequest,
   type WorkoutFormat,
+  type WorkoutVideoSetCompletion,
+  type WorkoutVideoTiming,
 } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 import type { Exercise } from '@/types/exercises';
@@ -38,7 +42,7 @@ export interface WorkoutPlaybackRestTimer {
   target_exercise_index?: number;
   target_set_index?: number;
 }
-export interface WorkoutPlaybackExerciseDraft {
+export interface WorkoutPlaybackExerciseDraft extends WorkoutVideoTiming {
   /** Library exercise id; null when the exercise was deleted from the library. */
   exercise_id: string | null;
   exercise_name: string;
@@ -112,6 +116,7 @@ export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
   completed: boolean;
   /** ISO timestamp of when the set was checked off; null while incomplete. */
   completed_at: string | null;
+  video_completion?: WorkoutVideoSetCompletion;
   /**
    * Epoch ms a timed/hold set's stopwatch was started. Lives on the draft so a
    * running stopwatch survives re-renders and a page reload; never sent to
@@ -141,6 +146,11 @@ export interface WorkoutPlaybackDraft {
   source: 'sparky';
   workout_format?: WorkoutFormat;
   time_cap_seconds?: number | null;
+  video_url?: string | null;
+  /** Stable while retrying or resuming a video workout's finish request. */
+  video_session_id?: string;
+  /** Once submitted, retries keep the same completed sets for this client id. */
+  video_finish_pending?: boolean;
   interval_rounds_completed?: number;
   interval_reps_completed?: number;
   interval_status?: 'rx' | 'scaled';
@@ -445,11 +455,16 @@ export function createWorkoutPlaybackDraftFromPreset(
   entryDate: string
 ): WorkoutPlaybackDraft {
   const createdAt = nowIso();
+  const workoutFormat = preset.video_url
+    ? 'standard'
+    : (preset.workout_format ?? 'standard');
 
   const exercises: WorkoutPlaybackExerciseDraft[] = preset.exercises.map(
     (exercise, exerciseIndex) => {
       return {
         exercise_id: exercise.exercise_id,
+        video_start_seconds: exercise.video_start_seconds,
+        video_end_seconds: exercise.video_end_seconds,
         exercise_name:
           exercise.exercise_name ||
           exercise.exercise?.name ||
@@ -516,7 +531,7 @@ export function createWorkoutPlaybackDraftFromPreset(
         sets: (() => {
           let baseSets = exercise.sets;
           if (baseSets.length > 0) {
-            if (preset.workout_format === 'tabata' && baseSets.length < 8) {
+            if (workoutFormat === 'tabata' && baseSets.length < 8) {
               baseSets = Array.from({ length: 8 }, (_, i) => {
                 const templateSet = baseSets[i % baseSets.length]!;
                 return {
@@ -527,7 +542,7 @@ export function createWorkoutPlaybackDraftFromPreset(
                 };
               });
             } else if (
-              preset.workout_format === 'emom' &&
+              workoutFormat === 'emom' &&
               preset.time_cap_seconds != null &&
               preset.time_cap_seconds >= 60
             ) {
@@ -576,8 +591,11 @@ export function createWorkoutPlaybackDraftFromPreset(
     entry_date: entryDate,
     notes: null,
     source: 'sparky',
-    workout_format: preset.workout_format ?? 'standard',
+    workout_format: workoutFormat,
     time_cap_seconds: preset.time_cap_seconds ?? null,
+    ...(preset.video_url
+      ? { video_url: preset.video_url, video_session_id: generateClientId() }
+      : {}),
     interval_rounds_completed: 0,
     interval_reps_completed: 0,
     interval_status: 'rx',
@@ -737,6 +755,7 @@ export function toggleWorkoutSetCompletion(
     ...set,
     completed: !set.completed,
     completed_at: set.completed ? null : new Date().toISOString(),
+    video_completion: undefined,
   }));
 }
 
@@ -1145,6 +1164,8 @@ export function replaceExerciseInWorkoutDraft(
   const replaced: WorkoutPlaybackExerciseDraft = {
     exercise_id: exercise.id,
     exercise_name: exercise.name,
+    video_start_seconds: current.video_start_seconds,
+    video_end_seconds: current.video_end_seconds,
     modality,
     image_url: firstExerciseImage(exercise.images),
     images: exercise.images ?? undefined,
@@ -1187,7 +1208,8 @@ export function replaceExerciseInWorkoutDraft(
 }
 
 export function completeCurrentWorkoutSet(
-  draft: WorkoutPlaybackDraft
+  draft: WorkoutPlaybackDraft,
+  videoCompletion?: WorkoutVideoSetCompletion
 ): WorkoutPlaybackDraft {
   const currentPointer = getCurrentWorkoutSetPointer(draft);
   const currentSet = getSetByPointer(draft, currentPointer);
@@ -1197,8 +1219,12 @@ export function completeCurrentWorkoutSet(
 
   let nextDraft = updateSetAtPointer(draft, currentPointer, (set) => ({
     ...set,
+    ...(videoCompletion?.useSetDuration
+      ? { duration: videoCompletion.segmentSeconds }
+      : {}),
     completed: true,
     completed_at: new Date().toISOString(),
+    video_completion: videoCompletion,
   }));
 
   const nextPointer = getNextIncompletePointer(nextDraft, currentPointer);
@@ -1207,6 +1233,32 @@ export function completeCurrentWorkoutSet(
   }
 
   nextDraft = setWorkoutPlaybackPointer(nextDraft, nextPointer);
+  return nextDraft;
+}
+
+export function completeWorkoutVideoExercises(
+  draft: WorkoutPlaybackDraft,
+  exerciseIndexes: readonly number[]
+): WorkoutPlaybackDraft {
+  let nextDraft = draft;
+  for (const exerciseIndex of exerciseIndexes) {
+    const exercise = nextDraft.exercises[exerciseIndex];
+    if (!exercise) continue;
+    const completion = workoutVideoSetCompletion(
+      exercise,
+      exercise.modality,
+      exercise.sets.length
+    );
+    if (!completion) continue;
+    for (const [setIndex, set] of exercise.sets.entries()) {
+      if (set.completed) continue;
+      const pointer = { exerciseIndex, setIndex };
+      nextDraft = completeCurrentWorkoutSet(
+        setWorkoutPlaybackPointer(nextDraft, pointer),
+        completion
+      );
+    }
+  }
   return nextDraft;
 }
 
@@ -1262,6 +1314,7 @@ export function addRoundToWorkoutDraft(
       set_number: exercise.sets.length + idx + 1,
       completed: false,
       completed_at: null,
+      video_completion: undefined,
     }));
 
     return {
@@ -1337,7 +1390,11 @@ function buildSessionExercisesFromDraft(
         ...(exercise.entry_id ? { id: exercise.entry_id } : {}),
         exercise_id: exercise.exercise_id,
         sort_order: exerciseIndex,
-        duration_minutes: deriveExerciseDurationMinutes(exercise),
+        duration_minutes:
+          getWorkoutVideoExerciseDurationMinutes(
+            completedSets,
+            (set) => set.video_completion
+          ) ?? deriveExerciseDurationMinutes(exercise),
         notes: exercise.notes ?? null,
         entry_time: entryTime,
         workout_plan_assignment_id: exercise.workout_plan_assignment_id ?? null,
@@ -1422,6 +1479,7 @@ export function buildPresetSessionCreateRequestFromDraft(
   }
 
   return {
+    ...(draft.video_session_id ? { id: draft.video_session_id } : {}),
     workout_preset_id: numericPresetId,
     name: draft.name,
     description: draft.description,

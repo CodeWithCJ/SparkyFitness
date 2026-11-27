@@ -5,6 +5,7 @@ import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseModality,
+  WorkoutVideoSetCompletion,
   ExerciseRecentSessionSet,
   EntryExerciseSnapshotResponse,
   ExerciseSessionResponse,
@@ -27,6 +28,7 @@ import {
   effectiveLoadKg,
   entryCaloriesCounted,
   evaluateProgression,
+  getWorkoutVideoExerciseDurationMinutes,
   isBodyweightModality,
   isCardioModality,
   isExerciseModality,
@@ -1311,7 +1313,10 @@ export function resolveAssumedSetValues(
  * ramp. Captured from the preset at live start, keyed by session exercise id.
  * Increments that are weights are kg.
  */
-export interface LiveExerciseConfig {
+export interface LiveExerciseConfig extends Pick<
+  WorkoutPresetExercise,
+  'video_start_seconds' | 'video_end_seconds'
+> {
   progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
   rep_goal?: number | null;
   increment_type?: 'weight' | 'reps' | null;
@@ -1325,6 +1330,12 @@ export function liveExerciseConfigFromPreset(
   exercise: Partial<LiveExerciseConfig>
 ): LiveExerciseConfig {
   return {
+    ...(exercise.video_start_seconds != null
+      ? {
+          video_start_seconds: exercise.video_start_seconds,
+          video_end_seconds: exercise.video_end_seconds,
+        }
+      : {}),
     progression_mode: exercise.progression_mode ?? null,
     rep_goal: exercise.rep_goal ?? null,
     increment_type: exercise.increment_type ?? null,
@@ -1656,7 +1667,8 @@ export function buildSessionExercisesPayload(
   completedSetIds: CompletedSetMap,
   prSetIds: PrSetMap,
   startedAtMs?: number | null,
-  resumedDurationMinutes?: Record<string, number>
+  resumedDurationMinutes?: Record<string, number>,
+  videoSetCompletions: Record<string, WorkoutVideoSetCompletion> = {}
 ): PresetSessionExerciseRequest[] {
   const timing = buildSessionExerciseTiming(
     session,
@@ -1669,11 +1681,16 @@ export function buildSessionExercisesPayload(
     id: exercise.id,
     exercise_id: exercise.exercise_id,
     sort_order: index,
-    duration_minutes: isCardioModality(
-      resolveSnapshotModality(exercise.exercise_snapshot)
-    )
-      ? setsDurationMinutes(exercise.sets)
-      : (timing?.durations.get(exercise.id) ?? exercise.duration_minutes ?? 0),
+    duration_minutes:
+      getWorkoutVideoExerciseDurationMinutes(exercise.sets, (set) => {
+        const id = String(set.id);
+        if (completedSetIds[id] != null) return videoSetCompletions[id];
+      }) ??
+      (isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot))
+        ? setsDurationMinutes(exercise.sets)
+        : (timing?.durations.get(exercise.id) ??
+          exercise.duration_minutes ??
+          0)),
     // Omitted when nothing was completed yet, so the server keeps what it has.
     ...(timing?.startTimes.has(exercise.id)
       ? { entry_time: timing.startTimes.get(exercise.id) }
@@ -2544,6 +2561,12 @@ export function buildPresetExercisesPayload(
         increment_value: exercise.incrementValue ?? 5,
         equipment_brand: exercise.equipmentBrand ?? null,
         ramp_increment: exercise.rampIncrement ?? null,
+        ...(exercise.video_start_seconds !== undefined
+          ? {
+              video_start_seconds: exercise.video_start_seconds,
+              video_end_seconds: exercise.video_end_seconds,
+            }
+          : {}),
         sets: exercise.sets.map((set, setIndex) => {
           const weight = parseSetWeight(set.weight, modality);
           const reps = parseInt(set.reps, 10);

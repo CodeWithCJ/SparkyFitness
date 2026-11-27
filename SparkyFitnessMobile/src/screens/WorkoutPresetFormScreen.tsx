@@ -3,7 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
-import type { WorkoutFormat } from '@workspace/shared';
+import {
+  hasInvalidWorkoutVideoTiming,
+  hasOverlappingWorkoutVideoTimings,
+  parseWorkoutVideoUrl,
+  type WorkoutFormat,
+} from '@workspace/shared';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
 import WorkoutFormExerciseList, {
@@ -64,6 +69,8 @@ interface PresetFormBodyProps {
   setDescription: (s: string) => void;
   setWorkoutFormat: (f: WorkoutFormat) => void;
   setTimeCapSeconds: (s: number | null) => void;
+  setVideoUrl: ReturnType<typeof useWorkoutPresetForm>['setVideoUrl'];
+  setVideoTiming: ReturnType<typeof useWorkoutPresetForm>['setVideoTiming'];
   weightUnit: 'kg' | 'lbs';
   distanceUnit: 'km' | 'miles';
   exerciseSetEditing: ReturnType<typeof useExerciseSetEditing>;
@@ -104,6 +111,29 @@ interface PresetFormBodyProps {
   listRef: React.Ref<WorkoutFormExerciseListHandle>;
 }
 
+function validatePresetVideo(state: PresetDraft, t: TranslateFn): boolean {
+  const url = state.videoUrl?.trim();
+  if (
+    !url ||
+    (parseWorkoutVideoUrl(url) &&
+      !state.exercises.some(hasInvalidWorkoutVideoTiming) &&
+      !hasOverlappingWorkoutVideoTimings(state.exercises))
+  ) {
+    return true;
+  }
+  Toast.show({
+    type: 'error',
+    text1: t('workoutPresetForm.videoValidationTitle', {
+      defaultValue: 'Check the workout video',
+    }),
+    text2: t('workoutPresetForm.videoValidationError', {
+      defaultValue:
+        'Enter a YouTube or direct video link and valid, non-overlapping start and end times.',
+    }),
+  });
+  return false;
+}
+
 const FORMATS: readonly WorkoutFormat[] = [
   'standard',
   'interval',
@@ -140,6 +170,8 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   setDescription,
   setWorkoutFormat,
   setTimeCapSeconds,
+  setVideoUrl,
+  setVideoTiming,
   weightUnit,
   distanceUnit,
   exerciseSetEditing,
@@ -261,6 +293,79 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
         />
       </View>
 
+      <View className="gap-2 rounded-xl border border-border/50 p-3">
+        <Text className="font-semibold text-text-primary">
+          {t('workoutPresetForm.followAlongVideo', {
+            defaultValue: 'Follow-along video',
+          })}
+        </Text>
+        <FormInput
+          accessibilityLabel={t('workoutPresetForm.videoLink', {
+            defaultValue: 'Video link',
+          })}
+          placeholder={t('workoutPresetForm.videoPlaceholder', {
+            defaultValue: 'YouTube or direct video link',
+          })}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={2048}
+          value={state.videoUrl ?? ''}
+          onChangeText={setVideoUrl}
+        />
+        {!!state.videoUrl?.trim() &&
+          state.exercises.map((exercise) => (
+            <View key={exercise.clientId} className="gap-1">
+              <Text className="text-sm text-text-primary">
+                {exercise.exerciseName}
+              </Text>
+              <View className="flex-row gap-2">
+                <View className="flex-1">
+                  <FormInput
+                    accessibilityLabel={t(
+                      'workoutPresetForm.videoStartSeconds',
+                      { defaultValue: 'Start (seconds)' }
+                    )}
+                    placeholder={t('workoutPresetForm.videoStartSeconds', {
+                      defaultValue: 'Start (seconds)',
+                    })}
+                    keyboardType="number-pad"
+                    value={exercise.video_start_seconds?.toString() ?? ''}
+                    onChangeText={(value) => {
+                      if (!/^\d*$/.test(value)) return;
+                      setVideoTiming(
+                        exercise.clientId,
+                        'video_start_seconds',
+                        value ? Number(value) : null
+                      );
+                    }}
+                  />
+                </View>
+                <View className="flex-1">
+                  <FormInput
+                    accessibilityLabel={t('workoutPresetForm.videoEndSeconds', {
+                      defaultValue: 'End (seconds)',
+                    })}
+                    placeholder={t('workoutPresetForm.videoEndSeconds', {
+                      defaultValue: 'End (seconds)',
+                    })}
+                    keyboardType="number-pad"
+                    value={exercise.video_end_seconds?.toString() ?? ''}
+                    onChangeText={(value) => {
+                      if (!/^\d*$/.test(value)) return;
+                      setVideoTiming(
+                        exercise.clientId,
+                        'video_end_seconds',
+                        value ? Number(value) : null
+                      );
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          ))}
+      </View>
+
       {/* Pull back part of FormScreenChrome's px-4 so the cards sit at the
           same 12px inset as the active workout screen (px-3). */}
       <View className="-mx-1">
@@ -328,6 +433,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
     setDescription,
     setWorkoutFormat,
     setTimeCapSeconds,
+    setVideoUrl,
+    setVideoTiming,
     addExercise,
     removeExercise,
     replaceExercise,
@@ -453,6 +560,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
   };
 
   const handleSave = async () => {
+    if (!validatePresetVideo(state, t)) return;
     const trimmedName = state.name.trim();
     if (!trimmedName) {
       Toast.show({
@@ -488,8 +596,15 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
       is_public: false,
       workout_format: state.workoutFormat,
       time_cap_seconds: state.timeCapSeconds,
+      ...(state.videoUrl?.trim() ? { video_url: state.videoUrl.trim() } : {}),
       exercises: buildPresetExercisesPayload(
-        state.exercises,
+        state.videoUrl?.trim()
+          ? state.exercises
+          : state.exercises.map((exercise) => ({
+              ...exercise,
+              video_start_seconds: undefined,
+              video_end_seconds: undefined,
+            })),
         weightUnit,
         distanceUnit
       ),
@@ -527,6 +642,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
         setDescription={setDescription}
         setWorkoutFormat={setWorkoutFormat}
         setTimeCapSeconds={setTimeCapSeconds}
+        setVideoUrl={setVideoUrl}
+        setVideoTiming={setVideoTiming}
         weightUnit={weightUnit}
         distanceUnit={distanceUnit}
         exerciseSetEditing={exerciseSetEditing}
@@ -601,9 +718,19 @@ export function buildPresetEditPayload(args: {
   // is_public is intentionally never sent: the form has no UI, and sending false
   // would unshare a previously-public preset (server uses COALESCE).
 
-  if (exercisesModified) {
+  const videoUrl = state.videoUrl?.trim() || null;
+  if (videoUrl !== (initialPreset.video_url ?? null))
+    payload.video_url = videoUrl;
+
+  if (exercisesModified || (initialPreset.video_url && !videoUrl)) {
     payload.exercises = buildPresetExercisesPayload(
-      state.exercises,
+      videoUrl
+        ? state.exercises
+        : state.exercises.map((exercise) => ({
+            ...exercise,
+            video_start_seconds: null,
+            video_end_seconds: null,
+          })),
       weightUnit,
       distanceUnit
     );
@@ -630,6 +757,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
     setDescription,
     setWorkoutFormat,
     setTimeCapSeconds,
+    setVideoUrl,
+    setVideoTiming,
     addExercise,
     removeExercise,
     replaceExercise,
@@ -750,6 +879,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
   };
 
   const handleSave = async () => {
+    if (!validatePresetVideo(state, t)) return;
     const trimmedName = state.name.trim();
     if (!trimmedName) {
       Toast.show({
@@ -818,6 +948,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
         setDescription={setDescription}
         setWorkoutFormat={setWorkoutFormat}
         setTimeCapSeconds={setTimeCapSeconds}
+        setVideoUrl={setVideoUrl}
+        setVideoTiming={setVideoTiming}
         weightUnit={weightUnit}
         distanceUnit={distanceUnit}
         exerciseSetEditing={exerciseSetEditing}

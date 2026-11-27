@@ -197,6 +197,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
       sourcePresetId: preset.id,
       workoutFormat: preset.workout_format ?? 'standard',
       timeCapSeconds: preset.time_cap_seconds ?? null,
+      ...(preset.video_url ? { videoUrl: preset.video_url } : {}),
     });
   }, [startLiveWorkout, preset]);
 
@@ -286,6 +287,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         is_public: false,
         workout_format: preset.workout_format ?? 'standard',
         time_cap_seconds: preset.time_cap_seconds ?? null,
+        ...(preset.video_url ? { video_url: preset.video_url } : {}),
         // The list/detail read queries never select wpe.sort_order (see
         // workoutPresetRepository), so exercise.sort_order is always
         // undefined here — every duplicated row would otherwise insert with
@@ -294,6 +296,12 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         // sort_order then id), so the array index is the real sort_order.
         exercises: preset.exercises.map((exercise, index) => ({
           exercise_id: exercise.exercise_id,
+          ...(exercise.video_start_seconds != null
+            ? {
+                video_start_seconds: exercise.video_start_seconds,
+                video_end_seconds: exercise.video_end_seconds,
+              }
+            : {}),
           image_url: exercise.image_url,
           sort_order: index,
           superset_group: exercise.superset_group,

@@ -107,7 +107,12 @@ const WorkoutPlaybackSummary = ({
             <X className="mr-1 h-4 w-4" />
             {t('exercise.workoutPlaybackDialog.closeKeepDraft', 'Close')}
           </Button>
-          <Button type="button" variant="outline" onClick={onDiscard}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onDiscard}
+            disabled={isSaving}
+          >
             {t('exercise.workoutPlaybackDialog.discard', 'Discard')}
           </Button>
           <Button type="button" onClick={onFinishWorkout} disabled={isSaving}>
@@ -123,10 +128,15 @@ const WorkoutPlaybackSummary = ({
         <CardHeader className="space-y-1 px-0 pb-2 pt-0">
           <h1 className="text-sm font-semibold leading-tight">{draft.name}</h1>
           <CardDescription className="text-[11px] leading-tight">
-            {t(
-              'exercise.workoutPlaybackPage.description',
-              'Track your sets live, follow rest countdowns, and save when you finish.'
-            )}
+            {draft.video_url
+              ? t(
+                  'exercise.workoutVideo.playbackDescription',
+                  'Follow the video. Completed exercises save when the video ends.'
+                )
+              : t(
+                  'exercise.workoutPlaybackPage.description',
+                  'Track your sets live, follow rest countdowns, and save when you finish.'
+                )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-1 px-0 pt-0">
@@ -199,7 +209,10 @@ const WorkoutPlaybackSummary = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div
+            inert={draft.video_finish_pending}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1"
+          >
             {/* Start Time */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -275,7 +288,7 @@ const WorkoutPlaybackSummary = ({
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div inert={draft.video_finish_pending} className="space-y-1">
             <label className="text-sm font-medium">
               {t('exercise.logExerciseEntryDialog.sessionNotes', 'Notes')}
             </label>

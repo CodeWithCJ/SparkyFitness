@@ -160,6 +160,7 @@ export function useWatchWorkoutStart(
         sourcePresetId: preset.id,
         workoutFormat: preset.workout_format ?? 'standard',
         timeCapSeconds: preset.time_cap_seconds ?? null,
+        ...(preset.video_url ? { videoUrl: preset.video_url } : {}),
       });
     },
     []

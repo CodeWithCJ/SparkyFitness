@@ -1,5 +1,37 @@
 import { z } from 'zod';
+import {
+  hasInvalidWorkoutVideoTiming,
+  hasOverlappingWorkoutVideoTimings,
+  parseWorkoutVideoUrl,
+} from '../../utils/workoutVideo.ts';
 import { exerciseModalitySchema } from './Exercises.api.zod.ts';
+
+const videoUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine((value) => parseWorkoutVideoUrl(value) !== null, {
+    message: 'Use a YouTube video link or a direct HTTP(S) video URL.',
+  })
+  .nullable()
+  .optional();
+
+const videoTimingFields = {
+  video_start_seconds: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(2_147_483_647)
+    .nullable()
+    .optional(),
+  video_end_seconds: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(2_147_483_647)
+    .nullable()
+    .optional(),
+};
 
 // --- Response contracts ---
 //
@@ -34,6 +66,7 @@ export const workoutPresetExerciseResponseSchema = z.object({
   category: z.string().nullable(),
   modality: exerciseModalitySchema.optional(),
   superset_group: z.number().int().nullable(),
+  ...videoTimingFields,
   // Progression & Equipment Fields
   progression_mode: z
     .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
@@ -74,6 +107,7 @@ export const workoutPresetResponseSchema = z.object({
   is_public: z.boolean().nullable(),
   workout_format: workoutFormatSchema.default('standard'),
   time_cap_seconds: z.number().int().nullable().optional(),
+  video_url: z.string().nullable().optional(),
   /** Absent from search results, present on list/detail responses. */
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
@@ -116,6 +150,7 @@ export const workoutPresetExerciseRequestSchema = z
     image_url: z.string().nullable().optional(),
     sort_order: z.number().int().min(0).optional(),
     superset_group: z.number().int().nullable().optional(),
+    ...videoTimingFields,
     // Progression & Equipment Fields
     progression_mode: z
       .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
@@ -135,6 +170,14 @@ export const workoutPresetExerciseRequestSchema = z
     sets: z.array(workoutPresetSetRequestSchema).optional(),
   })
   .superRefine((val, ctx) => {
+    if (hasInvalidWorkoutVideoTiming(val)) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'Both video timestamps are required and the end must follow the start.',
+        path: ['video_end_seconds'],
+      });
+    }
     if (
       val.increment_type === 'reps' &&
       val.increment_value != null &&
@@ -148,26 +191,42 @@ export const workoutPresetExerciseRequestSchema = z
     }
   });
 
-export const workoutPresetCreateRequestSchema = z.object({
-  // Ownership comes from the authenticated request (req.userId), never the
-  // body; strip mode drops the user_id older clients still send.
-  name: z.string().min(1),
-  description: z.string().nullable().optional(),
-  is_public: z.boolean().optional(),
-  workout_format: workoutFormatSchema.optional().default('standard'),
-  time_cap_seconds: z.number().int().positive().nullable().optional(),
-  exercises: z.array(workoutPresetExerciseRequestSchema).default([]),
-});
+export const workoutPresetCreateRequestSchema = z
+  .object({
+    // Ownership comes from the authenticated request (req.userId), never the
+    // body; strip mode drops the user_id older clients still send.
+    name: z.string().min(1),
+    description: z.string().nullable().optional(),
+    is_public: z.boolean().optional(),
+    workout_format: workoutFormatSchema.optional().default('standard'),
+    time_cap_seconds: z.number().int().positive().nullable().optional(),
+    video_url: videoUrlSchema,
+    exercises: z.array(workoutPresetExerciseRequestSchema).default([]),
+  })
+  .refine(({ exercises }) => !hasOverlappingWorkoutVideoTimings(exercises), {
+    message: 'Video exercise segments must not overlap.',
+    path: ['exercises'],
+  });
 
 /** Update is a diff: name/description/exercises may each be omitted. */
-export const workoutPresetUpdateRequestSchema = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
-  is_public: z.boolean().optional(),
-  workout_format: workoutFormatSchema.optional(),
-  time_cap_seconds: z.number().int().positive().nullable().optional(),
-  exercises: z.array(workoutPresetExerciseRequestSchema).optional(),
-});
+export const workoutPresetUpdateRequestSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+    is_public: z.boolean().optional(),
+    workout_format: workoutFormatSchema.optional(),
+    time_cap_seconds: z.number().int().positive().nullable().optional(),
+    video_url: videoUrlSchema,
+    exercises: z.array(workoutPresetExerciseRequestSchema).optional(),
+  })
+  .refine(
+    ({ exercises }) =>
+      !exercises || !hasOverlappingWorkoutVideoTimings(exercises),
+    {
+      message: 'Video exercise segments must not overlap.',
+      path: ['exercises'],
+    }
+  );
 
 // --- Types ---
 

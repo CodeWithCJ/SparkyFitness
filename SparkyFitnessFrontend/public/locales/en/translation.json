@@ -1690,6 +1690,18 @@
       "recentLoadError": "Failed to load recent exercises.",
       "topLoadError": "Failed to load top exercises."
     },
+    "workoutVideo": {
+      "title": "Follow-along video",
+      "playbackDescription": "Follow the video. Completed exercises save when the video ends.",
+      "progress": "{{progress}}% of workout",
+      "progressLabel": "Workout progress",
+      "unavailable": "The video could not be played. You can still log this workout manually.",
+      "load": "Load video",
+      "now": "Current exercise",
+      "noCurrent": "Between exercises",
+      "remaining": "Time remaining",
+      "next": "Next: {{exercise}}"
+    },
     "workoutPlaybackDialog": {
       "closeKeepDraft": "Close",
       "completeAtLeastOneSet": "Complete at least one set before finishing.",
@@ -5386,6 +5398,12 @@
     "fTotalFatg": "F: {{totalFat}}g"
   },
   "workoutPresetForm": {
+    "followAlongVideo": "Follow-along video",
+    "videoLink": "Video link",
+    "videoHelp": "Use a YouTube link or a direct link to a video file. Set start and end times for the exercises you want to follow.",
+    "videoStartSeconds": "Start (seconds)",
+    "videoEndSeconds": "End (seconds)",
+    "videoValidationError": "Enter a YouTube or direct video link and valid, non-overlapping start and end times.",
     "createTitle": "Create New Workout Preset",
     "editTitle": "Edit Workout Preset",
     "createDescription": "Create a new workout preset by providing a name, description, and exercises.",
