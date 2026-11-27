@@ -2037,4 +2037,144 @@ describe('useWatchFastingBridge', () => {
       expect(mockSendAck).toHaveBeenCalledWith('ios-end-503', false)
     );
   });
+
+  it('forwards UUID clientId to startFast and re-fetches current fast without reviving an already-ended replay', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const uuidClientId = '22222222-2222-4222-8222-222222222222';
+      (fetchCurrentFast as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      (startFast as jest.Mock).mockResolvedValueOnce({
+        id: 'fast-ended',
+        client_id: uuidClientId,
+        start_time: '2026-11-25T08:00:00.000Z',
+        end_time: '2026-11-25T16:00:00.000Z',
+        target_end_time: '2026-11-26T00:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'COMPLETED',
+      });
+
+      renderHook(() => useWatchFastingBridge(true));
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: uuidClientId,
+        presetId: '16-8',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          uuidClientId,
+          true,
+          true,
+          null
+        )
+      );
+      expect(startFast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: uuidClientId,
+        })
+      );
+      expect(fetchCurrentFast).toHaveBeenCalledTimes(2);
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
+
+  it('aborts without ack or settlement when re-fetch after completed replay rejects and active server changed', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const uuidClientId = '33333333-3333-4333-8333-333333333333';
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockResolvedValueOnce(null)
+        .mockImplementationOnce(async () => {
+          (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-2');
+          throw new Error('network timeout');
+        });
+      (startFast as jest.Mock).mockResolvedValueOnce({
+        id: 'fast-ended',
+        client_id: uuidClientId,
+        start_time: '2026-11-25T08:00:00.000Z',
+        end_time: '2026-11-25T16:00:00.000Z',
+        target_end_time: '2026-11-26T00:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'COMPLETED',
+      });
+
+      renderHook(() => useWatchFastingBridge(true));
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: uuidClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() => expect(fetchCurrentFast).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(getActiveServerConfigId).toHaveReturnedWith(
+          Promise.resolve('srv-2')
+        )
+      );
+      expect(mockSendFastAck).not.toHaveBeenCalled();
+      expect(mockSendAck).not.toHaveBeenCalled();
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
+
+  it('settles ok with fastKnown=false and null fast when re-fetch after completed replay rejects on same server', async () => {
+    const mockSendFastAck = jest.fn();
+    const watchMock = WatchConnectivity as unknown as {
+      sendFastAck?: jest.Mock;
+    };
+    watchMock.sendFastAck = mockSendFastAck;
+    try {
+      const uuidClientId = '44444444-4444-4444-8444-444444444444';
+      (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+      (fetchCurrentFast as jest.Mock)
+        .mockResolvedValueOnce({
+          id: 'auto-1',
+          start_time: '2026-11-25T06:00:00.000Z',
+          is_auto_calculated: true,
+        })
+        .mockRejectedValueOnce(new Error('network timeout'));
+      (startFast as jest.Mock).mockResolvedValueOnce({
+        id: 'fast-ended',
+        client_id: uuidClientId,
+        start_time: '2026-11-25T08:00:00.000Z',
+        end_time: '2026-11-25T16:00:00.000Z',
+        target_end_time: '2026-11-26T00:00:00.000Z',
+        fasting_type: '16:8 Leangains',
+        status: 'COMPLETED',
+      });
+
+      renderHook(() => useWatchFastingBridge(true));
+      mockListeners.get('onFastStartRequested')?.({
+        clientId: uuidClientId,
+        presetId: '16-8',
+        ownerId: 'srv-1',
+        startedAt: Date.parse('2026-11-25T08:00:00.000Z'),
+      });
+
+      await waitFor(() =>
+        expect(mockSendFastAck).toHaveBeenCalledWith(
+          uuidClientId,
+          true,
+          false,
+          null
+        )
+      );
+    } finally {
+      delete watchMock.sendFastAck;
+    }
+  });
 });

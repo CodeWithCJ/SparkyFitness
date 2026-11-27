@@ -1,9 +1,13 @@
 import express from 'express';
-import fastingRepository from '../models/fastingRepository.js';
+import fastingRepository, {
+  FASTING_LOG_CLIENT_ID_INDEX,
+} from '../models/fastingRepository.js';
 import fastingPreferencesRepository from '../models/fastingPreferencesRepository.js';
 import fastingAutoCalculationService from '../services/fastingAutoCalculationService.js';
 import moodRepository from '../models/moodRepository.js';
 import { log } from '../config/logging.js';
+import { describeError } from '../utils/errors.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   todayInZone,
@@ -11,6 +15,7 @@ import {
   userFastingPreferencesMutatorSchema,
   clampStoredMoodValue,
   instantToDay,
+  clientRequestIdSchema,
 } from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
@@ -125,7 +130,17 @@ router.get('/current', async (req, res) => {
  *               fasting_type:
  *                 type: string
  *                 description: The type of fast (e.g., "Intermittent Fasting").
+ *               client_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional client-minted UUID for idempotent fast start replays.
  *     responses:
+ *       200:
+ *         description: Idempotent replay of an existing fast created with the same client_id.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FastingLog'
  *       201:
  *         description: Success starting fast.
  *         content:
@@ -141,7 +156,8 @@ router.get('/current', async (req, res) => {
  */
 router.post('/start', async (req, res) => {
   const userId = req.userId;
-  const { start_time, target_end_time, fasting_type } = req.body;
+  const { start_time, target_end_time, fasting_type, client_id } = req.body;
+  let normalizedClientId: string | null = null;
   try {
     // Validation
     if (!start_time || !fasting_type) {
@@ -149,21 +165,65 @@ router.post('/start', async (req, res) => {
         .status(400)
         .json({ error: 'Start time and fasting type are required' });
     }
+    if (client_id !== undefined && client_id !== null) {
+      const parsedClientId = clientRequestIdSchema.safeParse(client_id);
+      if (!parsedClientId.success) {
+        return res.status(400).json({ error: 'client_id must be a UUID.' });
+      }
+      normalizedClientId = parsedClientId.data;
+    }
+    if (normalizedClientId) {
+      const existing = await fastingRepository.findFastingLogByClientId(
+        userId,
+        normalizedClientId
+      );
+      if (existing) {
+        return res.status(200).json(existing);
+      }
+    }
     // Check if there is already an active fast
     const activeFast = await fastingRepository.getCurrentFast(userId);
     if (activeFast) {
+      if (normalizedClientId) {
+        const racedExisting = await fastingRepository.findFastingLogByClientId(
+          userId,
+          normalizedClientId
+        );
+        if (racedExisting) {
+          return res.status(200).json(racedExisting);
+        }
+      }
       return res.status(400).json({ error: 'There is already an active fast' });
     }
     const newFast = await fastingRepository.createFastingLog(
       userId,
       start_time,
       target_end_time,
-      fasting_type
+      fasting_type,
+      normalizedClientId
     );
     res.status(201).json(newFast);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error starting fast: ${error.message}`);
+    if (
+      normalizedClientId &&
+      isUniqueViolationOn(error, FASTING_LOG_CLIENT_ID_INDEX)
+    ) {
+      try {
+        const winner = await fastingRepository.findFastingLogByClientId(
+          userId,
+          normalizedClientId
+        );
+        if (winner) {
+          return res.status(200).json(winner);
+        }
+      } catch (lookupError) {
+        log(
+          'error',
+          `Error recovering fasting log after client_id conflict: ${describeError(lookupError)}`
+        );
+      }
+    }
+    log('error', `Error starting fast: ${describeError(error)}`);
     res.status(500).json({ error: 'Failed to start fast' });
   }
 });

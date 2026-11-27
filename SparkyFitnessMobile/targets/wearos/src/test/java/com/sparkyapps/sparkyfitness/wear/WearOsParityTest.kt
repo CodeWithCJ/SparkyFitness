@@ -7182,4 +7182,77 @@ class WearOsParityTest {
             )
         )
     }
+
+    @Test
+    fun fastingStartClientIdUuidAndCompletedReplayParity() {
+        val validUuid = "550e8400-e29b-41d4-a716-446655440000"
+        assertTrue(WearDirectApiClient.isValidUuid(validUuid))
+        assertTrue(WearDirectApiClient.isValidUuid("  $validUuid  "))
+        assertFalse(WearDirectApiClient.isValidUuid(""))
+        assertFalse(WearDirectApiClient.isValidUuid("fast-123"))
+
+        // buildFastStartRequestBody includes client_id only for valid UUIDs
+        val withUuid = WearDirectApiClient.buildFastStartRequestBody(1_700_000_000_000L, 1_700_057_600_000L, "16:8 Leangains", validUuid)
+        assertEquals(validUuid, withUuid.getString("client_id"))
+        val withoutUuid = WearDirectApiClient.buildFastStartRequestBody(1_700_000_000_000L, 1_700_057_600_000L, "16:8 Leangains", "synthetic-id")
+        assertFalse(withoutUuid.has("client_id"))
+
+        // parseFastJson returns null to true for COMPLETED or ended fasts
+        val completedJson = JSONObject()
+            .put("id", "f-1")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("target_end_time", "2026-11-26T16:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .put("status", "COMPLETED")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(completedJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(completedJson))
+
+        val endedJson = JSONObject()
+            .put("id", "f-2")
+            .put("start_time", "2026-11-26T00:00:00.000Z")
+            .put("end_time", "2026-11-26T10:00:00.000Z")
+            .put("fasting_type", "16:8 Leangains")
+            .toString()
+        assertTrue(WearDirectApiClient.isCompletedFastJson(endedJson))
+        assertEquals(null to true, WearDirectApiClient.parseFastJson(endedJson))
+
+        // Replaying an already-completed fast never revives it on the watch (re-fetches /api/fasting/current)
+        val outcomeNull = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = completedJson,
+            fallbackStartMs = 1_700_000_000_000L,
+            fallbackTargetMs = 1_700_057_600_000L,
+            fallbackFastingType = "16:8 Leangains",
+            fetchLatestCurrent = { "null" }
+        )
+        assertTrue(outcomeNull is DirectWriteOutcome.Applied)
+        val appliedNull = outcomeNull as DirectWriteOutcome.Applied
+        assertNull(appliedNull.fast)
+        assertTrue(appliedNull.fastUpdated)
+
+        // Transient failure or invalid JSON on re-fetch settles start with fastUpdated = false (fast state unknown)
+        val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = endedJson,
+            fallbackStartMs = 1_700_000_000_000L,
+            fallbackTargetMs = 1_700_057_600_000L,
+            fallbackFastingType = "16:8 Leangains",
+            fetchLatestCurrent = { null }
+        )
+        assertTrue(outcomeTransient is DirectWriteOutcome.Applied)
+        val appliedTransient = outcomeTransient as DirectWriteOutcome.Applied
+        assertNull(appliedTransient.fast)
+        assertFalse(appliedTransient.fastUpdated)
+
+        val outcomeInvalid = WearDirectApiClient.resolveFastStartOutcome(
+            startResBody = endedJson,
+            fallbackStartMs = 1_700_000_000_000L,
+            fallbackTargetMs = 1_700_057_600_000L,
+            fallbackFastingType = "16:8 Leangains",
+            fetchLatestCurrent = { "{}" }
+        )
+        assertTrue(outcomeInvalid is DirectWriteOutcome.Applied)
+        val appliedInvalid = outcomeInvalid as DirectWriteOutcome.Applied
+        assertNull(appliedInvalid.fast)
+        assertFalse(appliedInvalid.fastUpdated)
+    }
 }

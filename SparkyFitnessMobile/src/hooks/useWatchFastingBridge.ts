@@ -536,6 +536,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
         // one: it is always "current" while auto-calculation is on, so it must
         // not stop the wrist from starting a real fast.
         let confirmedWatchFast: WatchContextPayload['fast'] = null;
+        let fastKnown = true;
         if (!current || current.is_auto_calculated) {
           const startMs =
             payload.startedAt != null &&
@@ -554,17 +555,45 @@ export function useWatchFastingBridge(enabled: boolean): void {
             startTime: new Date(startMs).toISOString(),
             targetEndTime: new Date(targetMs).toISOString(),
             fastingType: preset.name,
+            clientId: payload.clientId,
             serverConfig: writeConfig,
           });
-          confirmedWatchFast = toWatchFast(created) ?? {
-            startedAt: startMs,
-            targetEndAt: targetMs,
-            label: preset.name,
-          };
           if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
             clearRetryingStart(resolvedOwner, payload.clientId);
             deferredEndsByOwnerRef.current.delete(resolvedOwner);
             return;
+          }
+          if (created?.status === 'COMPLETED' || Boolean(created?.end_time)) {
+            // A replayed start can return an already-ended fast; re-fetch
+            // /current so the watch gets true server state instead of reviving
+            // the ended fast with an optimistic payload.
+            try {
+              const latest = await fetchCurrentFast(writeConfig);
+              if (
+                !(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))
+              ) {
+                clearRetryingStart(resolvedOwner, payload.clientId);
+                deferredEndsByOwnerRef.current.delete(resolvedOwner);
+                return;
+              }
+              confirmedWatchFast = toWatchFast(latest) ?? null;
+            } catch {
+              if (
+                !(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))
+              ) {
+                clearRetryingStart(resolvedOwner, payload.clientId);
+                deferredEndsByOwnerRef.current.delete(resolvedOwner);
+                return;
+              }
+              fastKnown = false;
+              confirmedWatchFast = null;
+            }
+          } else {
+            confirmedWatchFast = toWatchFast(created) ?? {
+              startedAt: startMs,
+              targetEndAt: targetMs,
+              label: preset.name,
+            };
           }
         } else {
           confirmedWatchFast = toWatchFast(current) ?? null;
@@ -584,7 +613,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
           await sendAckWithFast(
             payload.clientId,
             true,
-            true,
+            fastKnown,
             confirmedWatchFast
           );
         } catch (ackError) {

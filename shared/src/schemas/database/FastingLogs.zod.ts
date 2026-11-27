@@ -18,6 +18,7 @@ export const fastingLogsSchema = z.object({
   duration_minutes: z.number().nullable(),
   fasting_type: z.string().nullable(),
   status: z.string().nullable(),
+  client_id: z.string().nullable(),
   created_at: z.date().nullable(),
   updated_at: z.date().nullable(),
 });
@@ -31,6 +32,7 @@ export const fastingLogsInitializerSchema = z.object({
   duration_minutes: z.number().optional().nullable(),
   fasting_type: z.string().optional().nullable(),
   status: z.string().optional().nullable(),
+  client_id: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
 });
@@ -44,6 +46,7 @@ export const fastingLogsMutatorSchema = z.object({
   duration_minutes: z.number().optional().nullable(),
   fasting_type: z.string().optional().nullable(),
   status: z.string().optional().nullable(),
+  client_id: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
 });

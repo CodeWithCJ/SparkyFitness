@@ -57,6 +57,46 @@ describe('fastingApi', () => {
         })
       );
     });
+
+    test('includes client_id when clientId is a valid UUID', async () => {
+      const clientId = '11111111-1111-4111-8111-111111111111';
+      mockApiFetch.mockResolvedValueOnce({ id: 'fast-1', client_id: clientId });
+      await startFast({
+        startTime: '2026-06-21T10:00:00.000Z',
+        targetEndTime: '2026-06-22T02:00:00.000Z',
+        fastingType: '16:8 Leangains',
+        clientId,
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            start_time: '2026-06-21T10:00:00.000Z',
+            target_end_time: '2026-06-22T02:00:00.000Z',
+            fasting_type: '16:8 Leangains',
+            client_id: clientId,
+          },
+        })
+      );
+    });
+
+    test('omits client_id when clientId is not a valid UUID', async () => {
+      mockApiFetch.mockResolvedValueOnce({ id: 'fast-1' });
+      await startFast({
+        startTime: '2026-06-21T10:00:00.000Z',
+        targetEndTime: '2026-06-22T02:00:00.000Z',
+        fastingType: '16:8 Leangains',
+        clientId: 'not-a-uuid',
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            start_time: '2026-06-21T10:00:00.000Z',
+            target_end_time: '2026-06-22T02:00:00.000Z',
+            fasting_type: '16:8 Leangains',
+          },
+        })
+      );
+    });
   });
 
   describe('endFast', () => {

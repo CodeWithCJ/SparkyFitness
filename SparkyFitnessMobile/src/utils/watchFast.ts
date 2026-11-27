@@ -23,6 +23,7 @@ export function toWatchFast(
   // Auto-calculated fasting reports the eating window as an "active" fast too.
   // It is the opposite of fasting, so the watch is told there is no fast.
   if (fast.is_eating_window) return null;
+  if (fast.status === 'COMPLETED' || Boolean(fast.end_time)) return null;
   const startedAt = new Date(fast.start_time).getTime();
   if (!Number.isFinite(startedAt)) return null;
   const target = fast.target_end_time

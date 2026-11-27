@@ -1629,6 +1629,21 @@ object WearDirectApiClient {
     else -> null
   }
 
+  private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+  internal fun isValidUuid(value: String): Boolean = UUID_REGEX.matches(value.trim())
+
+  internal fun isCompletedFastJson(raw: String?): Boolean {
+    if (raw.isNullOrBlank()) return false
+    return try {
+      val obj = JSONObject(raw.trim())
+      obj.optString("status", "").equals("COMPLETED", ignoreCase = true) ||
+        obj.optStringOrNull("end_time") != null
+    } catch (_: Throwable) {
+      false
+    }
+  }
+
   internal fun parseFastJson(raw: String?): Pair<WatchFast?, Boolean> {
     if (raw == null) return null to false
     val trimmed = raw.trim()
@@ -1636,6 +1651,12 @@ object WearDirectApiClient {
     return try {
       val obj = JSONObject(trimmed)
       if (obj.optBoolean("is_eating_window", false)) {
+        return null to true
+      }
+      if (
+        obj.optString("status", "").equals("COMPLETED", ignoreCase = true) ||
+        obj.optStringOrNull("end_time") != null
+      ) {
         return null to true
       }
       val startMs = ContextPayloadMapper.parseIsoMs(obj.optStringOrNull("start_time"))
@@ -2483,6 +2504,55 @@ object WearDirectApiClient {
     }
   }
 
+  internal fun buildFastStartRequestBody(
+    startMs: Long,
+    targetMs: Long,
+    fastingType: String,
+    clientId: String
+  ): JSONObject = JSONObject()
+    .put("start_time", ContextPayloadMapper.formatIso(startMs))
+    .put("target_end_time", ContextPayloadMapper.formatIso(targetMs))
+    .put("fasting_type", fastingType)
+    .apply {
+      val cleanId = clientId.trim()
+      if (isValidUuid(cleanId)) {
+        put("client_id", cleanId)
+      }
+    }
+
+  internal fun resolveFastStartOutcome(
+    startResBody: String?,
+    fallbackStartMs: Long,
+    fallbackTargetMs: Long,
+    fallbackFastingType: String,
+    fetchLatestCurrent: () -> String?
+  ): DirectWriteOutcome {
+    if (isCompletedFastJson(startResBody)) {
+      val latestBody = fetchLatestCurrent()
+      if (!latestBody.isNullOrBlank()) {
+        val (latestFast, known) = parseFastJson(latestBody)
+        if (known) {
+          return DirectWriteOutcome.Applied(
+            syncedDomain = "fasting",
+            fast = latestFast,
+            fastUpdated = true
+          )
+        }
+      }
+      return DirectWriteOutcome.Applied(
+        syncedDomain = "fasting",
+        fast = null,
+        fastUpdated = false
+      )
+    }
+    val (fast, _) = parseFastJson(startResBody)
+    return DirectWriteOutcome.Applied(
+      syncedDomain = "fasting",
+      fast = fast ?: WatchFast(fallbackStartMs, fallbackTargetMs, fallbackFastingType),
+      fastUpdated = true
+    )
+  }
+
   internal fun executeFastStart(
     context: Context,
     creds: WearServerCredentials,
@@ -2513,10 +2583,8 @@ object WearDirectApiClient {
       }
       val startMs = payload.optLong("startedAt", 0L).takeIf { it > 0L } ?: System.currentTimeMillis()
       val targetMs = startMs + (hours * 3_600_000.0).toLong()
-      val body = JSONObject()
-        .put("start_time", ContextPayloadMapper.formatIso(startMs))
-        .put("target_end_time", ContextPayloadMapper.formatIso(targetMs))
-        .put("fasting_type", fastingType)
+      val clientId = payload.optString("clientId", "").trim()
+      val body = buildFastStartRequestBody(startMs, targetMs, fastingType, clientId)
       val startRes = request(creds, "POST", "/api/fasting/start", body)
       if (!startRes.isSuccess) {
         return if (startRes.isValidationFailure) {
@@ -2525,12 +2593,18 @@ object WearDirectApiClient {
           DirectWriteOutcome.FallbackToPhone
         }
       }
-      val (fast, _) = parseFastJson(startRes.body)
-      return DirectWriteOutcome.Applied(
-        syncedDomain = "fasting",
-        fast = fast ?: WatchFast(startMs, targetMs, fastingType),
-        fastUpdated = true
-      )
+      return resolveFastStartOutcome(
+        startResBody = startRes.body,
+        fallbackStartMs = startMs,
+        fallbackTargetMs = targetMs,
+        fallbackFastingType = fastingType
+      ) {
+        if (WearServerCredentialsStore.admitDirectRequest(context, creds, isAccountActive)) {
+          request(creds, "GET", "/api/fasting/current").takeIf { it.isSuccess }?.body
+        } else {
+          null
+        }
+      }
     }
     val (existingFast, _) = parseFastJson(curBody)
     return DirectWriteOutcome.Applied(
