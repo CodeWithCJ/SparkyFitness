@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic C-CDA (no real patient data) shaped like an Epic MyChart CCD. -->
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <templateId root="2.16.840.1.113883.10.20.22.1.2"/>
+  <effectiveTime value="20260915103000-0500"/>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.4.1"/>
+          <code code="8716-3" codeSystem="2.16.840.1.113883.6.1" displayName="Vital Signs"/>
+          <title>Vital Signs</title>
+          <entry typeCode="DRIV">
+            <organizer classCode="CLUSTER" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+              <statusCode code="completed"/>
+              <effectiveTime value="20260915101500-0500"/>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8480-6" codeSystem="2.16.840.1.113883.6.1" displayName="Systolic blood pressure"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="128" unit="mm[Hg]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8462-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diastolic blood pressure"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101600-0500"/>
+                  <value xsi:type="PQ" value="82" unit="mm[Hg]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" displayName="Heart rate"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="71" unit="/min"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="29463-7" codeSystem="2.16.840.1.113883.6.1" displayName="Body weight"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="3040" unit="[oz_av]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8302-2" codeSystem="2.16.840.1.113883.6.1" displayName="Body height"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="70" unit="[in_i]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="59408-5" codeSystem="2.16.840.1.113883.6.1" displayName="SpO2"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="98" unit="%"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8310-5" codeSystem="2.16.840.1.113883.6.1" displayName="Body temperature"/>
+                  <statusCode code="completed"/>
+                  <!-- no effectiveTime: falls back to organizer time -->
+                  <value xsi:type="PQ" value="98.4" unit="[degF]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="39156-5" codeSystem="2.16.840.1.113883.6.1" displayName="BMI"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20260915101500-0500"/>
+                  <value xsi:type="PQ" value="27.3" unit="kg/m2"/>
+                </observation>
+              </component>
+            </organizer>
+          </entry>
+          <entry typeCode="DRIV">
+            <organizer classCode="CLUSTER" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+              <effectiveTime value="20260301"/>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="3141-9" codeSystem="2.16.840.1.113883.6.1" displayName="Body weight measured"/>
+                  <effectiveTime value="202603010845"/>
+                  <value xsi:type="PQ" value="192.5" unit="[lb_av]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8480-6" codeSystem="2.16.840.1.113883.6.1"/>
+                  <effectiveTime value="202603010845"/>
+                  <value xsi:type="PQ" value="135" unit="mm[Hg]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8462-4" codeSystem="2.16.840.1.113883.6.1"/>
+                  <effectiveTime value="202603010845"/>
+                  <value xsi:type="PQ" value="88" unit="mm[Hg]"/>
+                </observation>
+              </component>
+              <component>
+                <observation classCode="OBS" moodCode="EVN" negationInd="true">
+                  <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>
+                  <effectiveTime value="202603010845"/>
+                  <value xsi:type="PQ" value="999" unit="/min"/>
+                </observation>
+              </component>
+            </organizer>
+          </entry>
+        </section>
+      </component>
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.3.1"/>
+          <code code="30954-2" codeSystem="2.16.840.1.113883.6.1" displayName="Results"/>
+          <entry>
+            <observation classCode="OBS" moodCode="EVN">
+              <code code="8867-4" codeSystem="2.16.840.1.113883.6.1"/>
+              <effectiveTime value="20260915101500-0500"/>
+              <value xsi:type="PQ" value="55" unit="/min"/>
+            </observation>
+          </entry>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</ClinicalDocument>

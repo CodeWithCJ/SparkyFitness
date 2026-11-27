@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic, de-identified sample C-CDA XML document shaped like an Epic MyChart Lucy Export.
+     Contains standard Vital Signs and Results (Laboratory) sections with LOINCs and reference ranges. -->
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <realmCode code="US"/>
+  <typeId extension="POCD_HD000040" root="2.16.840.1.113883.1.3"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.1"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.2"/>
+  <id root="2.16.840.1.113883.19.5" extension="synthetic-sample-001"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summarization of Episode Note"/>
+  <title>Patient Health Summary</title>
+  <effectiveTime value="20261023120000-0500"/>
+  <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25"/>
+  <languageCode code="en-US"/>
+  
+  <recordTarget>
+    <patientRole>
+      <id root="2.16.840.1.113883.19.5" extension="SYNTH-PATIENT-123"/>
+      <patient>
+        <name><given>Jane</given><family>Doe</family></name>
+        <administrativeGenderCode code="F" codeSystem="2.16.840.1.113883.5.1" displayName="Female"/>
+        <birthTime value="19880512"/>
+      </patient>
+    </patientRole>
+  </recordTarget>
+
+  <component>
+    <structuredBody>
+
+      <!-- ======================================================== -->
+      <!-- VITAL SIGNS SECTION                                      -->
+      <!-- ======================================================== -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.4.1"/>
+          <code code="8716-3" codeSystem="2.16.840.1.113883.6.1" displayName="Vital Signs"/>
+          <title>Vital Signs</title>
+          <entry typeCode="DRIV">
+            <organizer classCode="CLUSTER" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+              <statusCode code="completed"/>
+              <effectiveTime value="20261023101500-0500"/>
+              
+              <!-- Systolic Blood Pressure -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8480-6" codeSystem="2.16.840.1.113883.6.1" displayName="Systolic blood pressure"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="122" unit="mm[Hg]"/>
+                </observation>
+              </component>
+
+              <!-- Diastolic Blood Pressure -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8462-4" codeSystem="2.16.840.1.113883.6.1" displayName="Diastolic blood pressure"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="78" unit="mm[Hg]"/>
+                </observation>
+              </component>
+
+              <!-- Pulse / Heart Rate -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8867-4" codeSystem="2.16.840.1.113883.6.1" displayName="Heart rate"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="68" unit="/min"/>
+                </observation>
+              </component>
+
+              <!-- Body Weight (recorded in lbs) -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="29463-7" codeSystem="2.16.840.1.113883.6.1" displayName="Body weight"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="165.5" unit="[lb_av]"/>
+                </observation>
+              </component>
+
+              <!-- Body Height (recorded in inches) -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8302-2" codeSystem="2.16.840.1.113883.6.1" displayName="Body height"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="68" unit="[in_i]"/>
+                </observation>
+              </component>
+
+              <!-- SpO2 -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="59408-5" codeSystem="2.16.840.1.113883.6.1" displayName="Oxygen saturation in Arterial blood"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="99" unit="%"/>
+                </observation>
+              </component>
+
+              <!-- Body Temperature -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <code code="8310-5" codeSystem="2.16.840.1.113883.6.1" displayName="Body temperature"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023101500-0500"/>
+                  <value xsi:type="PQ" value="98.6" unit="[degF]"/>
+                </observation>
+              </component>
+
+            </organizer>
+          </entry>
+        </section>
+      </component>
+
+      <!-- ======================================================== -->
+      <!-- RESULTS (LABS) SECTION                                   -->
+      <!-- ======================================================== -->
+      <component>
+        <section>
+          <templateId root="2.16.840.1.113883.10.20.22.2.3.1"/>
+          <code code="30954-2" codeSystem="2.16.840.1.113883.6.1" displayName="Relevant diagnostic tests/laboratory data Narrative"/>
+          <title>Results</title>
+          
+          <!-- Comprehensive Metabolic Panel (Organizer) -->
+          <entry typeCode="DRIV">
+            <organizer classCode="BATTERY" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+              <statusCode code="completed"/>
+              <code code="24323-8" codeSystem="2.16.840.1.113883.6.1" displayName="Comprehensive metabolic 2000 panel"/>
+              <effectiveTime value="20261023083000-0500"/>
+
+              <!-- Sodium -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2951-2" codeSystem="2.16.840.1.113883.6.1" displayName="Sodium [Moles/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="140" unit="mmol/L"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="135" unit="mmol/L"/>
+                        <high value="145" unit="mmol/L"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Potassium -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2823-3" codeSystem="2.16.840.1.113883.6.1" displayName="Potassium [Moles/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="4.2" unit="mmol/L"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="3.5" unit="mmol/L"/>
+                        <high value="5.1" unit="mmol/L"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Glucose -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2345-7" codeSystem="2.16.840.1.113883.6.1" displayName="Glucose [Mass/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="92" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="70" unit="mg/dL"/>
+                        <high value="99" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Creatinine -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2160-0" codeSystem="2.16.840.1.113883.6.1" displayName="Creatinine [Mass/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="0.95" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="0.70" unit="mg/dL"/>
+                        <high value="1.20" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Blood Urea Nitrogen (BUN) -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="3094-0" codeSystem="2.16.840.1.113883.6.1" displayName="Blood Urea Nitrogen"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="16.0" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="8.0" unit="mg/dL"/>
+                        <high value="21.0" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+            </organizer>
+          </entry>
+
+          <!-- Lipid Panel (Organizer) -->
+          <entry typeCode="DRIV">
+            <organizer classCode="BATTERY" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+              <statusCode code="completed"/>
+              <code code="24331-1" codeSystem="2.16.840.1.113883.6.1" displayName="Lipid panel"/>
+              <effectiveTime value="20261023083000-0500"/>
+
+              <!-- Total Cholesterol -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2093-3" codeSystem="2.16.840.1.113883.6.1" displayName="Cholesterol [Mass/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="175" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="100" unit="mg/dL"/>
+                        <high value="199" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- HDL Cholesterol -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2085-9" codeSystem="2.16.840.1.113883.6.1" displayName="Cholesterol in HDL [Mass/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="55" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="40" unit="mg/dL"/>
+                        <high value="90" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- LDL Cholesterol (Calculated) -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="13457-7" codeSystem="2.16.840.1.113883.6.1" displayName="Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="98" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="0" unit="mg/dL"/>
+                        <high value="99" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Triglycerides -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="2571-8" codeSystem="2.16.840.1.113883.6.1" displayName="Triglyceride [Mass/volume] in Serum or Plasma"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="110" unit="mg/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="0" unit="mg/dL"/>
+                        <high value="149" unit="mg/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+            </organizer>
+          </entry>
+
+          <!-- Complete Blood Count (CBC) -->
+          <entry typeCode="DRIV">
+            <organizer classCode="BATTERY" moodCode="EVN">
+              <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+              <statusCode code="completed"/>
+              <code code="58410-2" codeSystem="2.16.840.1.113883.6.1" displayName="CBC panel - Blood by Automated count"/>
+              <effectiveTime value="20261023083000-0500"/>
+
+              <!-- White Blood Cell Count (WBC) -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="6690-2" codeSystem="2.16.840.1.113883.6.1" displayName="Leukocytes [#/volume] in Blood by Automated count"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="6.5" unit="10*3/uL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="4.0" unit="10*3/uL"/>
+                        <high value="11.0" unit="10*3/uL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Hemoglobin -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="718-7" codeSystem="2.16.840.1.113883.6.1" displayName="Hemoglobin [Mass/volume] in Blood"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="14.8" unit="g/dL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="13.0" unit="g/dL"/>
+                        <high value="17.0" unit="g/dL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Hematocrit -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="4544-3" codeSystem="2.16.840.1.113883.6.1" displayName="Hematocrit [Volume Fraction] of Blood by Automated count"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="44.2" unit="%"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="39.0" unit="%"/>
+                        <high value="51.0" unit="%"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+              <!-- Platelets -->
+              <component>
+                <observation classCode="OBS" moodCode="EVN">
+                  <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+                  <code code="777-3" codeSystem="2.16.840.1.113883.6.1" displayName="Platelets [#/volume] in Blood by Automated count"/>
+                  <statusCode code="completed"/>
+                  <effectiveTime value="20261023083000-0500"/>
+                  <value xsi:type="PQ" value="230" unit="10*3/uL"/>
+                  <referenceRange typeCode="REFV">
+                    <observationRange classCode="OBS" moodCode="EVN.CRT">
+                      <value xsi:type="IVL_PQ">
+                        <low value="150" unit="10*3/uL"/>
+                        <high value="450" unit="10*3/uL"/>
+                      </value>
+                    </observationRange>
+                  </referenceRange>
+                </observation>
+              </component>
+
+            </organizer>
+          </entry>
+
+        </section>
+      </component>
+
+    </structuredBody>
+  </component>
+</ClinicalDocument>
