@@ -1,6 +1,30 @@
 import type { PoolClient } from 'pg';
 import { getSystemClient } from './poolManager.js';
 import { log } from '../config/logging.js';
+/**
+ * Grants EXECUTE on every function of the schema that the current role may
+ * grant. GRANT ... ON ALL FUNCTIONS fails as a whole on a function it cannot
+ * grant, such as pg_stat_statements_reset() when a superuser installed the
+ * extension in public on a shared cluster (#3824). For a superuser this is
+ * every function, as before.
+ */
+async function grantGrantableFunctions(
+  client: PoolClient,
+  schema: string,
+  appUser: string
+) {
+  const { rows } = await client.query(
+    `SELECT p.oid::regprocedure::text AS fn
+       FROM pg_proc p
+      WHERE p.pronamespace = $1::regnamespace
+        AND p.prokind <> 'p' -- procedures were never part of the grant
+        AND has_function_privilege(current_user, p.oid, 'EXECUTE WITH GRANT OPTION')`,
+    [schema]
+  );
+  for (const { fn } of rows) {
+    await client.query(`GRANT EXECUTE ON FUNCTION ${fn} TO ${appUser}`);
+  }
+}
 /** Grants application database permissions; the caller retains any supplied client. */
 async function grantPermissions(existingClient: PoolClient | null = null) {
   const client = existingClient || (await getSystemClient());
@@ -33,17 +57,13 @@ async function grantPermissions(existingClient: PoolClient | null = null) {
     await client.query(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${appUser}`
     );
-    // Grant permissions on all functions in the public schema
-    await client.query(
-      `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${appUser}`
-    );
+    // Grant permissions on the functions in the public schema
+    await grantGrantableFunctions(client, 'public', appUser);
     await client.query(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ${appUser}`
     );
-    // Grant permissions on all functions in the auth schema
-    await client.query(
-      `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO ${appUser}`
-    );
+    // Grant permissions on the functions in the auth schema
+    await grantGrantableFunctions(client, 'auth', appUser);
     await client.query(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT EXECUTE ON FUNCTIONS TO ${appUser}`
     );
