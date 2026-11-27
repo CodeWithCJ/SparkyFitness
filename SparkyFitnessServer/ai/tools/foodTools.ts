@@ -1,5 +1,8 @@
 import {
+  findCloseFoodMatches,
   findFoodByExactName,
+  findFoodsByExactName,
+  formatCloseMatches,
   NAME_RESOLUTION_WINDOW,
 } from './foodNameResolution.js';
 import { tool } from 'ai';
@@ -85,6 +88,7 @@ const VALID_ACTIONS = [
   'delete_food',
   'update_entry',
   'set_food_barcode',
+  'update_food',
   'update_food_variant',
   'copy_from_yesterday',
   'save_as_meal_template',
@@ -392,8 +396,8 @@ function foodDateRange(
 
 // The variant column set MCP's food search exposed; the server's
 // default_variant JSON is projected down to it.
-function projectVariant(foodId: string, v: any) {
-  const result: Record<string, any> = {
+function projectVariant(foodId: string, v: Record<string, unknown>) {
+  const result: Record<string, unknown> = {
     id: v.id,
     food_id: foodId,
     serving_size: v.serving_size,
@@ -432,6 +436,12 @@ function projectVariant(foodId: string, v: any) {
     ) {
       result[field] = val;
     }
+  }
+
+  // Estimates say so, so a model never quotes them as label values.
+  if (v.source === 'ai_estimate') {
+    result.source = 'ai_estimate';
+    if (v.ai_confidence) result.ai_confidence = v.ai_confidence;
   }
 
   return result;
@@ -1041,13 +1051,14 @@ export function buildFoodTools(userId: string, tz: string) {
       description: `Nutrition tracking: search food, log meals, create foods, manage diary.
 
 Actions:
-- search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
-- lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda, yazio) if provider_type given. With provider_type "usda", send an exact food name unchanged when it has only letters, numbers, spaces, commas, periods, apostrophes and %, and no AND, OR or NOT in capitals. Otherwise wrap the whole name in double quotes and write any " inside it as \\" (USDA reads the other characters and those words as search syntax, so a lone / or unpaired " fails the search).
+- search_food(food_name, search_type:"exact"|"broad", limit?, offset?) — an exact search with no hit lists up to 5 close matches, labelled as not exact.
+- lookup_food_nutrition(food_name, provider_type?) — the cascade lookup to run before create_food, except when the user gave the values or asked for an estimate (see create_food). Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda, yazio) if provider_type given. With provider_type "usda", send an exact food name unchanged when it has only letters, numbers, spaces, commas, periods, apostrophes and %, and no AND, OR or NOT in capitals. Otherwise wrap the whole name in double quotes and write any " inside it as \\" (USDA reads the other characters and those words as search syntax, so a lone / or unpaired " fails the search).
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
-- log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
+- log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal'). When no food has that exact name it logs nothing and lists up to 5 close matches with their food_id; ask the user which one they meant before logging one.
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. food_name is searched again, so with provider_type "usda" quote such a name as described under lookup_food_nutrition. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, serving_size?, serving_unit?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Set serving_unit (and serving_size; it defaults to 1 for serving, piece, slice, portion, unit, can, bottle, item, pack, packet, scoop and bar, to the count in a unit such as "250 ml", and to 100 otherwise, so give it for other countable units) to the serving the nutrients are for; quantity/unit is then only the amount logged, read like log_food when logging: no quantity logs one serving, no unit counts servings. Example, 380 kcal per piece and 2 eaten: {serving_size:1, serving_unit:"piece", quantity:2, unit:"piece"}. Without serving_unit, nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, serving_size?, serving_unit?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — Run lookup_food_nutrition first, unless the user gave the values (for example from the label) or asked for an estimate of a home-made, restaurant or mixed meal. Use verified label/source values for custom foods, or an estimate only when the user explicitly requests one, and then set estimate_confidence (high|medium|low) so it is saved as an AI estimate; for external lookup matches use log_external_food instead. Set serving_unit (and serving_size; it defaults to 1 for serving, piece, slice, portion, unit, can, bottle, item, pack, packet, scoop and bar, to the count in a unit such as "250 ml", and to 100 otherwise, so give it for other countable units) to the serving the nutrients are for; quantity/unit is then only the amount logged, read like log_food when logging: no quantity logs one serving, no unit counts servings. Example, 380 kcal per piece and 2 eaten: {serving_size:1, serving_unit:"piece", quantity:2, unit:"piece"}. Without serving_unit, nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
+- update_food(food_id|food_name, new_name?, brand?) — renames a saved food or sets its brand. The food_id, variants and diary entries stay; past diary entries keep the name they were logged with. Owner-only.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?) — the day's entries; for calories and macros eaten and left, use sparky_get_day_status
@@ -1092,6 +1103,16 @@ Actions:
             }
             if (args.external_id) {
               return 'log_external_food';
+            }
+            // Before create_food, so a rename sent with nutrients never
+            // creates a second food under the old name, and before the
+            // food_id fallback below, which would read it as delete_food.
+            if (
+              args.new_name !== undefined &&
+              args.new_name !== null &&
+              (args.food_id || args.food_name)
+            ) {
+              return 'update_food';
             }
             if (
               args.food_name &&
@@ -1145,6 +1166,15 @@ Actions:
             if (args.food_id && args.barcode) {
               return 'set_food_barcode';
             }
+            // After the meal-type check above, so food_id + brand + a meal
+            // still logs; a brand alone on a food_id is an edit, not a delete.
+            if (args.food_id && args.brand !== undefined) {
+              // With an amount it is a log without a meal: log_food asks for
+              // the meal, where the food_id fallback below would delete.
+              return args.quantity !== undefined || args.unit
+                ? 'log_food'
+                : 'update_food';
+            }
             if (args.food_id) {
               return 'delete_food';
             }
@@ -1173,6 +1203,12 @@ Actions:
           typeof normalized.food_id === 'string' &&
           !uuidSchema.safeParse(normalized.food_id).success
         ) {
+          if (normalized.action === 'update_food') {
+            // A write must not fall back to another food that has the name.
+            return ERRORS.VALIDATION(
+              `food_id '${normalized.food_id}' is not an internal food UUID. Use the food_id from search_food${normalized.food_name ? ', or leave it out to change your food named by food_name' : ''}.`
+            );
+          }
           if (normalized.food_name) {
             log(
               'info',
@@ -1295,16 +1331,32 @@ Actions:
                 args.limit,
                 args.offset
               );
+              if (
+                args.search_type === 'exact' &&
+                !args.offset &&
+                result.total_count === 0
+              ) {
+                const close = await findCloseFoodMatches(
+                  userId,
+                  args.food_name,
+                  { limit: Math.min(args.limit ?? 5, 5) }
+                );
+                if (close.length > 0) {
+                  return `No food is named exactly "${args.food_name}". Close matches (not exact):\n${formatCloseMatches(close)}\nAsk the user whether one of them is the food meant before using its food_id.`;
+                }
+              }
               return formatList(
                 result.data,
                 `Food Search: "${args.food_name}" (${args.search_type})`,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (f: any) => {
+                (f: ReturnType<typeof projectFoodItem>) => {
                   const v = f.variants[0];
                   let text = `**${f.name}**`;
                   if (f.brand) text += ` (${f.brand})`;
                   if (v) {
                     text += `\n  ${formatServing(v.serving_size, v.serving_unit)}: ${roundEnergy(v.calories)} kcal | P: ${roundNutrient(v.protein)}g | C: ${roundNutrient(v.carbs)}g | F: ${roundNutrient(v.fat)}g`;
+                    if (v.source === 'ai_estimate') {
+                      text += ` | AI estimate${v.ai_confidence ? ` (${v.ai_confidence} confidence)` : ''}`;
+                    }
                   }
                   text += `\n  ID: ${f.id}`;
                   if (v) text += ` | Variant: ${v.id}`;
@@ -1353,7 +1405,7 @@ Actions:
                 if (result.source === 'unavailable') {
                   return `No verified match is available for "${args.food_name}"; one or more providers failed${failed.length ? ` (${failed.join(', ')})` : ''}. Try another provider or official source (up to three candidates), then ask for the label or portion weight. If the user explicitly asked for an estimate, tell them the lookup is unavailable and ask whether they still want a labelled estimate before logging one. Do not invent nutrition.`;
                 }
-                return `No verified match is available for "${args.food_name}". If the user asked for an estimate, use create_food with estimated values. Otherwise try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.`;
+                return `No verified match is available for "${args.food_name}". If the user asked for an estimate, use create_food with estimated values and estimate_confidence. Otherwise try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.`;
               }
 
               let f = result.food;
@@ -1398,6 +1450,9 @@ Actions:
                   : pickBestVariant(f);
               if (v) {
                 text += `\n  Serving Size: ${formatServing(v.serving_size, v.serving_unit)}`;
+                if (v.source === 'ai_estimate') {
+                  text += `\n  Source: AI estimate${v.ai_confidence ? ` (${v.ai_confidence} confidence)` : ''}`;
+                }
                 if (f[PARTIAL_SERVING_DATA])
                   text +=
                     ' (from the search summary; the full record was unavailable, so log by weight)';
@@ -1452,7 +1507,7 @@ Actions:
                   text += `\n- **${alt.name}**`;
                   if (alt.brand) text += ` (${alt.brand})`;
                   if (altV) {
-                    text += ` (${formatServing(altV.serving_size, altV.serving_unit)}: ${roundEnergy(altV.calories ?? altV.energy ?? 0)} kcal)`;
+                    text += ` (${formatServing(altV.serving_size, altV.serving_unit)}: ${roundEnergy(altV.calories ?? altV.energy ?? 0)} kcal${altV.source === 'ai_estimate' ? ', AI estimate' : ''})`;
                   }
                 });
               }
@@ -1504,6 +1559,15 @@ Actions:
                 }
                 foodRow = await findFoodByExactName(userId, args.food_name);
                 if (!foodRow) {
+                  const close = await findCloseFoodMatches(
+                    userId,
+                    args.food_name
+                  );
+                  if (close.length > 0) {
+                    return ERRORS.VALIDATION(
+                      `No food is named exactly "${args.food_name}"; nothing was logged. Close matches:\n${formatCloseMatches(close)}\nAsk the user whether one of them is the food meant, and call log_food again with its food_id only after they confirm. Otherwise call lookup_food_nutrition.`
+                    );
+                  }
                   return ERRORS.VALIDATION(
                     `Food "${args.food_name}" not found in the database. Call lookup_food_nutrition first to search external providers, for example: {"action":"lookup_food_nutrition","food_name":"${args.food_name}"}. If it returns an external match, log it with log_external_food; otherwise research a verified source or ask for the label.`
                   );
@@ -2110,6 +2174,12 @@ Actions:
                 // Not `|| null`: that quirk is for numerics, and it would turn
                 // an explicit false into null.
                 is_quick_food: args.is_quick_food === true,
+                ...(args.estimate_confidence
+                  ? {
+                      source: 'ai_estimate',
+                      ai_confidence: args.estimate_confidence,
+                    }
+                  : {}),
               });
               const v = food.default_variant;
               let msg = `Food "${food.name}" created with ${roundEnergy(v?.calories || 0)} kcal per ${formatServing(v?.serving_size || 100, v?.serving_unit || 'g')}.`;
@@ -2141,6 +2211,13 @@ Actions:
               if (args.is_quick_food) {
                 msg +=
                   ' Saved as Quick Add — hidden from your food list and search.';
+              }
+              // A barcode that matches an existing food returns that food
+              // unchanged, so describe the returned variant, not the request.
+              if (v?.source === 'ai_estimate') {
+                msg += v.ai_confidence
+                  ? ` The food is an AI estimate (${v.ai_confidence} confidence).`
+                  : ' The food is an AI estimate.';
               }
               return formatConfirmation(msg);
             }
@@ -2789,6 +2866,113 @@ Actions:
               );
               return formatConfirmation(
                 `Barcode for "${updatedFood.name}" updated to ${args.barcode}.`
+              );
+            }
+
+            case 'update_food': {
+              if (!args.new_name && !args.brand) {
+                return ERRORS.MISSING_PARAMS(['new_name (or brand)']);
+              }
+              let renameId = args.food_id;
+              if (!renameId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['food_id (or food_name)']);
+                }
+                // Only the user's own foods can be changed, so search those
+                // alone: public foods could otherwise fill the search window.
+                const own = (
+                  await findFoodsByExactName(userId, args.food_name, {
+                    mine: true,
+                  })
+                ).filter(
+                  (r: { user_id?: string | null }) => r.user_id === userId
+                );
+                if (own.length > 1) {
+                  return ERRORS.VALIDATION(
+                    `Several of your foods are named "${args.food_name}"; nothing was changed. Call update_food again with the food_id of the one meant:\n${formatCloseMatches(own)}`
+                  );
+                }
+                const row = own[0];
+                if (!row) {
+                  const close = await findCloseFoodMatches(
+                    userId,
+                    args.food_name,
+                    { ownOnly: true }
+                  );
+                  // A public or shared food with that name cannot be changed.
+                  const named = await findFoodsByExactName(
+                    userId,
+                    args.food_name
+                  );
+                  const notOwn =
+                    named.length > 0
+                      ? ` A food you do not own is named "${args.food_name}"; it cannot be changed.`
+                      : '';
+                  return ERRORS.VALIDATION(
+                    close.length > 0
+                      ? `None of your foods is named exactly "${args.food_name}"; nothing was changed.${notOwn} Close matches among your foods:\n${formatCloseMatches(close)}\nAsk the user whether one of them is the food meant before calling update_food with its food_id.`
+                      : `None of your foods is named "${args.food_name}"; nothing was changed.${notOwn}`
+                  );
+                }
+                renameId = row.id as string;
+              }
+              const before = await foodRepository.getFoodById(renameId, userId);
+              if (!before) {
+                return ERRORS.NOT_FOUND('Food', renameId);
+              }
+              if (before.user_id !== userId) {
+                return ERRORS.FORBIDDEN(
+                  `You can only change your own foods (${before.name}).`
+                );
+              }
+              const renames =
+                args.new_name !== undefined && args.new_name !== before.name;
+              const rebrands =
+                args.brand !== undefined && args.brand !== before.brand;
+              if (!renames && !rebrands) {
+                return `No change: "${before.name}" already has that ${args.new_name && args.brand ? 'name and brand' : args.new_name ? 'name' : 'brand'}.`;
+              }
+              if (renames) {
+                // Two of the user's foods with one name would make every
+                // lookup by name ambiguous; a change of case on the same food
+                // is fine, and public foods of others do not count.
+                const clash = (
+                  await findFoodsByExactName(userId, args.new_name!, {
+                    mine: true,
+                  })
+                ).find(
+                  (r: { id: string; user_id?: string | null }) =>
+                    r.id !== renameId && r.user_id === userId
+                );
+                if (clash) {
+                  return ERRORS.VALIDATION(
+                    `Another food is already named "${clash.name}" (food_id: ${clash.id}). Nothing was changed.`
+                  );
+                }
+              }
+              let renamed: Awaited<
+                ReturnType<typeof foodCoreService.updateFood>
+              >;
+              try {
+                renamed = await foodCoreService.updateFood(userId, renameId, {
+                  name: renames ? args.new_name : undefined,
+                  brand: rebrands ? args.brand : undefined,
+                });
+              } catch (err) {
+                const message =
+                  err instanceof Error ? err.message : String(err);
+                return message.toLowerCase().includes('forbidden')
+                  ? ERRORS.FORBIDDEN(
+                      `You can only change your own foods (${before.name}).`
+                    )
+                  : ERRORS.DB_ERROR(err);
+              }
+              const changes = [
+                renames && `renamed "${before.name}" to "${renamed.name}"`,
+                rebrands && `set the brand to "${renamed.brand}"`,
+              ].filter(Boolean);
+              return formatConfirmation(
+                `Updated the food: ${changes.join(' and ')}. Its food_id (${renameId}) and variants are unchanged; past diary entries keep the name they were logged with.`
               );
             }
 

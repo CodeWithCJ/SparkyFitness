@@ -166,6 +166,13 @@ const logExternalFoodSchema = z
   })
   .strict();
 
+const estimateConfidenceSchema = z
+  .enum(['high', 'medium', 'low'])
+  .optional()
+  .describe(
+    'Set only when the values are an estimate the user asked for (a home-made, restaurant or mixed meal): how sure the estimate is. The food is then saved as an AI estimate and the app labels it so. Leave out for label or source values.'
+  );
+
 const createFoodSchema = z
   .object({
     action: z
@@ -354,6 +361,7 @@ const createFoodSchema = z
     ),
     entry_time: optionalEntryTimeSchema,
     is_quick_food: quickFoodSchema,
+    estimate_confidence: estimateConfidenceSchema,
   })
   .strict();
 
@@ -509,6 +517,36 @@ const setFoodBarcodeSchema = z
     barcode: foodBarcodeSchema.describe(
       'Product barcode; stored as a string, including leading zeroes'
     ),
+  })
+  .strict();
+
+const updateFoodSchema = z
+  .object({
+    action: z.literal('update_food'),
+    food_id: uuidSchema
+      .optional()
+      .describe('UUID of the food to rename or rebrand (or food_name)'),
+    food_name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('Current name of the food (alternative to food_id)'),
+    new_name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('New name for the food'),
+    brand: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('New brand for the food'),
   })
   .strict();
 
@@ -778,6 +816,7 @@ export const manageFoodSchema = z.discriminatedUnion('action', [
   deleteFoodSchema,
   updateEntrySchema,
   setFoodBarcodeSchema,
+  updateFoodSchema,
   updateFoodVariantSchema,
   copyFromYesterdaySchema,
   saveAsMealTemplateSchema,
@@ -809,6 +848,7 @@ export const manageFoodInput = z.object({
       'update_entry',
       'set_food_notes',
       'set_food_barcode',
+      'update_food',
       'update_food_variant',
       'copy_from_yesterday',
       'save_as_meal_template',
@@ -876,7 +916,14 @@ export const manageFoodInput = z.object({
     .string()
     .max(200)
     .optional()
-    .describe('Brand name — for create_food'),
+    .describe('Brand name — for create_food, or the new brand for update_food'),
+  new_name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .optional()
+    .describe('New food name — for update_food'),
   barcode: foodBarcodeSchema
     .optional()
     .describe('Product barcode for create_food or set_food_barcode'),
@@ -910,6 +957,7 @@ export const manageFoodInput = z.object({
     .describe(withDayNote('Date for the entry (YYYY-MM-DD)')),
   entry_time: optionalEntryTimeSchema,
   is_quick_food: quickFoodSchema,
+  estimate_confidence: estimateConfidenceSchema,
   meal_id: uuidSchema.optional().describe('Meal template UUID'),
   meal_name: z
     .string()

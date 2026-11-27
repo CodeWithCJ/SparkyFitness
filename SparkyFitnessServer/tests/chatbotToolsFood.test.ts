@@ -489,6 +489,48 @@ describe('lookup_food_nutrition', () => {
     );
   });
 
+  it('marks an AI estimate in search_food results', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      {
+        ...eggsRow,
+        default_variant: {
+          ...eggsRow.default_variant,
+          source: 'ai_estimate',
+          ai_confidence: 'low',
+        },
+      },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Eggs', search_type: 'broad' },
+      opts
+    );
+
+    expect(result).toContain('| AI estimate (low confidence)\n  ID:');
+  });
+
+  it('marks an internal match whose values are an AI estimate', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      {
+        ...eggsRow,
+        default_variant: {
+          ...eggsRow.default_variant,
+          source: 'ai_estimate',
+          ai_confidence: 'medium',
+        },
+      },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'lookup_food_nutrition', food_name: 'Eggs' },
+      opts
+    );
+
+    expect(result).toContain(
+      '  Serving Size: 100 g\n  Source: AI estimate (medium confidence)\n'
+    );
+  });
+
   it('returns the internal match without touching external providers', async () => {
     vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
       eggsRow,
@@ -557,7 +599,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      'No verified match is available for "dragonfruit smoothie". If the user asked for an estimate, use create_food with estimated values. Otherwise try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.'
+      'No verified match is available for "dragonfruit smoothie". If the user asked for an estimate, use create_food with estimated values and estimate_confidence. Otherwise try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.'
     );
     expect(
       externalProviderRepository.getActiveProvidersByTypes
@@ -1828,6 +1870,23 @@ describe('log_food', () => {
 
     expect(result).toContain('✅ Logged "Eggs"');
     expect(foodEntryService.createFoodEntry).toHaveBeenCalled();
+  });
+
+  it('infers log_food (not update_food) for food_id + brand + meal_type from a search result', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: FOOD_ID, brand: 'Bio', quantity: 2, meal_type: 'lunch' },
+      opts
+    );
+
+    expect(result).toContain('✅ Logged "Eggs"');
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
   });
 
   it('uses an explicit food_id and resolves its default variant', async () => {
@@ -7463,5 +7522,1037 @@ describe('diary nutrients_basis', () => {
       opts
     );
     expect(JSON.parse(result as string).data[0]).toMatchObject(scaled);
+  });
+});
+
+describe('sparky_manage_food close matches, estimates and update_food', () => {
+  const LEGACY_ID = '77777777-7777-4777-8777-777777777777';
+  const OTHER_ID = '88888888-8888-4888-8888-888888888888';
+  const UNRELATED_ID = '99999999-9999-4999-8999-999999999999';
+  const FULL_NAME = 'Kaffeemilch Tagesmenge (150 ml fettarme Milch, 3 Kaffee)';
+
+  // The server search matches every word, so the full name finds nothing;
+  // a single word finds the cut-off legacy row and others.
+  const byTerm = (rows: Record<string, unknown[]>) =>
+    vi
+      .mocked(foodRepository.getFoodsWithPagination)
+      .mockImplementation(
+        async (term: unknown) =>
+          (rows[String(term).toLowerCase()] ?? []) as never
+      );
+
+  it('lists close matches for an exact search with no hit, cut-off names first', async () => {
+    byTerm({
+      kaffeemilch: [
+        { id: OTHER_ID, name: 'Kaffeemilch mit Milch', brand: 'Alpro' },
+        { id: LEGACY_ID, name: 'Kaffeemilch Tagesmenge (150 ml' },
+        { id: UNRELATED_ID, name: 'Kaffeemilchpulver' },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: FULL_NAME, search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toBe(
+      `No food is named exactly "${FULL_NAME}". Close matches (not exact):\n- "Kaffeemilch Tagesmenge (150 ml", food_id: ${LEGACY_ID}\n- "Kaffeemilch mit Milch" ("Alpro"), food_id: ${OTHER_ID}\nAsk the user whether one of them is the food meant before using its food_id.`
+    );
+  });
+
+  it('keeps the plain empty result when no food shares a word', async () => {
+    byTerm({
+      kaffeemilch: [{ id: UNRELATED_ID, name: 'Kaffeemilchpulver' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: FULL_NAME, search_type: 'exact' },
+      opts
+    );
+
+    expect(result).not.toContain('Close matches');
+  });
+
+  it('log_food by name logs nothing and returns close matches', async () => {
+    byTerm({
+      kaffeemilch: [{ id: LEGACY_ID, name: 'Kaffeemilch Tagesmenge (150 ml' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: FULL_NAME,
+        quantity: 1,
+        meal_type: 'breakfast',
+        entry_date: '2026-06-11',
+      },
+      opts
+    );
+
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+    expect(result).toContain(
+      `No food is named exactly "${FULL_NAME}"; nothing was logged. Close matches:\n- "Kaffeemilch Tagesmenge (150 ml", food_id: ${LEGACY_ID}\nAsk the user whether one of them is the food meant, and call log_food again with its food_id only after they confirm.`
+    );
+  });
+
+  it('saves create_food with estimate_confidence as an AI estimate', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Wiener Schnitzel mit Kartoffeln',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 1,
+        serving_unit: 'serving',
+        calories: 850,
+        source: 'ai_estimate',
+        ai_confidence: 'low',
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Wiener Schnitzel mit Kartoffeln',
+        calories: 850,
+        protein: 45,
+        carbs: 60,
+        fat: 45,
+        serving_unit: 'serving',
+        estimate_confidence: 'low',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ source: 'ai_estimate', ai_confidence: 'low' })
+    );
+    expect(result).toBe(
+      '✅ Food "Wiener Schnitzel mit Kartoffeln" created with 850 kcal per 1 serving. The food is an AI estimate (low confidence).'
+    );
+  });
+
+  it('leaves the source alone without estimate_confidence', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Skyr',
+      default_variant: { id: VARIANT_ID, serving_size: 100, serving_unit: 'g' },
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        serving_size: 100,
+        serving_unit: 'g',
+      },
+      opts
+    );
+
+    const data = vi.mocked(foodCoreService.createFood).mock.calls[0][1];
+    expect(data).not.toHaveProperty('source');
+    expect(data).not.toHaveProperty('ai_confidence');
+  });
+
+  it('rejects an estimate_confidence outside high, medium and low', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        estimate_confidence: 'certain' as never,
+      },
+      opts
+    );
+
+    expect(result).toContain('VALIDATION');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+  });
+
+  it('renames a food by id and keeps its id', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Kaffeemilch Tagesmenge (150 ml',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: FULL_NAME,
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: FULL_NAME },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      LEGACY_ID,
+      { name: FULL_NAME, brand: undefined }
+    );
+    expect(result).toBe(
+      `✅ Updated the food: renamed "Kaffeemilch Tagesmenge (150 ml" to "${FULL_NAME}". Its food_id (${LEGACY_ID}) and variants are unchanged; past diary entries keep the name they were logged with.`
+    );
+  });
+
+  it('reads food_id + new_name without an action as update_food, not delete_food', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Old',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'New',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: LEGACY_ID, new_name: 'New' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalled();
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+    expect(result).toContain('renamed "Old" to "New"');
+  });
+
+  it('reads food_id + brand without an action as update_food, not delete_food', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr',
+      brand: 'Milbona',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: LEGACY_ID, brand: 'Milbona' },
+      opts
+    );
+
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+    expect(result).toContain('set the brand to "Milbona"');
+  });
+
+  it('lists a food whose name was cut off inside a word', async () => {
+    byTerm({
+      kaffeemilch: [{ id: LEGACY_ID, name: 'Kaffeemilch Tagesmen' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'search_food',
+        food_name: 'Kaffeemilch Tagesmenge',
+        search_type: 'exact',
+      },
+      opts
+    );
+
+    expect(result).toContain(`- "Kaffeemilch Tagesmen", food_id: ${LEGACY_ID}`);
+  });
+
+  it('does not read one word as the start of a longer word', async () => {
+    byTerm({
+      kaffee: [{ id: UNRELATED_ID, name: 'Kaffeemilch' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Kaffee', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).not.toContain('Close matches');
+  });
+
+  it('still finds close matches for a name of only a count word', async () => {
+    byTerm({
+      dose: [{ id: OTHER_ID, name: 'Dose Mais' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Dose', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toContain(`- "Dose Mais", food_id: ${OTHER_ID}`);
+  });
+
+  it.each([
+    ['250g Hähnchenbrust', 'Hähnchenbrust gegrillt'],
+    ['100% Orangensaft', 'Orangensaft naturtrüb'],
+    ['3-Korn Brot', '3-Korn-Brot hell'],
+    ['Milch 3.5 % Fett', 'Milch Fett Bio'],
+    ['½ Zwiebel Rot', 'Zwiebel Rot'],
+    ['2 Bananen', 'Bananen reif'],
+    ['Fried egg', 'Fried egg sandwich'],
+  ])('keeps the food word in "%s"', async (query, stored) => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: OTHER_ID, name: stored },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: query, search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toContain(`- "${stored}", food_id: ${OTHER_ID}`);
+  });
+
+  it('runs a wrapped update_food as update_food, never delete_food', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      { update_food: { food_id: LEGACY_ID } } as never,
+      opts
+    );
+
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+    expect(result).toContain('new_name (or brand)');
+  });
+
+  it('does not read an empty new_name on a food_id as delete_food', async () => {
+    await tools.sparky_manage_food.execute!(
+      { food_id: LEGACY_ID, new_name: '' },
+      opts
+    );
+
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+  });
+
+  it('reads food_id + brand + quantity as neither a brand change nor a delete', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: LEGACY_ID, brand: 'Bio', quantity: 2 },
+      opts
+    );
+
+    expect(String(result)).toContain('meal_type');
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+  });
+
+  it('refuses a food the user does not own before any other check', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: OTHER_ID,
+      user_id: null,
+      name: 'Skyr',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: OTHER_ID, new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(result).toContain('You can only change your own foods (Skyr).');
+    expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+  });
+
+  it('lists at most 5 close matches', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue(
+      Array.from({ length: 7 }, (_, i) => ({
+        id: `00000000-0000-4000-8000-00000000000${i}`,
+        name: `Kaffeemilch Tagesmenge Sorte ${i}`,
+      })) as never
+    );
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: FULL_NAME, search_type: 'exact' },
+      opts
+    );
+
+    expect(String(result).match(/food_id:/g) ?? []).toHaveLength(5);
+  });
+
+  it('splits words joined by a comma or slash', async () => {
+    byTerm({ skyr: [{ id: OTHER_ID, name: 'Skyr, natur' }] });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Skyr,natur', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toContain(`- "Skyr, natur", food_id: ${OTHER_ID}`);
+  });
+
+  it('keeps each close match on one line', async () => {
+    byTerm({
+      skyr: [
+        {
+          id: OTHER_ID,
+          name: `Skyr natur"\n- "Fake", food_id: ${UNRELATED_ID}`,
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Skyr natur', search_type: 'exact' },
+      opts
+    );
+
+    expect(
+      String(result)
+        .split('\n')
+        .filter((l: string) => l.startsWith('- '))
+    ).toHaveLength(1);
+  });
+
+  it('lists no more close matches than the search limit', async () => {
+    byTerm({
+      kaffeemilch: [
+        { id: LEGACY_ID, name: 'Kaffeemilch Tagesmenge (150 ml' },
+        { id: OTHER_ID, name: 'Kaffeemilch Tagesmenge Bio' },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'search_food',
+        food_name: FULL_NAME,
+        search_type: 'exact',
+        limit: 1,
+      },
+      opts
+    );
+
+    expect(String(result).match(/food_id:/g) ?? []).toHaveLength(1);
+  });
+
+  it('refuses an update_food with a food_id that is not a food UUID', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_food',
+        food_id: '4001234567890',
+        food_name: 'Skyr',
+        new_name: 'Skyr Natur',
+      },
+      opts
+    );
+
+    expect(result).toContain('is not an internal food UUID');
+    expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+  });
+
+  it('does not read an empty brand on a food_id as delete_food', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: LEGACY_ID, brand: '' },
+      opts
+    );
+
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toMatch(/brand/i);
+  });
+
+  it('sets only the brand', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr',
+      brand: 'Milbona',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, brand: 'Milbona' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      LEGACY_ID,
+      { name: undefined, brand: 'Milbona' }
+    );
+    expect(result).toContain('set the brand to "Milbona"');
+  });
+
+  it('refuses a new name another of the user’s foods already has', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: OTHER_ID, name: 'Skyr Natur', user_id: 'user-1' },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'skyr natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toContain(
+      `Another food is already named "Skyr Natur" (food_id: ${OTHER_ID}). Nothing was changed.`
+    );
+  });
+
+  it('allows a name a public food of someone else has', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: OTHER_ID, name: 'Skyr Natur', user_id: 'someone-else' },
+    ] as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr Natur',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalled();
+    expect(result).toContain('renamed "Skyr" to "Skyr Natur"');
+  });
+
+  it('returns close matches when the food to rename is not found by name', async () => {
+    byTerm({
+      kaffeemilch: [
+        {
+          id: LEGACY_ID,
+          name: 'Kaffeemilch Tagesmenge (150 ml',
+          user_id: 'user-1',
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_name: FULL_NAME, new_name: 'Kaffeemilch' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toContain(
+      `None of your foods is named exactly "${FULL_NAME}"; nothing was changed. Close matches among your foods:\n- "Kaffeemilch Tagesmenge (150 ml", food_id: ${LEGACY_ID}`
+    );
+  });
+
+  it('refuses to rename someone else’s food', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Shared food',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodCoreService.updateFood).mockRejectedValue(
+      new Error('Forbidden: You do not have permission to update this food.')
+    );
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'Mine' },
+      opts
+    );
+
+    expect(result).toContain('FORBIDDEN');
+  });
+
+  it('finds a close match through the longest word of the query', async () => {
+    byTerm({
+      // Only "natur", the longest word, finds the food.
+      natur: [{ id: LEGACY_ID, name: 'Skyr Natur Vanille' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'search_food',
+        food_name: 'Bio Skyr Natur',
+        search_type: 'exact',
+      },
+      opts
+    );
+
+    expect(result).toContain(`- "Skyr Natur Vanille", food_id: ${LEGACY_ID}`);
+  });
+
+  it('lists no close matches on a later page of an exact search', async () => {
+    byTerm({
+      kaffeemilch: [{ id: LEGACY_ID, name: 'Kaffeemilch Tagesmenge (150 ml' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'search_food',
+        food_name: FULL_NAME,
+        search_type: 'exact',
+        offset: 20,
+      },
+      opts
+    );
+
+    expect(result).not.toContain('Close matches');
+  });
+
+  it('does not report an estimate when an existing food came back unchanged', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Skyr',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        source: 'manual',
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        barcode: '4001234567890',
+        estimate_confidence: 'medium',
+      },
+      opts
+    );
+
+    expect(result).toContain('✅ Food "Skyr" created');
+    expect(result).not.toContain('AI estimate');
+  });
+
+  it('marks a returned estimate even when the request sent no confidence', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Skyr',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 63,
+        source: 'ai_estimate',
+        ai_confidence: 'medium',
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        barcode: '4001234567890',
+      },
+      opts
+    );
+
+    expect(result).toContain('The food is an AI estimate (medium confidence).');
+  });
+
+  it('claims no confidence when none was stored', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Skyr',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 63,
+        source: 'ai_estimate',
+        ai_confidence: null,
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        estimate_confidence: 'low',
+      },
+      opts
+    );
+
+    expect(result).toContain('The food is an AI estimate.');
+    expect(result).not.toContain('low confidence');
+  });
+
+  it('reports the confidence that was stored', async () => {
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Skyr',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 63,
+        source: 'ai_estimate',
+        ai_confidence: 'high',
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        barcode: '4001234567890',
+        estimate_confidence: 'low',
+      },
+      opts
+    );
+
+    expect(result).toContain('The food is an AI estimate (high confidence).');
+  });
+
+  it('allows a change of case on the same food', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'skyr',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: LEGACY_ID, name: 'skyr', user_id: 'user-1' },
+    ] as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'Skyr' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalled();
+    expect(result).toContain('renamed "skyr" to "Skyr"');
+  });
+
+  it('changes nothing when the name and brand are already set', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+      brand: 'Milbona',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_food',
+        food_id: LEGACY_ID,
+        new_name: 'Skyr',
+        brand: 'Milbona',
+      },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toBe('No change: "Skyr" already has that name and brand.');
+  });
+
+  it('sees the user’s own clash behind a public food with the same name', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: UNRELATED_ID, name: 'Skyr Natur', user_id: 'someone-else' },
+      { id: OTHER_ID, name: 'Skyr Natur', user_id: 'user-1' },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toContain(`(food_id: ${OTHER_ID})`);
+    expect(foodRepository.getFoodsWithPagination).toHaveBeenCalledWith(
+      'Skyr Natur',
+      'mine',
+      'user-1',
+      500,
+      0,
+      null
+    );
+  });
+
+  it('renames the user’s own food by name, not a public one listed first', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockImplementation(
+      async (term: unknown) =>
+        (String(term) === 'Skyr'
+          ? [
+              { id: UNRELATED_ID, name: 'Skyr', user_id: 'someone-else' },
+              { id: LEGACY_ID, name: 'Skyr', user_id: 'user-1' },
+            ]
+          : []) as never
+    );
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr Natur',
+    } as never);
+
+    // No action: food_name + new_name is read as update_food.
+    const result = await tools.sparky_manage_food.execute!(
+      { food_name: 'Skyr', new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      LEGACY_ID,
+      { name: 'Skyr Natur', brand: undefined }
+    );
+    expect(result).toContain('renamed "Skyr" to "Skyr Natur"');
+  });
+
+  it('offers only the user’s own foods as close matches for a rename', async () => {
+    byTerm({
+      kaffeemilch: [
+        {
+          id: UNRELATED_ID,
+          name: 'Kaffeemilch Tagesmenge',
+          user_id: 'someone-else',
+        },
+        {
+          id: LEGACY_ID,
+          name: 'Kaffeemilch Tagesmenge (150 ml',
+          user_id: 'user-1',
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_name: FULL_NAME, new_name: 'Kaffeemilch' },
+      opts
+    );
+
+    expect(result).toContain(LEGACY_ID);
+    expect(result).not.toContain(UNRELATED_ID);
+    // The close-match search itself is limited to the user's foods.
+    expect(
+      vi
+        .mocked(foodRepository.getFoodsWithPagination)
+        .mock.calls.filter(([term]) => term === 'kaffeemilch')
+        .every(([, filter]) => filter === 'mine')
+    ).toBe(true);
+  });
+
+  it('changes only the brand when new_name repeats the current name', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+      brand: 'Milbona',
+    } as never);
+    vi.mocked(foodCoreService.updateFood).mockResolvedValue({
+      id: LEGACY_ID,
+      name: 'Skyr',
+      brand: 'Arla',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_food',
+        food_id: LEGACY_ID,
+        new_name: 'Skyr',
+        brand: 'Arla',
+      },
+      opts
+    );
+
+    // No clash lookup for a name that does not change.
+    expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      LEGACY_ID,
+      { name: undefined, brand: 'Arla' }
+    );
+    expect(result).toBe(
+      `✅ Updated the food: set the brand to "Arla". Its food_id (${LEGACY_ID}) and variants are unchanged; past diary entries keep the name they were logged with.`
+    );
+  });
+
+  it('says only the name is unchanged when only new_name was sent', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, new_name: 'Skyr' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toBe('No change: "Skyr" already has that name.');
+  });
+
+  it('asks for a food_id when several of the user’s foods have the name', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: LEGACY_ID, name: 'Skyr', user_id: 'user-1' },
+      { id: OTHER_ID, name: 'Skyr', user_id: 'user-1' },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_name: 'Skyr', new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toContain(
+      `Several of your foods are named "Skyr"; nothing was changed. Call update_food again with the food_id of the one meant:\n- "Skyr", food_id: ${LEGACY_ID}\n- "Skyr", food_id: ${OTHER_ID}`
+    );
+  });
+
+  it('reads new_name with nutrients as a rename, never a second food', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        food_name: 'Skyr',
+        calories: 63,
+        protein: 11,
+        carbs: 4,
+        fat: 0.2,
+        new_name: 'Skyr Natur',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(result).toContain('nothing was changed');
+  });
+
+  it('matches a one-word query that is not the start of the name', async () => {
+    byTerm({ skyr: [{ id: LEGACY_ID, name: 'Natur Skyr Vanille' }] });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Skyr', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toBe(
+      `No food is named exactly "Skyr". Close matches (not exact):\n- "Natur Skyr Vanille", food_id: ${LEGACY_ID}\nAsk the user whether one of them is the food meant before using its food_id.`
+    );
+  });
+
+  it('falls back to words of two letters or more for a name of short words', async () => {
+    byTerm({
+      ei: [
+        { id: LEGACY_ID, name: 'Ei Bio' },
+        { id: OTHER_ID, name: 'Hühner-Ei' },
+        { id: UNRELATED_ID, name: 'Eis Vanille' },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: 'Ei 50 g', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).toBe(
+      `No food is named exactly "Ei 50 g". Close matches (not exact):\n- "Ei Bio", food_id: ${LEGACY_ID}\n- "Hühner-Ei", food_id: ${OTHER_ID}\nAsk the user whether one of them is the food meant before using its food_id.`
+    );
+  });
+
+  it('counts a repeated word once', async () => {
+    byTerm({ skyr: [{ id: UNRELATED_ID, name: 'Skyr Skyr Drink' }] });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'search_food',
+        food_name: 'Skyr Natur',
+        search_type: 'exact',
+      },
+      opts
+    );
+
+    expect(result).not.toContain(UNRELATED_ID);
+  });
+
+  it('says a public food cannot be changed when only it has the name', async () => {
+    byTerm({
+      skyr: [{ id: UNRELATED_ID, name: 'Skyr', user_id: 'someone-else' }],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_name: 'Skyr', new_name: 'Skyr Natur' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
+    expect(result).toContain(
+      'None of your foods is named "Skyr"; nothing was changed. A food you do not own is named "Skyr"; it cannot be changed.'
+    );
+  });
+
+  it('says only the brand is unchanged when only brand was sent', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: LEGACY_ID,
+      user_id: 'user-1',
+      name: 'Skyr',
+      brand: 'Milbona',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID, brand: 'Milbona' },
+      opts
+    );
+
+    expect(result).toBe('No change: "Skyr" already has that brand.');
+  });
+
+  it('offers no close match for a name without usable words', async () => {
+    byTerm({ '100': [{ id: UNRELATED_ID, name: 'Hähnchen 100 g' }] });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'search_food', food_name: '100 g', search_type: 'exact' },
+      opts
+    );
+
+    expect(result).not.toContain('Close matches');
+    expect(result).not.toContain(UNRELATED_ID);
+  });
+
+  it('asks for new_name or brand', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'update_food', food_id: LEGACY_ID },
+      opts
+    );
+
+    expect(result).toContain('new_name (or brand)');
+    expect(foodCoreService.updateFood).not.toHaveBeenCalled();
   });
 });

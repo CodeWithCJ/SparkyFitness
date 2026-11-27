@@ -444,3 +444,33 @@ it('does not let nested data replace a destructive outer action', () => {
     })
   ).toBe(true);
 });
+
+describe('update_food wrappers', () => {
+  // Not lifted like the other wrappers: a second wrapper could then supply
+  // an empty action, and the executor would read the bare food_id as a
+  // delete. A wrapped rename gets a card like any call without an action.
+  it('cards a wrapped rename like a call without an action', () => {
+    expect(
+      isDestructiveToolCall('sparky_manage_food', {
+        update_food: { food_id: 'id', new_name: 'New' },
+      })
+    ).toBe(true);
+  });
+
+  it('cards a wrapped rename next to a wrapper with an empty action', () => {
+    expect(
+      isDestructiveToolCall('sparky_manage_food', {
+        update_food: { food_id: 'id' },
+        copy_from_yesterday: { action: null },
+      })
+    ).toBe(true);
+  });
+
+  it('still cards a delete wrapped as update_food', () => {
+    expect(
+      isDestructiveToolCall('sparky_manage_food', {
+        update_food: { action: 'delete_food', food_id: 'id' },
+      })
+    ).toBe(true);
+  });
+});
