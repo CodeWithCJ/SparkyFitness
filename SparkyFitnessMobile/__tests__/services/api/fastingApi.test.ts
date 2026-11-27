@@ -31,9 +31,16 @@ describe('fastingApi', () => {
       );
     });
 
-    test('coalesces a null body to null', async () => {
+    test('returns null for a literal null body', async () => {
       mockApiFetch.mockResolvedValueOnce(null);
       await expect(fetchCurrentFast()).resolves.toBeNull();
+    });
+
+    test('rejects an empty (undefined) response instead of treating it as no active fast', async () => {
+      mockApiFetch.mockResolvedValueOnce(undefined);
+      await expect(fetchCurrentFast()).rejects.toThrow(
+        'Empty response while fetching current fast'
+      );
     });
   });
 

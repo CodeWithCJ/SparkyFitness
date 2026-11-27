@@ -182,8 +182,15 @@ internal object WatchConnectivityHub {
   private val headlessWaterMutexes = LinkedHashMap<String, Mutex>(32, 0.75f, true)
   private val headlessCheckInMutexLock = Any()
   private val headlessCheckInMutexes = LinkedHashMap<String, Mutex>(32, 0.75f, true)
+  private data class FastReconcileEntry(
+    val generation: Long,
+    val job: Job
+  )
+
   private val headlessFastMutexLock = Any()
   private val headlessFastMutexes = LinkedHashMap<String, Mutex>(32, 0.75f, true)
+  private val fastReconcileLock = Any()
+  private val activeFastReconcileJobs = HashMap<String, FastReconcileEntry>()
 
   data class HeadlessCredentials(
     val appCtx: Context,
@@ -3973,6 +3980,15 @@ internal object WatchConnectivityHub {
           if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
             enqueueInboundJson(context, rawJson)
           }
+          if (isHeadlessOwnerStillActive(context, creds)) {
+            scheduleHeadlessFastReconcile(
+              context = context,
+              ownerId = payloadOwner,
+              expectedGeneration = creds.generation,
+              clientId = clientId,
+              queueType = "fastStart"
+            )
+          }
           return
         }
         removeQueuedInboundEvent(context, clientId, type = "fastStart", ownerId = payloadOwner)
@@ -3994,8 +4010,18 @@ internal object WatchConnectivityHub {
           if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
             enqueueInboundJson(context, rawJson)
           }
+          if (isHeadlessOwnerStillActive(context, creds)) {
+            scheduleHeadlessFastReconcile(
+              context = context,
+              ownerId = payloadOwner,
+              expectedGeneration = creds.generation,
+              clientId = clientId,
+              queueType = "fastStart"
+            )
+          }
           return
         }
+        cancelHeadlessFastReconcile(payloadOwner, "fastStart", clientId)
         drainQueuedFastEndsForOwner(context, payloadOwner)
       } else {
         removeQueuedInboundEvent(context, clientId, type = "fastStart", ownerId = payloadOwner)
@@ -4201,8 +4227,21 @@ internal object WatchConnectivityHub {
     if (clientId.isNotEmpty()) startSyncEvent["clientId"] = clientId
     activeModule?.emitEvent("onWatchServerSynced", startSyncEvent)
     drainQueuedFastEndsForOwner(context, payloadOwner)
-    if (!fastAckSent && rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
-      enqueueInboundJson(context, rawJson)
+    if (fastAckSent) {
+      cancelHeadlessFastReconcile(payloadOwner, "fastStart", clientId)
+    } else {
+      if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
+        enqueueInboundJson(context, rawJson)
+      }
+      if (isHeadlessOwnerStillActive(context, creds)) {
+        scheduleHeadlessFastReconcile(
+          context = context,
+          ownerId = payloadOwner,
+          expectedGeneration = creds.generation,
+          clientId = clientId,
+          queueType = "fastStart"
+        )
+      }
     }
   }
 
@@ -4297,8 +4336,21 @@ internal object WatchConnectivityHub {
       }
       if (!isHeadlessOwnerStillActive(context, creds)) return
       activeModule?.emitEvent("onWatchServerSynced", mapOf("domain" to "fasting", "ownerId" to payloadOwner))
-      if (!endAckSent && rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
-        enqueueInboundJson(context, rawJson)
+      if (endAckSent) {
+        cancelHeadlessFastReconcile(payloadOwner, "fastEnd", clientId)
+      } else {
+        if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
+          enqueueInboundJson(context, rawJson)
+        }
+        if (isHeadlessOwnerStillActive(context, creds)) {
+          scheduleHeadlessFastReconcile(
+            context = context,
+            ownerId = payloadOwner,
+            expectedGeneration = creds.generation,
+            clientId = clientId,
+            queueType = "fastEnd"
+          )
+        }
       }
     }
     val settledOutcome = if (clientId.isNotEmpty()) {
@@ -4312,6 +4364,15 @@ internal object WatchConnectivityHub {
       if (!freshKnown) {
         if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
           enqueueInboundJson(context, rawJson)
+        }
+        if (isHeadlessOwnerStillActive(context, creds)) {
+          scheduleHeadlessFastReconcile(
+            context = context,
+            ownerId = payloadOwner,
+            expectedGeneration = creds.generation,
+            clientId = clientId,
+            queueType = "fastEnd"
+          )
         }
         return
       }
@@ -4328,8 +4389,19 @@ internal object WatchConnectivityHub {
         sendFastAckOnSuccess = true
       )
       if (!isHeadlessOwnerStillActive(context, creds)) return
-      if (!settledAckSent && rawJson != null) {
-        enqueueInboundJson(context, rawJson)
+      if (settledAckSent) {
+        cancelHeadlessFastReconcile(payloadOwner, "fastEnd", clientId)
+      } else {
+        if (rawJson != null) {
+          enqueueInboundJson(context, rawJson)
+        }
+        scheduleHeadlessFastReconcile(
+          context = context,
+          ownerId = payloadOwner,
+          expectedGeneration = creds.generation,
+          clientId = clientId,
+          queueType = "fastEnd"
+        )
       }
       return
     }
@@ -4438,6 +4510,15 @@ internal object WatchConnectivityHub {
             activeModule?.emitEvent("onWatchServerSynced", mapOf("domain" to "fasting", "ownerId" to payloadOwner))
             if (rawJson != null && isHeadlessOwnerStillActive(context, creds)) {
               enqueueInboundJson(context, rawJson)
+            }
+            if (isHeadlessOwnerStillActive(context, creds)) {
+              scheduleHeadlessFastReconcile(
+                context = context,
+                ownerId = payloadOwner,
+                expectedGeneration = creds.generation,
+                clientId = clientId,
+                queueType = "fastEnd"
+              )
             }
             return
           }
@@ -4939,6 +5020,108 @@ internal object WatchConnectivityHub {
       Log.w(TAG, "performHeadlessWorkoutStart failed: ${e.message}")
       enqueueWorkoutRecovery(recoverySessionId)
     }
+  }
+
+  private fun cancelHeadlessFastReconcile(
+    ownerId: String,
+    queueType: String,
+    clientId: String
+  ) {
+    if (ownerId.isEmpty()) return
+    val key = "$ownerId:$queueType:$clientId"
+    val existing = synchronized(fastReconcileLock) {
+      activeFastReconcileJobs.remove(key)
+    }
+    existing?.job?.cancel()
+  }
+
+  private fun scheduleHeadlessFastReconcile(
+    context: Context,
+    ownerId: String,
+    expectedGeneration: Long,
+    clientId: String,
+    queueType: String
+  ) {
+    if (ownerId.isEmpty()) return
+    val appCtx = context.applicationContext
+    val fastMutex = fastOwnerMutex(ownerId)
+    val key = "$ownerId:$queueType:$clientId"
+    var jobToCancel: Job? = null
+    var jobToStart: Job? = null
+    synchronized(fastReconcileLock) {
+      val existing = activeFastReconcileJobs[key]
+      if (existing != null && existing.job.isActive) {
+        if (existing.generation >= expectedGeneration) return
+        jobToCancel = existing.job
+      }
+      lateinit var job: Job
+      job = scope.launch(start = CoroutineStart.LAZY) {
+        try {
+          val backoffMs = longArrayOf(2_000L, 5_000L, 12_000L)
+          for (waitMs in backoffMs) {
+            delay(waitMs)
+            val done = fastMutex.withLock {
+              withContext(Dispatchers.IO) {
+                val creds = acquireHeadlessCredentials(appCtx, ownerId) ?: return@withContext true
+                if (creds.generation != expectedGeneration) return@withContext true
+                val stillSettled = if (clientId.isEmpty()) {
+                  true
+                } else if (queueType == "fastEnd") {
+                  getSettledFastEndOutcome(appCtx, ownerId, clientId) != null
+                } else {
+                  getSettledFastStartOutcome(appCtx, ownerId, clientId) == true
+                }
+                if (!stillSettled) return@withContext true
+                val readRev = synchronized(credentialsStateLock) {
+                  appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getLong(LAST_CACHED_FAST_REV_KEY, 0L)
+                }
+                val (freshKnown, freshFast) = fetchFreshFastState(creds)
+                if (!isHeadlessOwnerStillActive(appCtx, creds)) return@withContext true
+                if (!freshKnown) return@withContext false
+                val applied = patchCachedContextAfterHeadlessWrite(
+                  context = appCtx,
+                  expectedOwner = ownerId,
+                  expectedGeneration = creds.generation,
+                  clientId = clientId,
+                  updateFast = true,
+                  fastUpdate = freshFast,
+                  fastReadRev = readRev,
+                  sendFastAckOnSuccess = true
+                )
+                if (!isHeadlessOwnerStillActive(appCtx, creds)) return@withContext true
+                if (!applied) return@withContext false
+                removeQueuedInboundEvent(appCtx, clientId, type = queueType, ownerId = ownerId)
+                if (queueType == "fastStart") {
+                  clearInFlightForegroundFastStart(clientId, ownerId)
+                  val syncEvent = mutableMapOf<String, Any?>("domain" to "fasting", "ownerId" to ownerId)
+                  if (clientId.isNotEmpty()) syncEvent["clientId"] = clientId
+                  activeModule?.emitEvent("onWatchServerSynced", syncEvent)
+                  drainQueuedFastEndsForOwner(appCtx, ownerId)
+                } else {
+                  activeModule?.emitEvent(
+                    "onWatchServerSynced",
+                    mapOf("domain" to "fasting", "ownerId" to ownerId)
+                  )
+                }
+                true
+              }
+            }
+            if (done) return@launch
+          }
+        } finally {
+          synchronized(fastReconcileLock) {
+            if (activeFastReconcileJobs[key]?.job === job) {
+              activeFastReconcileJobs.remove(key)
+            }
+          }
+        }
+      }
+      activeFastReconcileJobs[key] = FastReconcileEntry(expectedGeneration, job)
+      jobToStart = job
+    }
+    jobToCancel?.cancel()
+    jobToStart?.start()
   }
 
   private fun scheduleWaterTotalReconcile(

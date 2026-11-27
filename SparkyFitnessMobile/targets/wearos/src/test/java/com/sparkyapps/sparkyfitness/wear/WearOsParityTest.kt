@@ -7259,23 +7259,17 @@ class WearOsParityTest {
         assertNull(appliedUnreadable.fast)
         assertTrue(appliedUnreadable.fastUpdated)
 
-        // Transient failure or invalid JSON on re-fetch settles start with fastUpdated = false (fast state unknown)
+        // Transient failure or invalid JSON on re-fetch falls back so the idempotent clientId stays persisted and retries
         val outcomeTransient = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = endedJson,
             fetchLatestCurrent = { null }
         )
-        assertTrue(outcomeTransient is DirectWriteOutcome.Applied)
-        val appliedTransient = outcomeTransient as DirectWriteOutcome.Applied
-        assertNull(appliedTransient.fast)
-        assertFalse(appliedTransient.fastUpdated)
+        assertEquals(DirectWriteOutcome.FallbackToPhone, outcomeTransient)
 
         val outcomeInvalid = WearDirectApiClient.resolveFastStartOutcome(
             startResBody = endedJson,
             fetchLatestCurrent = { "{}" }
         )
-        assertTrue(outcomeInvalid is DirectWriteOutcome.Applied)
-        val appliedInvalid = outcomeInvalid as DirectWriteOutcome.Applied
-        assertNull(appliedInvalid.fast)
-        assertFalse(appliedInvalid.fastUpdated)
+        assertEquals(DirectWriteOutcome.FallbackToPhone, outcomeInvalid)
     }
 }

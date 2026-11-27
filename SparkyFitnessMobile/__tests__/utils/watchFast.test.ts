@@ -1,4 +1,8 @@
-import { isTerminalFast, toWatchFast } from '../../src/utils/watchFast';
+import {
+  isTerminalFast,
+  parseCurrentWatchFast,
+  toWatchFast,
+} from '../../src/utils/watchFast';
 
 describe('toWatchFast', () => {
   it('keeps "unknown" apart from "not fasting"', () => {
@@ -93,5 +97,81 @@ describe('toWatchFast', () => {
         status: 'ACTIVE',
       } as never)
     ).toMatchObject({ id: 'fast-active-with-end', label: '16:8' });
+  });
+
+  it('parseCurrentWatchFast separates confirmed absence from unreadable payloads', () => {
+    expect(parseCurrentWatchFast(null)).toEqual({ known: true, fast: null });
+    expect(parseCurrentWatchFast(undefined)).toEqual({ known: false });
+    expect(parseCurrentWatchFast('unexpected' as never)).toEqual({
+      known: false,
+    });
+    expect(parseCurrentWatchFast([] as never)).toEqual({ known: false });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-bad-time',
+        start_time: 'not-a-date',
+        status: 'ACTIVE',
+      } as never)
+    ).toEqual({ known: false });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-null-time',
+        start_time: null,
+        status: 'ACTIVE',
+      } as never)
+    ).toEqual({ known: false });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-blank-time',
+        start_time: '   ',
+        status: 'ACTIVE',
+      } as never)
+    ).toEqual({ known: false });
+    expect(
+      toWatchFast({
+        id: 'f-null-time',
+        start_time: null,
+        status: 'ACTIVE',
+      } as never)
+    ).toBeNull();
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-eating',
+        start_time: 'not-a-date',
+        is_eating_window: true,
+      } as never)
+    ).toEqual({ known: true, fast: null });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-malformed-eating',
+        start_time: null,
+        status: 'ACTIVE',
+        is_eating_window: 'false',
+      } as never)
+    ).toEqual({ known: false });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-done',
+        start_time: 'not-a-date',
+        status: 'COMPLETED',
+      } as never)
+    ).toEqual({ known: true, fast: null });
+    expect(
+      parseCurrentWatchFast({
+        id: 'f-active',
+        start_time: '2026-10-03T08:00:00.000Z',
+        target_end_time: '2026-10-04T00:00:00.000Z',
+        fasting_type: '16:8',
+        status: 'ACTIVE',
+      } as never)
+    ).toEqual({
+      known: true,
+      fast: {
+        id: 'f-active',
+        startedAt: Date.parse('2026-10-03T08:00:00.000Z'),
+        targetEndAt: Date.parse('2026-10-04T00:00:00.000Z'),
+        label: '16:8',
+      },
+    });
   });
 });

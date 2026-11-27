@@ -22,7 +22,11 @@ import {
   resolveWatchServerConfig,
 } from '../services/watchServerCredentials';
 import { isPermanentWatchClientRejection } from './useWatchCheckInBridge';
-import { isTerminalFast, toWatchFast } from '../utils/watchFast';
+import {
+  isTerminalFast,
+  parseCurrentWatchFast,
+  toWatchFast,
+} from '../utils/watchFast';
 
 const MAX_SETTLED_FAST_IDS = 100;
 
@@ -35,6 +39,8 @@ type RetryingStartEntry = {
 type DeferredEndEntry = {
   payload: WatchFastEndRequestPayload;
   blockedByStartIds: Set<string>;
+  remainingOriginalStartIds: Set<string>;
+  hasConfirmedOriginalStart: boolean;
   supersededByStartPrune: boolean;
 };
 
@@ -123,12 +129,15 @@ export function useWatchFastingBridge(enabled: boolean): void {
         if (!(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))) {
           return;
         }
-        await sendAckWithFast(
-          clientId,
-          true,
-          true,
-          toWatchFast(latest) ?? null
-        );
+        const parsedLatest = parseCurrentWatchFast(latest);
+        if (!parsedLatest.known) {
+          addLog(
+            '[Watch] Settled fast ack refresh returned unreadable fast; deferring ack until retry',
+            'WARNING'
+          );
+          return;
+        }
+        await sendAckWithFast(clientId, true, true, parsedLatest.fast);
       } catch (error) {
         addLog(
           `[Watch] Settled fast ack refresh failed; deferring ack until retry: ${String(error)}`,
@@ -220,6 +229,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
               deferred.blockedByStartIds.has(excludeClientId);
             for (const id of prunedStartIds) {
               deferred.blockedByStartIds.delete(id);
+              deferred.remainingOriginalStartIds.delete(id);
             }
             if (
               dependedOnPruned &&
@@ -303,6 +313,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
         {
           payload,
           blockedByStartIds: new Set(blockingStartIds),
+          remainingOriginalStartIds: new Set(blockingStartIds),
+          hasConfirmedOriginalStart: false,
           supersededByStartPrune: false,
         },
       ]);
@@ -442,13 +454,44 @@ export function useWatchFastingBridge(enabled: boolean): void {
     const drainDeferredEnds = async (
       ownerKey: string,
       startOutcome: 'confirmed' | 'rejected' | 'terminal' = 'confirmed',
-      settledStartClientId?: string
+      settledStartClientIds?: string | readonly string[]
     ) => {
       const pending = deferredEndsByOwnerRef.current.get(ownerKey);
       if (!pending || pending.length === 0) return;
+      const settledIds =
+        settledStartClientIds == null
+          ? []
+          : typeof settledStartClientIds === 'string'
+            ? settledStartClientIds
+              ? [settledStartClientIds]
+              : []
+            : settledStartClientIds.filter(Boolean);
       const unblocked: DeferredEndEntry[] = [];
       const stillBlocked: DeferredEndEntry[] = [];
       for (const deferred of pending) {
+        if (settledIds.length > 0) {
+          let removedOriginal = false;
+          for (const id of settledIds) {
+            if (deferred.remainingOriginalStartIds.delete(id)) {
+              removedOriginal = true;
+            }
+          }
+          if (removedOriginal) {
+            if (startOutcome === 'confirmed') {
+              deferred.hasConfirmedOriginalStart = true;
+            } else if (
+              deferred.remainingOriginalStartIds.size === 0 &&
+              !deferred.hasConfirmedOriginalStart &&
+              isStartlessEnd(deferred.payload)
+            ) {
+              deferred.supersededByStartPrune = true;
+            }
+          }
+        }
+        if (deferred.supersededByStartPrune) {
+          unblocked.push(deferred);
+          continue;
+        }
         const currentBlockers = getBlockingRetryingStartIds(
           ownerKey,
           deferred.payload
@@ -459,8 +502,8 @@ export function useWatchFastingBridge(enabled: boolean): void {
         } else {
           const retiredByTerminalStart =
             startOutcome === 'terminal' &&
-            (!settledStartClientId ||
-              deferred.blockedByStartIds.has(settledStartClientId));
+            (settledIds.length === 0 ||
+              settledIds.some((id) => deferred.blockedByStartIds.has(id)));
           if (
             (startOutcome === 'rejected' || retiredByTerminalStart) &&
             !deferred.supersededByStartPrune &&
@@ -583,7 +626,17 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 deferredEndsByOwnerRef.current.delete(resolvedOwner);
                 return;
               }
-              confirmedWatchFast = toWatchFast(latest) ?? null;
+              const parsedLatest = parseCurrentWatchFast(latest);
+              if (!parsedLatest.known) {
+                addLog(
+                  '[Watch] Replayed fast start refresh returned unreadable fast; deferring ack until retry',
+                  'WARNING'
+                );
+                deferAckUntilRefresh = true;
+                confirmedWatchFast = null;
+              } else {
+                confirmedWatchFast = parsedLatest.fast;
+              }
             } catch (refreshError) {
               if (
                 !(await isPayloadForActiveServer({ ownerId: expectedOwnerId }))
@@ -607,7 +660,16 @@ export function useWatchFastingBridge(enabled: boolean): void {
             };
           }
         } else {
-          confirmedWatchFast = toWatchFast(current) ?? null;
+          const parsedCurrent = parseCurrentWatchFast(current);
+          if (parsedCurrent.known) {
+            confirmedWatchFast = parsedCurrent.fast;
+          } else if (watch.sendFastAck) {
+            throw new Error(
+              'Unreadable current fast response before fast start'
+            );
+          } else {
+            confirmedWatchFast = null;
+          }
         }
         clearRetryingStart(resolvedOwner, payload.clientId);
         if (confirmedWatchFast?.startedAt != null) {
@@ -654,7 +716,11 @@ export function useWatchFastingBridge(enabled: boolean): void {
                 'WARNING'
               );
             }
-            await drainDeferredEnds(resolvedOwner, 'rejected');
+            await drainDeferredEnds(
+              resolvedOwner,
+              'rejected',
+              payload.clientId
+            );
           } else {
             deferredEndsByOwnerRef.current.delete(resolvedOwner);
           }
@@ -727,7 +793,11 @@ export function useWatchFastingBridge(enabled: boolean): void {
                   syncedClientId
                 );
               }
-              await drainDeferredEnds(resolvedOwner);
+              await drainDeferredEnds(
+                resolvedOwner,
+                'confirmed',
+                syncedClientId
+              );
               return;
             }
           }
@@ -773,7 +843,11 @@ export function useWatchFastingBridge(enabled: boolean): void {
                   }
                 }
                 if (matchedClientIds.length > 0 || prunedOlder) {
-                  await drainDeferredEnds(resolvedOwner);
+                  await drainDeferredEnds(
+                    resolvedOwner,
+                    'confirmed',
+                    matchedClientIds
+                  );
                 }
               }
             }

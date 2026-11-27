@@ -2554,11 +2554,7 @@ object WearDirectApiClient {
         )
       }
     }
-    return DirectWriteOutcome.Applied(
-      syncedDomain = "fasting",
-      fast = null,
-      fastUpdated = false
-    )
+    return DirectWriteOutcome.FallbackToPhone
   }
 
   internal fun executeFastStart(
@@ -2611,7 +2607,8 @@ object WearDirectApiClient {
         }
       }
     }
-    val (existingFast, _) = parseFastJson(curBody)
+    val (existingFast, existingKnown) = parseFastJson(curBody)
+    if (!existingKnown) return DirectWriteOutcome.FallbackToPhone
     return DirectWriteOutcome.Applied(
       syncedDomain = "fasting",
       fast = existingFast,

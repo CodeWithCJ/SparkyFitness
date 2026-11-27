@@ -12,9 +12,9 @@ const SERVICE_NAME = 'Fasting API';
 
 /**
  * Returns the active fast, or `null` when none is active. The server sends a
- * literal `null` body for `/current` which `apiFetch` surfaces as JS `null`; we
- * coalesce to `null` (never `undefined`) so the React Query `queryFn` doesn't
- * throw on a missing return value.
+ * literal `null` body for `/current` which `apiFetch` surfaces as JS `null`; an
+ * empty 204 / zero-length response (`undefined`) is rejected rather than
+ * treated as "not fasting".
  */
 export const fetchCurrentFast = async (
   serverConfig?: ServerConfig
@@ -25,7 +25,10 @@ export const fetchCurrentFast = async (
     operation: 'fetch current fast',
     serverConfig,
   });
-  return result ?? null;
+  if (result === undefined) {
+    throw new Error('Empty response while fetching current fast');
+  }
+  return result;
 };
 
 interface StartFastParams {
