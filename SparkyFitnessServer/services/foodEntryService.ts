@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import foodRepository from '../models/foodRepository.js';
+import { moveDiaryEntries } from '../models/foodEntryMove.js';
 import foodEntryMealRepository, {
   type MealEntryMoveResult,
 } from '../models/foodEntryMealRepository.js';
@@ -4331,6 +4332,7 @@ export { copySelectedFoodEntriesFromUser };
 export { copySelectedFoodEntriesToUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
+  moveDiaryEntries,
   getLastCookedFoodEntry,
   createFoodEntry,
   deleteFoodEntry,

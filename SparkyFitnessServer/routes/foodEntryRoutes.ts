@@ -14,6 +14,7 @@ import {
   isEntryTimeString,
   isValidCookedQuantity,
   lastCookedFoodEntryQuerySchema,
+  moveDiaryEntriesBodySchema,
   type LastCookedFoodEntryResponse,
 } from '@workspace/shared';
 import {
@@ -73,6 +74,27 @@ function registerActorScopedCopyRoute<T extends { familyUserId: string }>(
     }
   });
 }
+
+router.post('/move', authenticate, async (req, res, next) => {
+  const parsed = moveDiaryEntriesBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: 'Invalid diary move',
+      details: parsed.error.flatten(),
+    });
+    return;
+  }
+
+  try {
+    const userId = req.userId;
+    const actorId = req.originalUserId || req.authenticatedUserId || userId;
+    await foodEntryService.moveDiaryEntries(userId, actorId, parsed.data);
+    clearUserTdeeCache(userId);
+    res.sendStatus(204);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger

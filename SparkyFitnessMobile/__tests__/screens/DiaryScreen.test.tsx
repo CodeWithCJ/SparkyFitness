@@ -1,4 +1,5 @@
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { RefreshControl } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -85,7 +86,7 @@ jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
 }));
 
-// This suite renders DiaryScreen without a QueryClientProvider, so the sleep hook's real
+// Keep the sleep read independent of the UI fixture. The real
 // useQuery would throw. Mocked to an empty day by default.
 jest.mock('../../src/hooks/useSleepDay', () => ({
   useSleepDay: jest.fn(() => ({
@@ -412,12 +413,19 @@ const configureOnlineData = (
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-const renderScreen = () =>
-  render(
+const renderScreen = () => {
+  const client = new QueryClient();
+  return render(
     <SafeAreaProvider initialMetrics={{ frame, insets }}>
       <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
-    </SafeAreaProvider>
+    </SafeAreaProvider>,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    }
   );
+};
 
 describe('DiaryScreen custom measurements of a feature turned off', () => {
   const flowEntry = {

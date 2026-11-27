@@ -7,7 +7,7 @@ import type { DailyGoals } from '../types/goals';
 import type { MealType } from '../types/mealTypes';
 import Icon from './Icon';
 import { MEAL_CONFIG } from '../constants/meals';
-import SwipeableFoodRow from './SwipeableFoodRow';
+import SwipeableFoodRow, { type FoodRowSelection } from './SwipeableFoodRow';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
@@ -28,6 +28,7 @@ interface FoodSummaryProps {
   calorieGoal?: number;
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
+  getRowSelection?: (entry: FoodEntry) => FoodRowSelection | undefined;
   onPressMealType?: (
     mealTypeId: string | null,
     mealTypeName: string,
@@ -47,6 +48,7 @@ interface MealSectionProps {
   group: MealGroup;
   goals?: DailyGoals;
   calorieGoal?: number;
+  getRowSelection?: FoodSummaryProps['getRowSelection'];
   onAdjustServing?: (entry: FoodEntry) => void;
   onPressMealType?: (
     mealTypeId: string | null,
@@ -81,6 +83,7 @@ const MealSection: React.FC<MealSectionProps> = ({
   calorieGoal,
   onAdjustServing,
   onPressMealType,
+  getRowSelection,
   isFirst = false,
   isLast = false,
 }: MealSectionProps) => {
@@ -196,6 +199,7 @@ const MealSection: React.FC<MealSectionProps> = ({
                   entry={entry}
                   nutrition={nutrition}
                   onAdjustServing={onAdjustServing}
+                  selection={getRowSelection?.(entry)}
                 />
               </View>
             </View>
@@ -214,6 +218,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   onAddFood,
   onAdjustServing,
   onPressMealType,
+  getRowSelection,
 }) => {
   if (foodEntries.length === 0) {
     return <EmptyState onAddFood={onAddFood} />;
@@ -241,6 +246,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
+          getRowSelection={getRowSelection}
           isFirst={index === 0}
           isLast={index === groups.length - 1}
         />

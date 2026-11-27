@@ -19,6 +19,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -39,6 +40,8 @@ import CalendarSheet, {
 } from '../components/CalendarSheet';
 import CheckInPhotosSummary from '../components/CheckInPhotosSummary';
 import DateNavigator from '../components/DateNavigator';
+import CopyMealSheet from '../components/CopyMealSheet';
+import DiaryEntrySelectionBar from '../components/DiaryEntrySelectionBar';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import ExerciseSummary from '../components/ExerciseSummary';
@@ -52,6 +55,7 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import OfflineBanner from '../components/OfflineBanner';
 import { useOfflineDiaryDay } from '../hooks/useOfflineDiaryDay';
+import { useDiaryEntrySelection } from '../hooks/useDiaryEntrySelection';
 import { mergeWaitingFood, mergeWaitingWorkouts } from '../offline/diaryDay';
 import Button from '../components/ui/Button';
 import {
@@ -345,6 +349,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     // what is waiting to upload.
     enabled: isConnected || isOffline,
   });
+  const diarySelection = useDiaryEntrySelection({
+    date: selectedDate,
+    entries: summary?.foodEntries ?? [],
+    enabled: Platform.OS === 'android' && isConnected,
+  });
+  const { cancelSelection } = diarySelection;
+  useEffect(
+    () => navigation.addListener('blur', cancelSelection),
+    [navigation, cancelSelection]
+  );
+
   const { measurements, refetch: refetchMeasurements } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
@@ -851,7 +866,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onAdjustServing={(entry) =>
                 servingSheetRef.current?.present(entry)
               }
-              onPressMealType={openMealTypeDetail}
+              onPressMealType={
+                diarySelection.isSelecting ? undefined : openMealTypeDetail
+              }
+              getRowSelection={diarySelection.rowSelection}
             />
             <ExerciseSummary
               exerciseEntries={mergeWaitingWorkouts(
@@ -952,7 +970,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const content = (
     <>
-      {!isConnectionLoading && (isConnected || isOffline) ? (
+      {diarySelection.isSelecting ? (
+        <DiaryEntrySelectionBar {...diarySelection} />
+      ) : !isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('diary.title', { defaultValue: 'Diary' })}
           selectedDate={selectedDate}
@@ -980,6 +1000,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         )
       )}
       {renderedContent}
+      {Platform.OS === 'android' && (
+        <CopyMealSheet
+          ref={diarySelection.moveSheetRef}
+          move={diarySelection.move}
+          isPending={diarySelection.isPending}
+        />
+      )}
       <CalendarSheet
         ref={calendarRef}
         selectedDate={selectedDate}

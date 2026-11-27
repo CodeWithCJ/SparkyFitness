@@ -1,4 +1,5 @@
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render } from '@testing-library/react-native';
 import MealTypeDetailScreen from '../../src/screens/MealTypeDetailScreen';
 import {
@@ -241,11 +242,17 @@ const renderScreen = (params: ScreenProps['route']['params']) => {
     copyMeal: jest.fn(),
     isPending: false,
   } as never);
+  const client = new QueryClient();
   return render(
     <MealTypeDetailScreen
       navigation={mockNavigation}
       route={{ key: 'MealTypeDetail-key', name: 'MealTypeDetail', params }}
-    />
+    />,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    }
   );
 };
 

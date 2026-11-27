@@ -41,20 +41,29 @@ export interface CopyMealSheetRef {
   dismiss: () => void;
 }
 
-interface CopyMealSheetProps {
-  isPending?: boolean;
-  /**
-   * `targetMealTypeId` is the picked meal type's id, for single-food copies;
-   * `quickTarget` is the quick choice behind the date, if one was used.
-   */
-  onCopy: (
-    payload: CopyFoodEntriesPayload,
-    target: { targetMealTypeId: string; quickTarget: QuickTarget | null }
-  ) => void;
+interface MoveMealAction {
+  onConfirm: (date: string, mealTypeId: string) => void;
+  onDismiss: () => void;
+  isDestinationDisabled: (date: string, mealTypeId: string) => boolean;
 }
 
+type CopyMealSheetProps = { isPending?: boolean } & (
+  | { move: MoveMealAction; onCopy?: never }
+  | {
+      move?: never;
+      /**
+       * `targetMealTypeId` is the picked meal type's id, for single-food copies;
+       * `quickTarget` is the quick choice behind the date, if one was used.
+       */
+      onCopy: (
+        payload: CopyFoodEntriesPayload,
+        target: { targetMealTypeId: string; quickTarget: QuickTarget | null }
+      ) => void;
+    }
+);
+
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
-  ({ isPending = false, onCopy }, ref) => {
+  ({ isPending = false, onCopy, move }, ref) => {
     const { t, i18n: translationI18n } = useTranslation();
     const dateLocale = translationI18n.language.startsWith('pl')
       ? 'pl-PL'
@@ -186,7 +195,13 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
     }, [source, mealTypes, displayMealType, t]);
 
     const handleCopy = useCallback(() => {
-      if (!source || !targetDate || !targetMealTypeId) return;
+      if (isPending || !source || !targetDate || !targetMealTypeId) return;
+      if (move) {
+        if (!move.isDestinationDisabled(targetDate, targetMealTypeId)) {
+          move.onConfirm(targetDate, targetMealTypeId);
+        }
+        return;
+      }
       // The server /food-entries/copy endpoint matches meal types by NAME only
       // (verified contract), so the payload carries names. Selection in the UI
       // is by canonical id; the name is resolved here so two categories that
@@ -249,14 +264,25 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       targetMealTypeId,
       mealTypes,
       onCopy,
+      move,
+      isPending,
       t,
       quickTarget,
     ]);
+
+    const actionLabel = move
+      ? t('diarySelection.move', { defaultValue: 'Move' })
+      : t('copyMeal.copy', { defaultValue: 'Copy' });
+    const pendingLabel = move
+      ? t('diarySelection.moving', { defaultValue: 'Moving…' })
+      : t('copyMeal.copying', { defaultValue: 'Copying...' });
 
     return (
       <BottomSheetModal
         ref={bottomSheetRef}
         enableDynamicSizing
+        onDismiss={move?.onDismiss}
+        enablePanDownToClose={!move || !isPending}
         enableContentPanningGesture={Platform.OS !== 'android'}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
@@ -268,15 +294,19 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  {source.singleFood
-                    ? t('copyMeal.foodTitle', {
-                        defaultValue: 'Copy food: {{food}}',
-                        food: source.singleFood.foodName,
+                  {move
+                    ? t('diarySelection.moveTitle', {
+                        defaultValue: 'Move entries',
                       })
-                    : t('copyMeal.title', {
-                        defaultValue: 'Copy meal: {{meal}}',
-                        meal: sourceTitle,
-                      })}
+                    : source.singleFood
+                      ? t('copyMeal.foodTitle', {
+                          defaultValue: 'Copy food: {{food}}',
+                          food: source.singleFood.foodName,
+                        })
+                      : t('copyMeal.title', {
+                          defaultValue: 'Copy meal: {{meal}}',
+                          meal: sourceTitle,
+                        })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
                   {t('copyMeal.sourceDate', {
@@ -288,7 +318,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
               {/* Quick targets */}
               <Text className="text-xs font-semibold uppercase text-text-muted mb-2">
-                {t('copyMeal.copyTo', { defaultValue: 'Copy to' })}
+                {move
+                  ? t('diarySelection.moveTo', { defaultValue: 'Move to' })
+                  : t('copyMeal.copyTo', { defaultValue: 'Copy to' })}
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-4">
                 {/* Now logs a single food at the current time. The meal copy
@@ -412,24 +444,31 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
-                accessibilityLabel={t('copyMeal.copy', {
-                  defaultValue: 'Copy',
-                })}
+                accessibilityLabel={actionLabel}
                 disabled={
                   isPending ||
                   !targetDate ||
                   !targetMealTypeId ||
                   // Copying a whole meal onto itself does nothing useful, but a
                   // single food can be logged again in the same meal.
-                  (!source.singleFood &&
-                    source.date === targetDate &&
-                    source.mealTypeId === targetMealTypeId)
+                  (move
+                    ? move.isDestinationDisabled(targetDate, targetMealTypeId)
+                    : !source.singleFood &&
+                      source.date === targetDate &&
+                      source.mealTypeId === targetMealTypeId)
                 }
               >
-                {isPending
-                  ? t('copyMeal.copying', { defaultValue: 'Copying...' })
-                  : t('copyMeal.copy', { defaultValue: 'Copy' })}
+                {isPending ? pendingLabel : actionLabel}
               </Button>
+              {move && (
+                <Button
+                  variant="ghost"
+                  onPress={() => bottomSheetRef.current?.dismiss()}
+                  disabled={isPending}
+                >
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
+                </Button>
+              )}
             </View>
           )}
         </BottomSheetScrollView>

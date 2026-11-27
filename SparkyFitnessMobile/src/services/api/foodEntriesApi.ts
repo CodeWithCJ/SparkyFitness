@@ -4,6 +4,7 @@ import type { FoodEntry } from '../../types/foodEntries';
 import type { ServerConfig } from '../storage';
 import type {
   LastCookedFoodEntry,
+  MoveDiaryEntriesBody,
   LastCookedFoodEntryResponse,
   CopyReviewedFoodEntriesFromUserPayload,
   CopySelectedFoodEntriesFromUserPayload,
@@ -191,6 +192,20 @@ export const deleteFoodEntry = async (
     serverConfig,
   });
 };
+
+export async function moveDiaryEntries(
+  body: MoveDiaryEntriesBody,
+  serverConfig: ServerConfig
+): Promise<void> {
+  await apiFetch<void>({
+    endpoint: '/api/food-entries/move',
+    serviceName: 'Food Entries API',
+    operation: 'move diary entries',
+    method: 'POST',
+    body,
+    serverConfig,
+  });
+}
 
 export interface CopyFoodEntriesPayload {
   sourceDate: string;
