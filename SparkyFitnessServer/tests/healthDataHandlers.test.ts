@@ -1536,3 +1536,100 @@ describe('toothbrushingHandler', () => {
     ).toBeNull();
   });
 });
+
+describe('customMeasurementHandler with intraday vitals', () => {
+  const handler = customMeasurementHandler;
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+    resolveCategory: vi.fn(),
+    fallbackTimezone: 'UTC',
+    userTimezone: 'UTC',
+    accountTimezone: 'UTC',
+    timezones: {
+      accountTimezone: 'UTC',
+      effectiveTimezone: 'UTC',
+      recordTimezone: 'UTC',
+    },
+    today: '2026-11-27',
+    getContainer: vi.fn(),
+    getScaleFormula: vi.fn(),
+    getSleepContext: vi.fn(),
+  } as unknown as HealthBatchContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).mockImplementation(
+      async (_userId: string, _actingUserId: string, rows: unknown[]) =>
+        rows.map((_, i) => ({ id: `row-${i}` }))
+    );
+  });
+
+  it('preserves distinct timestamps and frequency All for multiple same-day blood pressure readings', async () => {
+    vi.mocked(ctx.resolveCategory).mockResolvedValue({
+      id: 'cat-bp-systolic',
+      name: 'blood_pressure_systolic',
+      data_type: 'numeric',
+      frequency: 'All',
+    });
+
+    const entries: PreparedHealthEntry[] = [
+      {
+        entry: {
+          type: 'blood_pressure_systolic',
+          value: 120,
+          date: '2026-11-27',
+          timestamp: '2026-11-27T08:30:00.000Z',
+          source: 'clinical_import',
+        },
+        parsedDate: '2026-11-27',
+        entryTimestamp: new Date('2026-11-27T08:30:00.000Z'),
+        entryHour: 8,
+      },
+      {
+        entry: {
+          type: 'blood_pressure_systolic',
+          value: 125,
+          date: '2026-11-27',
+          timestamp: '2026-11-27T14:15:00.000Z',
+          source: 'clinical_import',
+        },
+        parsedDate: '2026-11-27',
+        entryTimestamp: new Date('2026-11-27T14:15:00.000Z'),
+        entryHour: 14,
+      },
+    ];
+
+    const outcomes = await handler.handleBatch!(entries, ctx);
+
+    expect(outcomes).toHaveLength(2);
+    expect(outcomes[0].status).toBe('success');
+    expect(outcomes[1].status).toBe('success');
+
+    expect(
+      measurementRepository.bulkUpsertCustomMeasurements
+    ).toHaveBeenCalledTimes(1);
+
+    const rows = vi.mocked(measurementRepository.bulkUpsertCustomMeasurements)
+      .mock.calls[0][2];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      categoryId: 'cat-bp-systolic',
+      value: 120,
+      entryDate: '2026-11-27',
+      frequency: 'All',
+      entryHour: 8,
+      entryTimestamp: new Date('2026-11-27T08:30:00.000Z'),
+    });
+    expect(rows[1]).toMatchObject({
+      categoryId: 'cat-bp-systolic',
+      value: 125,
+      entryDate: '2026-11-27',
+      frequency: 'All',
+      entryHour: 14,
+      entryTimestamp: new Date('2026-11-27T14:15:00.000Z'),
+    });
+  });
+});

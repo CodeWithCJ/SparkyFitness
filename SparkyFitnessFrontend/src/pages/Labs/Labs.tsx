@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileUp, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  ChevronDown,
+  FileUp,
+  FileSpreadsheet,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import {
   LAB_MARKER_PRESETS,
   buildLabMarkers,
@@ -38,6 +47,8 @@ import {
   useLatestLabResults,
 } from '@/hooks/Labs/useLabResults';
 import LabImportDialog from './LabImportDialog';
+import ClinicalRecordImportDialog from '@/pages/Settings/ClinicalRecordImportDialog';
+import { invalidateClinicalRecords } from '@/hooks/ClinicalRecords/useClinicalRecords';
 import LabMarkerChart from './LabMarkerChart';
 import LabResultDialog from './LabResultDialog';
 import { formatLabRange, labResultText } from './labFormat';
@@ -47,6 +58,7 @@ const statusVariant = (status: string) =>
 
 const Labs = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const profile = useProfileQuery(user?.id);
   const sex = labSexFromGender(profile.data?.gender);
@@ -77,6 +89,7 @@ const Labs = () => {
 
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [clinicalImportOpen, setClinicalImportOpen] = useState(false);
   const [editing, setEditing] = useState<LabResultResponse | null>(null);
   const [deleteResult, setDeleteResult] = useState<LabResultResponse | null>(
     null
@@ -138,10 +151,36 @@ const Labs = () => {
           {t('nav.labs', 'Lab results')}
         </h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <FileUp className="mr-2 h-4 w-4" />
-            {t('labs.import.cta', 'Import from a report')}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-1.5">
+                <FileUp className="h-4 w-4" />
+                <span>{t('labs.import.dataCta', 'Import data')}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onSelect={() => setImportOpen(true)}
+                className="cursor-pointer"
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                <span>
+                  {t('labs.import.fromReport', 'From a report (PDF / image)')}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setClinicalImportOpen(true)}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                <span>
+                  {t('labs.import.clinicalRecord', 'From C-CDA (XML / zip)')}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button onClick={() => setAddOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('labs.add', 'Add lab result')}
@@ -375,6 +414,17 @@ const Labs = () => {
           markers={markers}
           labels={labels}
           sex={sex}
+        />
+      )}
+
+      {clinicalImportOpen && (
+        <ClinicalRecordImportDialog
+          open
+          onOpenChange={setClinicalImportOpen}
+          onImportComplete={() => {
+            // Refreshes the labs and check-in measurement queries
+            invalidateClinicalRecords(queryClient);
+          }}
         />
       )}
 

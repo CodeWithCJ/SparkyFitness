@@ -1,0 +1,69 @@
+{
+  "resourceType": "Bundle",
+  "type": "searchset",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "bp-1",
+        "status": "final",
+        "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}],
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
+        "effectiveDateTime": "2026-10-01T14:05:00-05:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]},
+           "valueQuantity": {"value": 122, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]},
+           "valueQuantity": {"value": 79, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "wt-1",
+        "status": "final",
+        "category": [{"coding": [{"code": "vital-signs"}]}],
+        "code": {"coding": [
+          {"system": "urn:oid:1.2.840.114350.1.13.0.1.7.2.707679", "code": "14"},
+          {"system": "http://loinc.org", "code": "29463-7"}
+        ]},
+        "effectiveDateTime": "2026-10-01T19:06:00Z",
+        "valueQuantity": {"value": 186.4, "unit": "lbs"}
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "temp-1",
+        "status": "final",
+        "category": [{"coding": [{"code": "vital-signs"}]}],
+        "code": {"coding": [{"system": "http://loinc.org", "code": "8310-5"}]},
+        "effectiveDateTime": "2026-10-01T14:07:00-05:00",
+        "valueQuantity": {"value": 37.0, "unit": "C", "system": "http://unitsofmeasure.org", "code": "Cel"}
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "spo2-err",
+        "status": "entered-in-error",
+        "category": [{"coding": [{"code": "vital-signs"}]}],
+        "code": {"coding": [{"system": "http://loinc.org", "code": "2708-6"}]},
+        "effectiveDateTime": "2026-10-01T14:07:00-05:00",
+        "valueQuantity": {"value": 80, "unit": "%"}
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "lab-1",
+        "status": "final",
+        "category": [{"coding": [{"code": "laboratory"}]}],
+        "code": {"coding": [{"system": "http://loinc.org", "code": "8867-4"}]},
+        "effectiveDateTime": "2026-10-01T14:07:00-05:00",
+        "valueQuantity": {"value": 60, "unit": "/min"}
+      }
+    }
+  ]
+}

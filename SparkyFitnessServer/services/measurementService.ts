@@ -65,6 +65,7 @@ import {
   customMeasurementHandler,
   createCategoryResolver,
   HEALTH_TYPE_DISPLAY_NAMES,
+  HEALTH_TYPE_DEFAULT_FREQUENCIES,
   HEALTH_TYPE_HANDLERS,
   invalidWorkoutReason,
 } from './healthDataHandlers.js';
@@ -585,6 +586,8 @@ async function getOrCreateCustomCategory(
   measurementType = 'N/A'
 ) {
   const displayName = HEALTH_TYPE_DISPLAY_NAMES[categoryName as string];
+  const defaultFrequency =
+    HEALTH_TYPE_DEFAULT_FREQUENCIES[categoryName as string];
   // Try to get existing category
   const existingCategories =
     await measurementRepository.getCustomCategories(userId);
@@ -593,16 +596,22 @@ async function getOrCreateCustomCategory(
     (cat: any) => cat.name === categoryName
   );
   if (category) {
-    // Backfill a friendly display_name for health-derived categories created
-    // before labels existed (e.g. the HRV category first added by Fitbit/Google).
+    // Backfill display_name or upgrade legacy 'Daily' frequency for intraday vitals
+    const updates: { display_name?: string; frequency?: string } = {};
     if (displayName && !category.display_name) {
+      updates.display_name = displayName;
+    }
+    if (defaultFrequency && category.frequency === 'Daily') {
+      updates.frequency = defaultFrequency;
+    }
+    if (Object.keys(updates).length > 0) {
       await measurementRepository.updateCustomCategory(
         category.id,
         userId,
         actingUserId,
-        { display_name: displayName }
+        updates
       );
-      return { ...category, display_name: displayName };
+      return { ...category, ...updates };
     }
     return category;
   } else {
@@ -613,7 +622,7 @@ async function getOrCreateCustomCategory(
       name: categoryName,
       display_name: displayName ?? null,
       measurement_type: measurementType, // Default to numeric for Health Connect data
-      frequency: 'Daily', // Default frequency, can be refined later if needed
+      frequency: defaultFrequency ?? 'Daily', // Default frequency, can be refined later if needed
       data_type: dataType, // Default to numeric for new categories from health data
     };
     const newCategory =

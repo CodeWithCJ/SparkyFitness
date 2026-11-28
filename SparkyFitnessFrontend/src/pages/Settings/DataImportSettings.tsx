@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateClinicalRecords } from '@/hooks/ClinicalRecords/useClinicalRecords';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,8 +15,10 @@ import {
   Dumbbell,
   Upload,
   Activity,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react';
+import ClinicalRecordImportDialog from '@/pages/Settings/ClinicalRecordImportDialog';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import FoodImportFromCSV from '@/pages/Foods/FoodImportFromCSV';
@@ -99,6 +103,7 @@ const ImportLauncher = ({
 
 export const DataImportSettings = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { mutateAsync: importFoodsCsv } = useImportCsvMutation();
   const { mutateAsync: importFoodDiaryCsv } = useImportFoodDiaryCsvMutation();
   const { mutateAsync: importExercisesJson } = useImportExercisesJsonMutation();
@@ -258,6 +263,31 @@ export const DataImportSettings = () => {
         >
           {(_, onDirtyChange) => (
             <ExerciseImportFit onDirtyChange={onDirtyChange} />
+          )}
+        </ImportLauncher>
+
+        <ImportLauncher
+          icon={FileSpreadsheet}
+          title={t(
+            'settings.dataImport.clinical.launcherTitle',
+            'C-CDA Health Records'
+          )}
+          description={t(
+            'settings.dataImport.clinical.launcherDescription',
+            'Import vitals and lab panels from MyChart C-CDA XML or Lucy .zip packages.'
+          )}
+        >
+          {(close) => (
+            <ClinicalRecordImportDialog
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) close();
+              }}
+              onImportComplete={() => {
+                invalidateClinicalRecords(queryClient);
+                close();
+              }}
+            />
           )}
         </ImportLauncher>
       </div>

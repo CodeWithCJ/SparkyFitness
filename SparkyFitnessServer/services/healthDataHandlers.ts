@@ -530,6 +530,18 @@ export const HEALTH_TYPE_DISPLAY_NAMES: Record<string, string> = {
   HRV_SDNN: 'HRV (SDNN)',
 };
 
+// Default custom measurement frequencies for health types that naturally have multiple
+// intraday readings (e.g. vital signs). 'All' (unlimited entries) ensures that multiple
+// same-day readings with distinct timestamps are preserved and not overwritten.
+export const HEALTH_TYPE_DEFAULT_FREQUENCIES: Record<string, string> = {
+  blood_pressure_systolic: 'All',
+  blood_pressure_diastolic: 'All',
+  heart_rate: 'All',
+  blood_oxygen_saturation: 'All',
+  oxygen_saturation: 'All',
+  body_temperature: 'All',
+};
+
 /**
  * Request-scoped category resolver: fetches the user's categories once per
  * request and answers subsequent lookups (and remembers creations) from a
@@ -566,18 +578,26 @@ export function createCategoryResolver(): HealthBatchContext['resolveCategory'] 
   ) => {
     const byName = await loadCategories(userId);
     const displayName = HEALTH_TYPE_DISPLAY_NAMES[categoryName as string];
+    const defaultFrequency =
+      HEALTH_TYPE_DEFAULT_FREQUENCIES[categoryName as string];
     const category = byName.get(categoryName);
     if (category) {
-      // Backfill a friendly display_name for health-derived categories created
-      // before labels existed (e.g. the HRV category first added by Fitbit/Google).
+      // Backfill display_name or upgrade legacy 'Daily' frequency for intraday vitals
+      const updates: { display_name?: string; frequency?: string } = {};
       if (displayName && !category.display_name) {
+        updates.display_name = displayName;
+      }
+      if (defaultFrequency && category.frequency === 'Daily') {
+        updates.frequency = defaultFrequency;
+      }
+      if (Object.keys(updates).length > 0) {
         await measurementRepository.updateCustomCategory(
           category.id,
           userId,
           actingUserId,
-          { display_name: displayName }
+          updates
         );
-        const updated = { ...category, display_name: displayName };
+        const updated = { ...category, ...updates };
         byName.set(categoryName, updated);
         return updated;
       }
@@ -590,7 +610,7 @@ export function createCategoryResolver(): HealthBatchContext['resolveCategory'] 
       name: categoryName,
       display_name: displayName ?? null,
       measurement_type: measurementType, // Default to numeric for Health Connect data
-      frequency: 'Daily', // Default frequency, can be refined later if needed
+      frequency: defaultFrequency ?? 'Daily', // Default frequency, can be refined later if needed
       data_type: dataType, // Default to numeric for new categories from health data
     };
     const newCategory =
