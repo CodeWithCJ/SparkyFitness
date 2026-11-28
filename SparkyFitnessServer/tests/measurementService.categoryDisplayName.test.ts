@@ -122,6 +122,68 @@ describe('getOrCreateCustomCategory - health display_name', () => {
     expect(measurementRepository.updateCustomCategory).not.toHaveBeenCalled();
     expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
   });
+
+  it('creates blood_pressure_systolic with default frequency All', async () => {
+    vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue([]);
+    vi.mocked(measurementRepository.createCustomCategory).mockResolvedValue({
+      id: 'cat-bp',
+      created: true,
+      category: {
+        id: 'cat-bp',
+        name: 'blood_pressure_systolic',
+        display_name: null,
+        frequency: 'All',
+        measurement_type: 'mmHg',
+        data_type: 'numeric',
+      },
+    });
+
+    const category = await measurementService.getOrCreateCustomCategory(
+      userId,
+      actingUserId,
+      'blood_pressure_systolic',
+      'numeric',
+      'mmHg'
+    );
+
+    expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
+    const created = vi.mocked(measurementRepository.createCustomCategory).mock
+      .calls[0][0];
+    expect(created.name).toBe('blood_pressure_systolic');
+    expect(created.frequency).toBe('All');
+    expect(category.frequency).toBe('All');
+  });
+
+  it('upgrades existing blood_pressure_systolic with frequency Daily to All', async () => {
+    vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue([
+      {
+        id: 'cat-bp-existing',
+        name: 'blood_pressure_systolic',
+        display_name: null,
+        frequency: 'Daily',
+      },
+    ]);
+    vi.mocked(measurementRepository.updateCustomCategory).mockResolvedValue({
+      id: 'cat-bp-existing',
+      name: 'blood_pressure_systolic',
+      frequency: 'All',
+    });
+
+    const category = await measurementService.getOrCreateCustomCategory(
+      userId,
+      actingUserId,
+      'blood_pressure_systolic'
+    );
+
+    expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
+    expect(measurementRepository.updateCustomCategory).toHaveBeenCalledWith(
+      'cat-bp-existing',
+      userId,
+      actingUserId,
+      { frequency: 'All' }
+    );
+    expect(category.frequency).toBe('All');
+  });
 });
 
 describe('createCustomCategory', () => {

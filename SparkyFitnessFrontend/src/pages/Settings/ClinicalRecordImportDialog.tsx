@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { generateClientId } from '@/utils/generateClientId';
 import {
   usePreviewClinicalRecords,
   useExecuteClinicalImport,
@@ -47,6 +48,7 @@ const ClinicalRecordImportDialog = ({
 
   const [includeVitals, setIncludeVitals] = useState(true);
   const [includeLabs, setIncludeLabs] = useState(true);
+  const [clientRequestId, setClientRequestId] = useState<string>('');
 
   const previewMutation = usePreviewClinicalRecords();
   const importMutation = useExecuteClinicalImport();
@@ -60,6 +62,7 @@ const ClinicalRecordImportDialog = ({
     setPreview(null);
     setIncludeVitals(true);
     setIncludeLabs(true);
+    setClientRequestId('');
     setDragActive(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -77,6 +80,7 @@ const ClinicalRecordImportDialog = ({
       setPreview(data);
       setIncludeVitals(data.vitals.length > 0);
       setIncludeLabs(data.labs.length > 0);
+      setClientRequestId(generateClientId());
     } catch (err) {
       if (currentGen !== previewGenRef.current) return;
       toast({
@@ -146,6 +150,7 @@ const ClinicalRecordImportDialog = ({
         vitals: vitalsToImport,
         labs: labsToImport,
         sourceLabel: 'mychart_clinical_import',
+        clientRequestId: clientRequestId || undefined,
       });
 
       if (currentImportGen !== importGenRef.current) return;

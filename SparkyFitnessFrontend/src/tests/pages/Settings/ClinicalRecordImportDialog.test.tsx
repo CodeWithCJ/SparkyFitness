@@ -117,6 +117,7 @@ describe('ClinicalRecordImportDialog', () => {
 
     await waitFor(() => {
       expect(api.executeClinicalImport).toHaveBeenCalledWith({
+        clientRequestId: expect.any(String),
         vitals: previewData.vitals,
         labs: previewData.labs,
         sourceLabel: 'mychart_clinical_import',
