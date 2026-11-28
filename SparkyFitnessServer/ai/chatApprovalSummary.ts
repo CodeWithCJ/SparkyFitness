@@ -116,6 +116,8 @@ async function summarize(
         'update_entry',
         'update_medication',
         'set_run_program_schedule',
+        // Same order as the executor's VALID_ACTIONS: the later one wins.
+        'update_food',
         'update_food_variant',
       ])
     ) ?? {};

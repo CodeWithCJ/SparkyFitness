@@ -387,3 +387,15 @@ it('looks targets up as the signed-in person', async () => {
   );
   expect(actor).toBe('signed-in');
 });
+it('describes a delete_food wrapped as update_food', async () => {
+  vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+    name: 'Library eggs',
+  });
+  expect(
+    await getChatApprovalSummary(
+      'sparky_manage_food',
+      { update_food: { action: 'delete_food', food_id: 'food' } },
+      'owner'
+    )
+  ).toEqual({ text: 'Library eggs', kind: 'delete' });
+});
