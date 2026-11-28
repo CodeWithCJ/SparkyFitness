@@ -12,6 +12,7 @@ import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
+import { useLiveWorkoutEnergyStore } from '../../src/stores/liveHeartRateStore';
 import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
@@ -85,13 +86,6 @@ jest.mock('../../src/hooks/useNavigationActionGuard', () => ({
   })),
 }));
 
-// Keep the real useSupersetBorders (the overflow menu's candidate logic
-// depends on it); only the rail's rendering is stubbed out.
-jest.mock('../../src/components/ActiveWorkoutRail', () => {
-  const actual = jest.requireActual('../../src/components/ActiveWorkoutRail');
-  return { __esModule: true, ...actual, default: () => null };
-});
-
 // The stub is not memoized, so it renders with every render of the screen:
 // its count is the screen's render count, and the props it last received show
 // whether the real (memoized) header would have re-rendered.
@@ -120,7 +114,7 @@ const mockAccessoryHandles: Record<
 > = {};
 
 // The focus view's own behaviour is covered in its component test; here it
-// only has to show up in place of the list, with the screen's handlers.
+// only has to show up with the screen's handlers.
 const mockFocusScrollToEnd = jest.fn();
 const mockFocusScrollTo = jest.fn();
 jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
@@ -132,17 +126,22 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
     session,
     onRegisterAccessoryHandle,
     onPressOverflow,
-    onPressRestChip,
+    onActivateRpe,
+    verifiedSourcePresetId,
+    topSlot,
+    guidedCard,
     onPressMetricHeader,
     onPressSetType,
     onToggleSetDetail,
     onActivateSet,
     onCompleteSet,
+    onUncomplete,
     onDismissKeyboard,
     showRequest,
     scrollRef,
     expandedSetKey,
     noteEditorEntryId,
+    nowBanner,
   }: any) => {
     // The real view owns the scroll view the screen's ref points at.
     React.useImperativeHandle(scrollRef, () => ({
@@ -160,10 +159,6 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
         <Pressable
           testID="focus-overflow"
           onPress={() => onPressOverflow('ex-a')}
-        />
-        <Pressable
-          testID="focus-rest"
-          onPress={() => onPressRestChip('ex-a', null)}
         />
         <Pressable
           testID="focus-metric"
@@ -185,6 +180,56 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
           testID="focus-weight-field"
           onPress={() => onActivateSet('102', 'weight')}
         />
+        {topSlot}
+        {guidedCard}
+        {/* Stands in for each exercise's page: overflow button and the set cells. */}
+        {session.exercises.map((e: any) => (
+          <View
+            key={e.id}
+            testID={`card-${e.id}`}
+            accessibilityLabel={`sourcePresetId:${String(verifiedSourcePresetId)}`}
+          >
+            <Pressable
+              testID={`card-${e.id}-overflow`}
+              onPress={() => onPressOverflow?.(e.id)}
+            />
+            {e.sets.map((set: any) => {
+              const key = String(set.id);
+              const registerHandle = () => {
+                const handle = {
+                  log: jest.fn(),
+                  focusField: jest.fn(),
+                  advance: jest.fn(),
+                };
+                mockAccessoryHandles[key] = handle;
+                onRegisterAccessoryHandle?.(key, handle);
+              };
+              return (
+                <React.Fragment key={key}>
+                  {(['weight', 'duration', 'distance'] as const).map(
+                    (field) => (
+                      <Pressable
+                        key={field}
+                        testID={`focus-${field}-${key}`}
+                        onPress={() => {
+                          registerHandle();
+                          onActivateSet?.(key, field);
+                        }}
+                      />
+                    )
+                  )}
+                  <Pressable
+                    testID={`focus-rpe-${key}`}
+                    onPress={() => {
+                      registerHandle();
+                      onActivateRpe?.(key);
+                    }}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </View>
+        ))}
         {/* Mounts a set's row, as the real view does for the shown exercise. */}
         {session.exercises.flatMap((e: any) =>
           e.sets.map((set: any) => (
@@ -209,6 +254,19 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
           testID="focus-complete-last"
           onPress={() => onCompleteSet('301')}
         />
+        <Pressable
+          testID="focus-uncomplete-102"
+          onPress={() => onUncomplete('102')}
+        />
+        <Pressable
+          testID="focus-complete-102"
+          onPress={() => onCompleteSet('102')}
+        />
+        {nowBanner != null && (
+          <View testID="focus-now-banner">
+            <Text>{`${nowBanner.exerciseName}|${nowBanner.setNumber}/${nowBanner.setCount}|${nowBanner.load}`}</Text>
+          </View>
+        )}
         {children}
       </View>
     );
@@ -216,65 +274,21 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
   return { __esModule: true, default: MockFocusView };
 });
 
-// Trigger pressables standing in for each card, driving the screen's wiring.
-jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
-  const React = require('react');
+jest.mock('../../src/components/ActiveWorkoutIntervalHud', () => {
+  const { View } = require('react-native');
+  return { __esModule: true, default: () => <View testID="interval-hud" /> };
+});
+
+jest.mock('../../src/components/ActiveWorkoutGuidedCard', () => {
   const { View, Pressable } = require('react-native');
   return {
     __esModule: true,
-    default: (props: any) => (
-      <View
-        testID={`card-${props.exercise.id}`}
-        accessibilityLabel={`sourcePresetId:${String(props.sourcePresetId)}`}
-      >
+    default: ({ onCompleteSet }: { onCompleteSet: (id: string) => void }) => (
+      <View testID="guided-card">
         <Pressable
-          testID={`card-${props.exercise.id}-overflow`}
-          onPress={() => props.onPressOverflow?.(props.exercise.id)}
+          testID="guided-card-complete"
+          onPress={() => onCompleteSet('102')}
         />
-        {props.exercise.sets.map((set: any) => {
-          const key = String(set.id);
-          const registerHandle = () => {
-            const handle = {
-              log: jest.fn(),
-              focusField: jest.fn(),
-              advance: jest.fn(),
-            };
-            mockAccessoryHandles[key] = handle;
-            props.onRegisterAccessoryHandle?.(key, handle);
-          };
-          return (
-            <React.Fragment key={key}>
-              <Pressable
-                testID={`focus-weight-${key}`}
-                onPress={() => {
-                  registerHandle();
-                  props.onActivateSet?.(key, 'weight');
-                }}
-              />
-              <Pressable
-                testID={`focus-rpe-${key}`}
-                onPress={() => {
-                  registerHandle();
-                  props.onActivateRpe?.(key);
-                }}
-              />
-              <Pressable
-                testID={`focus-duration-${key}`}
-                onPress={() => {
-                  registerHandle();
-                  props.onActivateSet?.(key, 'duration');
-                }}
-              />
-              <Pressable
-                testID={`focus-distance-${key}`}
-                onPress={() => {
-                  registerHandle();
-                  props.onActivateSet?.(key, 'distance');
-                }}
-              />
-            </React.Fragment>
-          );
-        })}
       </View>
     ),
   };
@@ -284,8 +298,14 @@ jest.mock('../../src/components/PlateCalculatorSheet', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: (props: { targetWeight: number | null }) => (
-      <Text testID="plate-sheet">{`plates:${props.targetWeight}`}</Text>
+    default: (props: {
+      targetWeight: number | null;
+      onUseWeight?: (weight: number) => void;
+    }) => (
+      <Text
+        testID="plate-sheet"
+        onPress={() => props.onUseWeight?.(85)}
+      >{`plates:${props.targetWeight}`}</Text>
     ),
   };
 });
@@ -319,6 +339,36 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
     }),
   };
 });
+
+// The post-set effort sheet and PR card have component tests; here only when
+// the screen shows them and what Save writes.
+const mockEffortSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusEffortSheet', () => ({
+  __esModule: true,
+  effortStartValue: (metric: string) => (metric === 'rir' ? 2 : 8),
+  default: (props: any) => {
+    mockEffortSheet.props = props;
+    return null;
+  },
+}));
+const mockPrCard: { props: any } = { props: null };
+jest.mock('../../src/components/FocusPrCard', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockPrCard.props = props;
+    return null;
+  },
+}));
+
+// The Exercises sheet has its own component test; here only its wiring.
+const mockExercisesSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusExercisesSheet', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockExercisesSheet.props = props;
+    return null;
+  },
+}));
 
 // Captures the custom-duration sheet's props and present args so tests can
 // assert the long-workout adjust wiring and drive onSave directly.
@@ -452,6 +502,7 @@ function makeSession(): PresetSessionResponse {
 // workout cleared elsewhere (e.g. ended on the watch).
 let screenFocused = true;
 beforeEach(() => {
+  useLiveWorkoutEnergyStore.getState().reset();
   screenFocused = true;
 });
 const navigation = {
@@ -525,6 +576,7 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     expect(sheetItemKeys()).toEqual([
       'view',
       'notes',
+      'rest',
       'do-now',
       'superset-with',
       'warmups',
@@ -575,18 +627,6 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     ).toBe(true);
   });
 
-  it('pins the Now card only when its setting is on', () => {
-    const first = renderScreen();
-    expect(first.queryByTestId('active-workout-now-card')).toBeNull();
-    first.unmount();
-
-    act(() => {
-      useAppPreferencesStore.getState().setActiveWorkoutNowCard(true);
-    });
-    const { getByTestId } = renderScreen();
-    expect(getByTestId('active-workout-now-card')).toBeTruthy();
-  });
-
   it('offers Do now only on the exercise the cursor is on', () => {
     const { getByTestId } = renderScreen();
 
@@ -625,7 +665,7 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     expect(sheetItemKeys()).not.toContain('clear');
   });
 
-  it('omits Clear logged sets for a completed cardio effort form', () => {
+  it('offers Clear logged sets and Rest timer for a completed cardio effort form', () => {
     __resetActiveWorkoutStoreForTests();
     const session = makeSession();
     const cardio = makeExercise('ex-d', 'Running', [
@@ -645,7 +685,8 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     fireEvent.press(getByTestId('card-ex-d-overflow'));
 
     expect(mockSheet.props?.title).toBe('Running');
-    expect(sheetItemKeys()).not.toContain('clear');
+    expect(sheetItemKeys()).toContain('clear');
+    expect(sheetItemKeys()).toContain('rest');
   });
 
   it('adds a warm-up ramp from the first working set, and hides the item once one is logged', () => {
@@ -793,6 +834,23 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(getByTestId('plate-sheet')).toBeTruthy();
   });
 
+  it('writes the weight chosen in the plate calculator to its set and closes it', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    session.exercises[0].exercise_snapshot.equipment = ['barbell'];
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText, queryByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-weight-102'));
+    fireEvent.press(getByText('Calculator'));
+    fireEvent.press(getByTestId('plate-sheet'));
+    expect(queryByTestId('plate-sheet')).toBeNull();
+    const set = useActiveWorkoutStore
+      .getState()
+      .session?.exercises[0].sets.find((s) => String(s.id) === '102');
+    expect(Number(set?.weight)).toBe(85);
+  });
+
   it('has no plate calculator for other exercises or other fields', () => {
     const { getByTestId, queryByText } = renderScreen();
     fireEvent.press(getByTestId('focus-weight-102'));
@@ -838,6 +896,29 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(queryByText('Next Set')).toBeNull();
     fireEvent.press(getByText('Log'));
     expect(mockAccessoryHandles['401'].log).toHaveBeenCalledTimes(1);
+  });
+
+  it('walks a multi-set cardio row from duration to distance to RPE', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const cardio = makeExercise('ex-d', 'Running', [
+      makeSet(401, { reps: null, weight: null, duration: 600, distance: 1 }),
+      makeSet(402, { reps: null, weight: null, duration: 600, distance: 1 }),
+    ]);
+    cardio.exercise_snapshot.modality = 'duration_distance';
+    session.exercises.push(cardio);
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-duration-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith(
+      'distance'
+    );
+
+    fireEvent.press(getByTestId('focus-distance-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith('rpe');
   });
 
   it('ends a completed cardio bar at Done — no Next Set into a second set', () => {
@@ -944,41 +1025,7 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
         useActiveWorkoutStore.setState({ restExpiredAt: Date.now() });
       });
 
-    it("puts the keyboard in the on-deck set's first cell when nothing is focused", () => {
-      const { getByTestId } = renderScreen();
-      const bar = () =>
-        within(
-          getByTestId('set-accessory-sticky', { includeHiddenElements: true })
-        );
-      expect(bar().queryByText('Done')).toBeNull();
-
-      expireRest();
-
-      // Weight is the first cell, so Next (→ reps) and Log are on offer.
-      expect(bar().queryByText('Next')).toBeTruthy();
-      expect(bar().queryByText('Log')).toBeTruthy();
-    });
-
-    it('keeps the keyboard closed when "Focus the next set when a rest ends" is off (#3581)', () => {
-      useAppPreferencesStore.getState().setFocusNextSetOnRestEnd(false);
-      const { getByTestId } = renderScreen();
-      const bar = () =>
-        within(
-          getByTestId('set-accessory-sticky', { includeHiddenElements: true })
-        );
-
-      expireRest();
-
-      expect(bar().queryByText('Next')).toBeNull();
-      expect(bar().queryByText('Log')).toBeNull();
-      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
-    });
-
-    describe('in the focus view', () => {
-      beforeEach(() => {
-        useAppPreferencesStore.getState().setActiveWorkoutView('focus');
-      });
-
+    describe('on the focus page', () => {
       it('leaves focus alone when the on-deck set is not mounted', () => {
         const { getByTestId } = renderScreen();
         const bar = () =>
@@ -1059,56 +1106,6 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
   });
 });
 
-describe('ActiveWorkoutScreen persistent rest bar', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
-    __resetActiveWorkoutStoreForTests();
-    __resetAppPreferencesStoreForTests();
-    useActiveWorkoutStore.getState().startWorkout(makeSession());
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it('keeps the bar up while no rest is running, showing the on-deck set', () => {
-    const { getByText, getByLabelText } = renderScreen();
-
-    // Set 101 is server-completed, so the cursor starts on Bench Press set 2
-    // with the rest state 'ready' — the bar must still be there.
-    expect(getByText('Bench Press · Set 2')).toBeTruthy();
-    expect(getByLabelText('Complete set')).toBeTruthy();
-  });
-
-  it('completes the cursor set from the bar and starts the next rest', () => {
-    const { getByLabelText } = renderScreen();
-
-    fireEvent.press(getByLabelText('Complete set'));
-
-    const store = useActiveWorkoutStore.getState();
-    expect(store.completedSetIds['102']).toBeTruthy();
-    expect(store.activeSetId).toBe('201');
-    expect(store.rest.state).toBe('resting');
-  });
-
-  it('hides the bar once every set is complete', () => {
-    // Completing the final set leaves no next step, so the store lands on
-    // 'ready' with a null cursor rather than starting a last rest.
-    act(() => {
-      const store = useActiveWorkoutStore.getState();
-      store.completeSet('102');
-      store.completeSet('201');
-      store.completeSet('301');
-    });
-
-    const { queryByLabelText } = renderScreen();
-
-    expect(queryByLabelText('Complete set')).toBeNull();
-    expect(queryByLabelText('Skip rest')).toBeNull();
-  });
-});
-
 describe('ActiveWorkoutScreen render cost', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -1153,10 +1150,10 @@ describe('ActiveWorkoutScreen render cost', () => {
     expect(mockHeaderRenders).toBe(0);
   });
 
-  it('counts a running rest down inside the bar without re-rendering the screen', async () => {
-    const { getByLabelText, getByTestId } = await renderSettled();
-    fireEvent.press(getByLabelText('Complete set'));
-    const restBar = () => within(getByTestId('rest-bar-body'));
+  it('counts a running rest down inside the rest card without re-rendering the screen', async () => {
+    const { getByTestId } = await renderSettled();
+    fireEvent.press(getByTestId('focus-complete-102'));
+    const restBar = () => within(getByTestId('focus-rest-card'));
     expect(restBar().getByText('1:30')).toBeTruthy();
     mockHeaderRenders = 0;
 
@@ -1168,13 +1165,12 @@ describe('ActiveWorkoutScreen render cost', () => {
     expect(mockHeaderRenders).toBe(0);
   });
 
-  it("ticks the keyboard bar's rest row with the docked bar, without re-rendering the screen", async () => {
-    const { getByLabelText, getByTestId } = await renderSettled();
-    fireEvent.press(getByLabelText('Complete set'));
+  it("ticks the keyboard bar's rest row on the shared clock, without re-rendering the screen", async () => {
+    const { getByTestId } = await renderSettled();
+    fireEvent.press(getByTestId('focus-complete-102'));
+    // The rest card hides behind the keyboard, whose bar carries the row.
     fireEvent.press(getByTestId('focus-rpe-201'));
-    const restBar = () => within(getByTestId('rest-bar-body'));
     const keyboardBar = () => within(getByTestId('set-accessory-bar'));
-    expect(restBar().getByText('1:30')).toBeTruthy();
     expect(keyboardBar().getByText('1:30')).toBeTruthy();
     mockHeaderRenders = 0;
 
@@ -1182,15 +1178,13 @@ describe('ActiveWorkoutScreen render cost', () => {
       act(() => {
         jest.advanceTimersByTime(1_000);
       });
-      // One shared tick moves both countdowns at once.
-      expect(restBar().getByText(shown)).toBeTruthy();
       expect(keyboardBar().getByText(shown)).toBeTruthy();
     }
     expect(mockHeaderRenders).toBe(0);
   });
 
   it('tells the autosave a set is being edited while a cell holds focus', async () => {
-    const { getByTestId, getByLabelText } = await renderSettled();
+    const { getByTestId } = await renderSettled();
     expect(useActiveWorkoutAutosave).toHaveBeenLastCalledWith({
       editing: false,
     });
@@ -1200,11 +1194,31 @@ describe('ActiveWorkoutScreen render cost', () => {
       editing: true,
     });
 
-    // Logging the set from the rest bar ends the edit.
-    fireEvent.press(getByLabelText('Complete set'));
+    // Logging a set ends the edit.
+    fireEvent.press(getByTestId('focus-complete-102'));
     expect(useActiveWorkoutAutosave).toHaveBeenLastCalledWith({
       editing: false,
     });
+  });
+
+  it("hands the header the watch's live calories, and none without them", async () => {
+    const { unmount } = await renderSettled();
+    expect(
+      (mockHeaderProps.focusBar as { caloriesKcal?: number | null })
+        .caloriesKcal ?? null
+    ).toBeNull();
+    unmount();
+
+    const { sessionId, startedAt } = useActiveWorkoutStore.getState();
+    useLiveWorkoutEnergyStore
+      .getState()
+      .add(sessionId as string, startedAt as number, 42);
+    await renderSettled();
+    expect(
+      (mockHeaderProps.focusBar as { caloriesKcal?: number | null })
+        .caloriesKcal
+    ).toBe(42);
+    useLiveWorkoutEnergyStore.getState().reset();
   });
 
   it('hands the header the same props when only the focused cell moves', async () => {
@@ -1816,37 +1830,260 @@ describe('ActiveWorkoutScreen focus view', () => {
     jest.useRealTimers();
   });
 
-  it('keeps the list in list mode', () => {
-    const { getByTestId, queryByTestId } = renderScreen();
-
-    expect(getByTestId('card-ex-a')).toBeTruthy();
-    expect(queryByTestId('focus-view')).toBeNull();
-  });
-
-  it('shows the focus view instead of the list in focus mode, keeping Add and End', () => {
-    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
-    const { getByTestId, getByText, queryByTestId } = renderScreen();
+  it('shows the focus view with Add and End', () => {
+    const { getByTestId, getByText } = renderScreen();
 
     expect(getByTestId('focus-view').props.accessibilityLabel).toBe(
       'active:ex-a'
     );
-    expect(queryByTestId('card-ex-a')).toBeNull();
     expect(getByText('Add an Exercise')).toBeTruthy();
     expect(getByText('End Workout')).toBeTruthy();
   });
 
-  it('keeps the list in guided mode, where the guided card runs the cues', () => {
-    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
-    useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
-    const { getByTestId, queryByTestId } = renderScreen();
-
-    expect(getByTestId('card-ex-a')).toBeTruthy();
-    expect(queryByTestId('focus-view')).toBeNull();
+  it('opens the focus workout settings page from the header menu', () => {
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('focus-workout-settings')).toBeNull();
+    act(() => (mockHeaderProps.onOpenSettings as () => void)());
+    expect(navigation.navigate).not.toHaveBeenCalledWith('WorkoutSettings');
   });
 
-  describe('restored list-view controls', () => {
+  describe('post-set effort sheet and PR card', () => {
+    const logLast = (getByTestId: (id: string) => any) => {
+      fireEvent.press(getByTestId('focus-complete-last'));
+    };
+    const findSet = (setId: string) =>
+      useActiveWorkoutStore
+        .getState()
+        .session?.exercises.flatMap((e) => e.sets)
+        .find((set) => String(set.id) === setId);
+
     beforeEach(() => {
-      useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+      mockEffortSheet.props = null;
+      mockPrCard.props = null;
+      useAppPreferencesStore.setState({ watchRpeEnabled: true });
+    });
+
+    it('asks how hard the set was when the effort column is on, and saves it', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+
+      expect(mockEffortSheet.props.metric).toBe('rpe');
+      expect(mockEffortSheet.props.initialValue).toBe(8);
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(findSet('301')?.rpe).toBe(9);
+    });
+
+    it('writes RIR when that is the effort column, and Skip writes nothing', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rir');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props.metric).toBe('rir');
+      act(() => mockEffortSheet.props.onSkip());
+      expect(findSet('301')?.rir ?? null).toBeNull();
+      expect(findSet('301')?.rpe ?? null).toBeNull();
+    });
+
+    it('adds no step when the effort column is off', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('volume');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).toBeNull();
+    });
+
+    it('detects a real record against the captured best and shows the PR card after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      useActiveWorkoutStore
+        .getState()
+        .capturePrBaseline('x-ex-c', { weight: 50, reps: 8 });
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+      expect(mockEffortSheet.props).not.toBeNull();
+      expect(mockPrCard.props).toBeNull();
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      expect(mockPrCard.props.detail).toEqual({
+        gain: '+10 kg',
+        previous: '50 kg',
+      });
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+    });
+
+    it('shows the PR card for a record, after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.setState({
+          prSetIds: { '301': true },
+        });
+      });
+      // completeSet restamps PR ids from the baseline; stub the stamp through
+      // the store state the screen reads after completing.
+      const original = useActiveWorkoutStore.getState().completeSet;
+      useActiveWorkoutStore.setState({
+        completeSet: (setId: string) => {
+          original(setId);
+          useActiveWorkoutStore.setState({ prSetIds: { [setId]: true } });
+        },
+      });
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).not.toBeNull();
+      act(() => mockEffortSheet.props.onSkip());
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      act(() => mockPrCard.props.onClose());
+    });
+  });
+
+  it('opens the Exercises sheet from the header list button', () => {
+    renderScreen();
+    expect(mockExercisesSheet.props.visible).toBe(false);
+
+    act(() =>
+      (mockHeaderProps.focusBar as { onOpenList: () => void }).onOpenList()
+    );
+    expect(mockExercisesSheet.props.visible).toBe(true);
+
+    act(() => mockExercisesSheet.props.onClose());
+    expect(mockExercisesSheet.props.visible).toBe(false);
+  });
+
+  describe('guided mode and interval formats', () => {
+    beforeEach(() => {
+      mockEffortSheet.props = null;
+      mockPrCard.props = null;
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+    });
+
+    it('renders the interval HUD slot and no guided card for a standard workout', () => {
+      const { getByTestId, queryByTestId } = renderScreen();
+      expect(
+        within(getByTestId('focus-view')).getByTestId('interval-hud')
+      ).toBeTruthy();
+      expect(queryByTestId('guided-card')).toBeNull();
+    });
+
+    it('renders the guided card inside the focus view when guided mode is on, and logs sets through it', () => {
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+      const { getByTestId } = renderScreen();
+
+      const view = within(getByTestId('focus-view'));
+      expect(view.getByTestId('guided-card')).toBeTruthy();
+      expect(view.getByTestId('interval-hud')).toBeTruthy();
+
+      fireEvent.press(getByTestId('guided-card-complete'));
+      expect(
+        useActiveWorkoutStore.getState().completedSetIds['102']
+      ).toBeDefined();
+    });
+
+    it('leaves the effort sheet to standard workouts: guided mode runs its own flow', () => {
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId('focus-complete-last'));
+
+      expect(
+        useActiveWorkoutStore.getState().completedSetIds['301']
+      ).toBeDefined();
+      expect(mockEffortSheet.props).toBeNull();
+    });
+
+    it('keeps the HUD and drops the guided card and effort sheet in an interval format', () => {
+      useActiveWorkoutStore.setState({ workoutFormat: 'tabata' });
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(
+        within(getByTestId('focus-view')).getByTestId('interval-hud')
+      ).toBeTruthy();
+      expect(queryByTestId('guided-card')).toBeNull();
+
+      fireEvent.press(getByTestId('focus-complete-last'));
+      expect(mockEffortSheet.props).toBeNull();
+    });
+
+    it('shows the standard rest card (with -15 s / +15 s) during a guided rest', () => {
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+      expect(getByTestId('focus-rest-card')).toBeTruthy();
+      expect(getByTestId('focus-rest-shorten')).toBeTruthy();
+      expect(getByTestId('focus-rest-extend')).toBeTruthy();
+    });
+
+    it('starts no rest timer and shows no rest card in an interval format', () => {
+      useActiveWorkoutStore.setState({ workoutFormat: 'tabata' });
+      const { queryByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      expect(queryByTestId('focus-rest-card')).toBeNull();
+    });
+  });
+
+  describe('focus page controls', () => {
+    it('blocks logging a new set while a standard rest runs, lets un-log through, and unlocks on skip', () => {
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+      const isDone = (id: string) =>
+        useActiveWorkoutStore.getState().completedSetIds[id] != null;
+
+      fireEvent.press(getByTestId('focus-complete-last'));
+      expect(isDone('301')).toBe(false);
+
+      fireEvent.press(getByTestId('focus-uncomplete-102'));
+      expect(isDone('102')).toBe(false);
+
+      act(() => {
+        useActiveWorkoutStore.getState().dismissRest();
+      });
+      fireEvent.press(getByTestId('focus-complete-last'));
+      expect(isDone('301')).toBe(true);
+    });
+
+    it('does not lock logging while a guided rest runs', () => {
+      useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+      fireEvent.press(getByTestId('focus-complete-last'));
+      expect(useActiveWorkoutStore.getState().completedSetIds['301']).toEqual(
+        expect.anything()
+      );
+    });
+
+    it('floats the focus rest card over the page while a rest runs and hides it behind the keyboard', () => {
+      const { getByTestId, queryByTestId, getByText } = renderScreen();
+      expect(queryByTestId('focus-rest-card')).toBeNull();
+
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      expect(getByTestId('focus-rest-card')).toBeTruthy();
+      expect(getByText(/^Next: Set \d/)).toBeTruthy();
+
+      fireEvent.press(getByTestId('focus-weight-field'));
+      expect(queryByTestId('focus-rest-card')).toBeNull();
+
+      fireEvent.press(getByTestId('focus-page-change'));
+      act(() => {
+        useActiveWorkoutStore.getState().dismissRest();
+      });
+      expect(queryByTestId('focus-rest-card')).toBeNull();
     });
 
     it('opens the exercise note editor from the overflow Notes item', () => {
@@ -1859,9 +2096,10 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(getByTestId('focus-state').props.children).toContain('note:ex-a');
     });
 
-    it('opens the rest picker for the exercise from the rest chip', () => {
+    it('opens the rest picker for the exercise from the exercise menu', () => {
       const { getByTestId } = renderScreen();
-      fireEvent.press(getByTestId('focus-rest'));
+      fireEvent.press(getByTestId('card-ex-a-overflow'));
+      mockSheet.props?.items.find((i) => i.key === 'rest')?.onPress?.();
       expect(mockSetRestSheetPresent).toHaveBeenCalledWith(
         'Bench Press',
         expect.any(Array),
@@ -1895,6 +2133,7 @@ describe('ActiveWorkoutScreen focus view', () => {
       jest.mocked(KeyboardController.isVisible).mockReturnValue(false);
       const store = useActiveWorkoutStore.getState();
       for (const id of ['101', '102', '201']) store.completeSet(id);
+      store.dismissRest();
       const { getByTestId } = renderScreen();
 
       fireEvent.press(getByTestId('focus-complete-last'));
@@ -1903,40 +2142,6 @@ describe('ActiveWorkoutScreen focus view', () => {
       });
 
       expect(mockFocusScrollToEnd).toHaveBeenCalledWith({ animated: true });
-      jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
-    });
-
-    it('ignores list card offsets left over from a list session when the active exercise changes', () => {
-      jest.mocked(KeyboardController.isVisible).mockReturnValue(false);
-      useAppPreferencesStore.getState().setActiveWorkoutView('list');
-      const { getByTestId } = renderScreen();
-      // The list cards report their layout, filling the screen's offsets.
-      for (const id of ['ex-a', 'ex-b']) {
-        fireEvent(getByTestId(`card-${id}`).parent!, 'layout', {
-          nativeEvent: { layout: { x: 0, y: 400, width: 300, height: 100 } },
-        });
-      }
-      // Workout Settings switches the view while this screen stays mounted.
-      act(() => {
-        useAppPreferencesStore.getState().setActiveWorkoutView('focus');
-      });
-      act(() => {
-        jest.advanceTimersByTime(400);
-      });
-      mockFocusScrollTo.mockClear();
-
-      // Finishing exercise A moves the active set to B.
-      act(() => {
-        useActiveWorkoutStore.getState().completeSet('102');
-      });
-      act(() => {
-        jest.advanceTimersByTime(400);
-      });
-
-      expect(getByTestId('focus-view').props.accessibilityLabel).toBe(
-        'active:ex-b'
-      );
-      expect(mockFocusScrollTo).not.toHaveBeenCalled();
       jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
     });
 
@@ -1950,14 +2155,42 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(queryByText('Log')).toBeNull();
     });
 
-    it('asks the view to show the active exercise when the rest bar is tapped', () => {
-      const { getByTestId } = renderScreen();
-      expect(getByTestId('focus-show').props.children).toBe('show:0:undefined');
+    it('has no docked Log set bar while no rest runs (the active-set card logs the set)', () => {
+      const { queryByText } = renderScreen();
+      expect(queryByText('Log set')).toBeNull();
+    });
 
-      fireEvent.press(getByTestId('rest-bar-body'));
-      expect(getByTestId('focus-show').props.children).toBe('show:1:ex-a');
-      fireEvent.press(getByTestId('rest-bar-body'));
-      expect(getByTestId('focus-show').props.children).toBe('show:2:ex-a');
+    it('passes the now banner naming the current set, and tapping never un-logs one', () => {
+      // Set 101 is already logged, so the banner names set 102.
+      const { getByTestId, getByText } = renderScreen();
+      expect(getByText(/^Bench Press\|2\/2\|/)).toBeTruthy();
+      fireEvent.press(getByTestId('focus-now-banner'));
+      expect(
+        useActiveWorkoutStore.getState().completedSetIds['101']
+      ).toBeDefined();
+    });
+
+    it('fills the now banner load from the assumed values of a set with empty fields', () => {
+      __resetActiveWorkoutStoreForTests();
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = null;
+      session.exercises[0].sets[0].weight = null;
+      session.exercises[0].sets[0].reps = null;
+      useActiveWorkoutStore.getState().startWorkout(session);
+      useActiveWorkoutStore.setState({
+        plannedSetValues: { '101': { weight: 85, reps: 8 } },
+      } as never);
+      const { getByText } = renderScreen();
+      expect(getByText(/^Bench Press\|1\/2\|85 kg × 8$/)).toBeTruthy();
+    });
+
+    it('passes the now banner before anything is logged too', () => {
+      __resetActiveWorkoutStoreForTests();
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = null;
+      useActiveWorkoutStore.getState().startWorkout(session);
+      const { getByTestId } = renderScreen();
+      expect(getByTestId('focus-now-banner')).toBeTruthy();
     });
 
     it('asks the view to show an exercise picked with "Do another exercise first"', () => {
@@ -2020,14 +2253,5 @@ describe('ActiveWorkoutScreen focus view', () => {
       fireEvent.press(getByText('Plate calculator'));
       expect(getByTestId('plate-sheet')).toBeTruthy();
     });
-  });
-
-  it('ignores focus mode for the interval formats', () => {
-    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
-    useActiveWorkoutStore.setState({ workoutFormat: 'tabata' });
-    const { getByTestId, queryByTestId } = renderScreen();
-
-    expect(getByTestId('card-ex-a')).toBeTruthy();
-    expect(queryByTestId('focus-view')).toBeNull();
   });
 });

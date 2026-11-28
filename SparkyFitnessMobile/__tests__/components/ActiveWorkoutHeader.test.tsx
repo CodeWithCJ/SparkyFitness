@@ -4,7 +4,13 @@ import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
 } from '../../src/components/ActiveWorkoutHeader';
+import { useActiveWorkoutStore } from '../../src/stores/activeWorkoutStore';
+import { useLiveHeartRateStore } from '../../src/stores/liveHeartRateStore';
 import { formatElapsed } from '../../src/utils/workoutSession';
+
+jest.mock('../../src/hooks/useHeartRateZoneColor', () => ({
+  useHeartRateZoneColor: () => null,
+}));
 
 function makeSession(): PresetSessionResponse {
   return {
@@ -93,7 +99,6 @@ describe('ActiveWorkoutHeader', () => {
       onAddExercise?: () => void;
       onOpenSettings?: () => void;
       onClearAllSets?: () => void;
-      progressInSubtitle?: boolean;
     }
   ) {
     const progress = buildExerciseProgress(makeSession(), completedSetIds);
@@ -102,7 +107,7 @@ describe('ActiveWorkoutHeader', () => {
         name="Push Day"
         startedAt={start}
         progress={progress}
-        progressInSubtitle={overrides?.progressInSubtitle}
+        focusBar={{ position: 1, total: 3 }}
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
         onEndWorkout={overrides?.onEndWorkout}
@@ -115,58 +120,167 @@ describe('ActiveWorkoutHeader', () => {
     );
   }
 
-  it('renders the name and elapsed clock', () => {
-    const { getAllByText, getByText } = renderHeaderComponent({});
-    // The name renders twice: the header title and the menu sheet's title
-    // (the gorhom mock always renders sheet children).
-    expect(getAllByText('Push Day').length).toBeGreaterThanOrEqual(1);
-    expect(getByText('01:02 elapsed')).toBeTruthy();
-  });
-
-  it('advances the elapsed clock every second on its own', () => {
+  it('renders the elapsed clock pill', () => {
     const { getByText } = renderHeaderComponent({});
-    act(() => {
-      jest.advanceTimersByTime(1_000);
-    });
-    expect(getByText('01:03 elapsed')).toBeTruthy();
+    expect(getByText('01:02')).toBeTruthy();
   });
 
-  it('shows one segment per exercise and the done count', () => {
-    // ex-1 fully done (2/2), ex-3 partial (1/2), ex-2 untouched.
-    const { getByText, getAllByTestId, queryAllByTestId } =
-      renderHeaderComponent({
+  describe('beside a side strip', () => {
+    function renderStrip() {
+      const progress = buildExerciseProgress(makeSession(), {
         '101': true,
         '102': true,
-        '301': true,
       });
-    expect(getByText('1 / 3 exercises')).toBeTruthy();
-    expect(getAllByTestId('header-segment-done')).toHaveLength(1);
-    expect(queryAllByTestId('header-segment')).toHaveLength(2);
-    // Only the partially-complete segment renders an accent fill.
-    expect(getAllByTestId('header-segment-fill')).toHaveLength(1);
-  });
+      return render(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          focusBar={{ position: 1, total: 3 }}
+          buttonsInStrip
+          onBack={jest.fn()}
+          onDiscard={jest.fn()}
+        />
+      );
+    }
 
-  it('counts all exercises done', () => {
-    const { getByText, getAllByTestId } = renderHeaderComponent({
-      '101': true,
-      '102': true,
-      '201': true,
-      '301': true,
-      '302': true,
+    it('shows the compact title block with elapsed time and the done count, no buttons', () => {
+      const { getByText, queryByLabelText, getAllByText } = renderStrip();
+      expect(getAllByText('Push Day').length).toBeGreaterThanOrEqual(1);
+      expect(getByText('01:02 elapsed')).toBeTruthy();
+      expect(getByText('1 / 3 exercises')).toBeTruthy();
+      expect(queryByLabelText('Back')).toBeNull();
+      expect(queryByLabelText('Workout menu')).toBeNull();
     });
-    expect(getByText('3 / 3 exercises')).toBeTruthy();
-    expect(getAllByTestId('header-segment-done')).toHaveLength(3);
   });
 
-  it('moves the count to the elapsed line and drops the bar on request', () => {
-    const { getByText, queryAllByTestId } = renderHeaderComponent(
-      { '101': true, '102': true },
-      { progressInSubtitle: true }
-    );
-    expect(getByText('01:02 elapsed')).toBeTruthy();
-    expect(getByText('1 / 3 exercises')).toBeTruthy();
-    expect(queryAllByTestId('header-segment')).toHaveLength(0);
-    expect(queryAllByTestId('header-segment-done')).toHaveLength(0);
+  describe('focus bar', () => {
+    function renderFocusBar(onOpenList?: () => void, onBack = jest.fn()) {
+      const progress = buildExerciseProgress(makeSession(), {});
+      return render(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          focusBar={{ position: 2, total: 3, onOpenList }}
+          onBack={onBack}
+          onDiscard={jest.fn()}
+        />
+      );
+    }
+
+    it('shows the elapsed pill, the list button with the position and the menu', () => {
+      const { getByText, getByLabelText, queryByText, queryByTestId } =
+        renderFocusBar(jest.fn());
+      expect(getByText('2/3')).toBeTruthy();
+      expect(getByLabelText('Exercise list').props.accessibilityValue).toEqual({
+        text: 'Exercise 2 of 3',
+      });
+      expect(getByText('01:02')).toBeTruthy();
+      expect(getByLabelText('01:02 elapsed')).toBeTruthy();
+      expect(getByLabelText('Workout menu')).toBeTruthy();
+      expect(queryByText('01:02 elapsed')).toBeNull();
+      expect(queryByTestId('focus-header-heart-rate')).toBeNull();
+      expect(queryByTestId('focus-header-calories')).toBeNull();
+    });
+
+    it('adds the live heart rate and the energy to the pill only when present', () => {
+      act(() => {
+        useActiveWorkoutStore.setState({
+          sessionId: 'session-1',
+          startedAt: start,
+        });
+        useLiveHeartRateStore.setState({
+          reading: {
+            sessionId: 'session-1',
+            exerciseEntryId: 'ex-2',
+            bpm: 141,
+            at: start + 61_000,
+          },
+        });
+      });
+      const progress = buildExerciseProgress(makeSession(), {});
+      const { getByLabelText, getByText, queryByTestId, rerender } = render(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          focusBar={{
+            position: 2,
+            total: 3,
+            exerciseEntryId: 'ex-2',
+            caloriesKcal: 123.4,
+          }}
+          onBack={jest.fn()}
+          onDiscard={jest.fn()}
+        />
+      );
+      expect(getByText('141')).toBeTruthy();
+      expect(getByLabelText('Heart rate 141 bpm')).toBeTruthy();
+      expect(getByText('123')).toBeTruthy();
+      expect(getByLabelText('Energy 123 kcal')).toBeTruthy();
+      // Another exercise has no reading of its own.
+      rerender(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          focusBar={{ position: 1, total: 3, exerciseEntryId: 'ex-1' }}
+          onBack={jest.fn()}
+          onDiscard={jest.fn()}
+        />
+      );
+      expect(queryByTestId('focus-header-heart-rate')).toBeNull();
+      expect(queryByTestId('focus-header-calories')).toBeNull();
+      act(() => {
+        useLiveHeartRateStore.setState({ reading: null });
+        useActiveWorkoutStore.setState({ sessionId: null, startedAt: null });
+      });
+    });
+
+    it('draws the workout menu as grouped cards', () => {
+      const progress = buildExerciseProgress(makeSession(), {});
+      const { queryAllByTestId, getByTestId } = render(
+        <ActiveWorkoutHeader
+          name="Push Day"
+          startedAt={start}
+          progress={progress}
+          focusBar={{ position: 1, total: 3 }}
+          onBack={jest.fn()}
+          onAddExercise={jest.fn()}
+          onEndWorkout={jest.fn()}
+          onDiscard={jest.fn()}
+        />
+      );
+      expect(queryAllByTestId('action-sheet-card')).toHaveLength(3);
+      expect(getByTestId('action-sheet-item-discard')).toBeTruthy();
+    });
+
+    it('opens the exercise list from the list button', () => {
+      const onOpenList = jest.fn();
+      const { getByLabelText } = renderFocusBar(onOpenList);
+      fireEvent.press(getByLabelText('Exercise list'));
+      expect(onOpenList).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the list button when there is no list to open, and still goes back', () => {
+      const onBack = jest.fn();
+      const { queryByLabelText, getByLabelText } = renderFocusBar(
+        undefined,
+        onBack
+      );
+      expect(queryByLabelText('Exercise list')).toBeNull();
+      fireEvent.press(getByLabelText('Back'));
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it('ticks the elapsed pill on its own', () => {
+      const { getByText } = renderFocusBar(jest.fn());
+      act(() => {
+        jest.advanceTimersByTime(1_000);
+      });
+      expect(getByText('01:03')).toBeTruthy();
+    });
   });
 
   it('fires onBack from the back button', () => {
@@ -267,7 +381,7 @@ describe('ActiveWorkoutHeader', () => {
     expect(queryByText('Workout settings')).toBeNull();
   });
 
-  it('separates the full menu into edit, workout, finish, and danger groups', () => {
+  it('separates the full menu into edit, workout, finish, and danger cards', () => {
     const { getByLabelText, queryAllByTestId } = renderHeaderComponent(
       {},
       {
@@ -280,12 +394,12 @@ describe('ActiveWorkoutHeader', () => {
       }
     );
     fireEvent.press(getByLabelText('Workout menu'));
-    expect(queryAllByTestId('action-sheet-group-spacer')).toHaveLength(3);
+    expect(queryAllByTestId('action-sheet-card')).toHaveLength(4);
   });
 
-  it('renders the minimal menu (Discard only) without group spacers', () => {
+  it('renders the minimal menu (Discard only) as a single card', () => {
     const { getByLabelText, queryAllByTestId } = renderHeaderComponent({});
     fireEvent.press(getByLabelText('Workout menu'));
-    expect(queryAllByTestId('action-sheet-group-spacer')).toHaveLength(0);
+    expect(queryAllByTestId('action-sheet-card')).toHaveLength(1);
   });
 });

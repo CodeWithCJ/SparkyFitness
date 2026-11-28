@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Pressable, Switch, Text, TextInput, View } from 'react-native';
@@ -20,6 +20,21 @@ interface FeedbackExercise {
 interface WorkoutFeedbackCardProps {
   presetEntryId: string;
   exercises: FeedbackExercise[];
+  /**
+   * The workout's 1-10 effort rating from the summary. When it changes, the
+   * workout-level difficulty that feeds adaptive suggestions follows it.
+   * Leave undefined where the effort is not rated on the same screen.
+   */
+  effort?: number | null;
+}
+
+/** The workout-level difficulty a 1-10 effort stands for. */
+export function difficultyFromEffort(
+  effort: number
+): WorkoutFeedbackDifficulty {
+  if (effort <= 3) return 'too_easy';
+  if (effort <= 8) return 'just_right';
+  return 'too_hard';
 }
 
 export function difficultyLabel(
@@ -79,12 +94,13 @@ function Chip({
 }
 
 /**
- * "How did it feel?" — end-of-workout feedback that adaptive suggestions
+ * "Notes for next time" — end-of-workout feedback that adaptive suggestions
  * learn from (issue #1560). Every answer autosaves.
  */
 const WorkoutFeedbackCard: React.FC<WorkoutFeedbackCardProps> = ({
   presetEntryId,
   exercises,
+  effort,
 }) => {
   const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
@@ -96,6 +112,27 @@ const WorkoutFeedbackCard: React.FC<WorkoutFeedbackCardProps> = ({
   const [showPerExercise, setShowPerExercise] = useState(
     () => Object.keys(draft.exerciseDifficulty).length > 0
   );
+
+  // Follow the effort rating, but not its value at first mount and not before
+  // the saved feedback has loaded (a save replaces the whole feedback).
+  const ready = !isLoading && !isError;
+  const lastEffortRef = useRef<number | null | undefined>(undefined);
+  const effortSeededRef = useRef(false);
+  useEffect(() => {
+    if (!ready || effort === undefined) return;
+    if (!effortSeededRef.current) {
+      effortSeededRef.current = true;
+      lastEffortRef.current = effort;
+      return;
+    }
+    if (effort === lastEffortRef.current) return;
+    lastEffortRef.current = effort;
+    if (effort == null) return;
+    const difficulty = difficultyFromEffort(effort);
+    update((current) =>
+      current.difficulty === difficulty ? current : { ...current, difficulty }
+    );
+  }, [ready, effort, update]);
 
   if (isLoading) return null;
   // Every save replaces the whole session's feedback, so answering from an
@@ -137,35 +174,19 @@ const WorkoutFeedbackCard: React.FC<WorkoutFeedbackCardProps> = ({
     >
       <View className="flex-row items-center justify-between mb-1">
         <Text className="text-base font-semibold text-text-primary">
-          {t('workoutFeedback.title', { defaultValue: 'How did it feel?' })}
+          {t('workoutFeedback.title', { defaultValue: 'Notes for next time' })}
         </Text>
         {statusText && (
           <Text className="text-xs text-text-muted">{statusText}</Text>
         )}
       </View>
-      <Text className="text-xs text-text-secondary mb-3">
+      <Text className="text-xs text-text-secondary">
         {t('workoutFeedback.subtitle', {
           defaultValue: 'Your next suggestions adjust to this.',
         })}
       </Text>
 
-      <View className="flex-row gap-2">
-        {WORKOUT_FEEDBACK_DIFFICULTIES.map((difficulty) => (
-          <Chip
-            key={difficulty}
-            label={difficultyLabel(t, difficulty)}
-            selected={draft.difficulty === difficulty}
-            onPress={() =>
-              update((current) => ({
-                ...current,
-                difficulty: toggle(current.difficulty, difficulty),
-              }))
-            }
-          />
-        ))}
-      </View>
-
-      <View className="flex-row items-center justify-between mt-4">
+      <View className="flex-row items-center justify-between mt-3">
         <Text className="text-sm text-text-primary flex-1 pr-3">
           {t('workoutFeedback.painQuestion', {
             defaultValue: 'Any pain or discomfort?',

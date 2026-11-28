@@ -4,6 +4,7 @@ import type { PresetSessionResponse } from '@workspace/shared';
 import {
   __resetActiveWorkoutStoreForTests,
   initWorkoutNotificationActions,
+  restSecAfterLoggingSet,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import {
@@ -1692,6 +1693,18 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeSet('402'); // finishes round 1
       expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(60);
       await flushPromises();
+    });
+
+    it('previews the rest completion will start (restSecAfterLoggingSet)', () => {
+      const { session, steps, completedSetIds } =
+        useActiveWorkoutStore.getState();
+      const rest = (id: string, done = completedSetIds) =>
+        restSecAfterLoggingSet(session!, steps, done, id);
+      // Partner in the same round: none. End of the round: the group rest.
+      expect(rest('301')).toBe(0);
+      expect(rest('401')).toBe(90);
+      // The very last set has no rest after it.
+      expect(rest('402', { 301: 1, 401: 1, 302: 1 })).toBeNull();
     });
 
     it('rests between rounds but not between partners when logged in order', async () => {
@@ -3773,7 +3786,7 @@ describe('activeWorkoutStore', () => {
       expect(state.activeSetId).toBe('201');
     });
 
-    it('ignores the current exercise and earlier ones', () => {
+    it('ignores the current exercise and finished earlier ones', () => {
       useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
       expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
 
@@ -3783,6 +3796,19 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
       expect(useActiveWorkoutStore.getState().sessionRevision).toBe(revision);
       expect(useActiveWorkoutStore.getState().activeSetId).toBe('201');
+    });
+
+    it('puts the cursor on an unfinished exercise that sits before the current one', () => {
+      // The cursor was moved on to ex-uuid-2 while ex-uuid-1 still has sets:
+      // Do it now on ex-uuid-1 used to do nothing (it was not "after" the cursor).
+      useActiveWorkoutStore.setState({ activeSetId: '201' });
+      useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session!.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-1',
+        'ex-uuid-2',
+      ]);
+      expect(state.activeSetId).toBe('101');
     });
   });
 

@@ -1,6 +1,10 @@
+import type { TFunction } from 'i18next';
+import type { WorkoutPreset } from '../types/workoutPresets';
+import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import type {
   ExerciseModality,
   ExerciseRecentSessionSet,
+  PresetSessionResponse,
 } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
 import { distanceFromKm, storedWeightInUnit } from './unitConversions';
@@ -9,6 +13,7 @@ import {
   formatDurationSeconds,
   isCardioModality,
   isDurationModality,
+  isUntouchedFabricatedSet,
   isWarmupSetType,
   isWeightDistanceModality,
   isWeightDurationModality,
@@ -136,4 +141,104 @@ export function formatLastTimeSets(
       return weight ?? '';
     })
     .filter((text) => text !== '');
+}
+
+/**
+ * Short, translated lines on how today's workout differs in structure from the
+ * preset it started from (the same differences the "Update preset?" check
+ * counts): exercises added or removed, and a changed number of sets.
+ */
+export function describePresetChanges(
+  session: PresetSessionResponse,
+  preset: WorkoutPreset,
+  t: TFunction,
+  completedSetIds: CompletedSetMap
+): string[] {
+  const lines: string[] = [];
+  const unmatched = [...preset.exercises];
+  // Mirror buildPresetUpdateExercises: an exercise whose library row is gone
+  // never reaches a preset, so it is neither added nor counted.
+  const kept = session.exercises.filter((e) => e.exercise_id != null);
+  const matchedIndexes: number[] = [];
+  for (const exercise of kept) {
+    const name =
+      exercise.exercise_snapshot?.name ??
+      t('workout.exercise', { defaultValue: 'Exercise' });
+    const index = unmatched.findIndex(
+      (p) => p != null && p.exercise_id === exercise.exercise_id
+    );
+    if (index < 0) {
+      lines.push(
+        t('workoutComplete.changes.added', {
+          defaultValue: '{{name}} added.',
+          name,
+        })
+      );
+      continue;
+    }
+    matchedIndexes.push(preset.exercises.indexOf(unmatched[index]));
+    const [match] = unmatched.splice(index, 1, null as never);
+    const before = match.sets?.length ?? 0;
+    // A preset exercise saved without sets shows one untouched placeholder
+    // set in the session; that is not a change. The same rule as
+    // buildPresetUpdateExercises, so a used set always gets its line.
+    const placeholderOnly = isUntouchedFabricatedSet(
+      before,
+      exercise.sets,
+      completedSetIds
+    );
+    if (before !== exercise.sets.length && !placeholderOnly) {
+      lines.push(
+        t('workoutComplete.changes.sets', {
+          defaultValue: '{{name}} {{count}} sets, was {{before}}.',
+          defaultValue_one: '{{name}} {{count}} set, was {{before}}.',
+          defaultValue_other: '{{name}} {{count}} sets, was {{before}}.',
+          name,
+          count: exercise.sets.length,
+          before,
+        })
+      );
+    } else if (
+      !placeholderOnly &&
+      exercise.sets.some(
+        (set, i) =>
+          (set.set_type ?? null) !== (match.sets?.[i]?.set_type ?? null)
+      )
+    ) {
+      lines.push(
+        t('workoutComplete.changes.setTypes', {
+          defaultValue: '{{name}} set types changed.',
+          name,
+        })
+      );
+    }
+    if ((exercise.superset_group ?? null) !== (match.superset_group ?? null)) {
+      lines.push(
+        t('workoutComplete.changes.superset', {
+          defaultValue: '{{name}} superset changed.',
+          name,
+        })
+      );
+    }
+  }
+  for (const removed of unmatched) {
+    if (removed == null) continue;
+    lines.push(
+      t('workoutComplete.changes.removed', {
+        defaultValue: '{{name}} removed.',
+        name: removed.exercise_name,
+      })
+    );
+  }
+  if (
+    lines.length === 0 &&
+    matchedIndexes.some((value, i) => i > 0 && value < matchedIndexes[i - 1])
+  ) {
+    lines.push(
+      t('workoutComplete.changes.order', {
+        defaultValue: 'Exercise order changed.',
+      })
+    );
+  }
+  return lines;
 }

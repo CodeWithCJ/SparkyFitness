@@ -32,12 +32,13 @@ Token classes follow Tailwind v4 naming: the utility prefix plus the token name.
 
 ### Surfaces and chrome
 
-| Role                | Token class     | Light hex | Dark hex | Usage                                                                                                                                       |
-| ------------------- | --------------- | --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cool Mist Canvas    | `bg-background` | #F2F4F7   | #0C0E12  | Screen background (`flex-1 bg-background` on almost every screen), navigation card color, sticky section headers, footer bars               |
-| Porcelain Card      | `bg-surface`    | #F9FAFB   | #13161B  | Cards, grouped settings rows, bottom sheets, popover menus, swipeable rows                                                                  |
-| Bright Control Fill | `bg-raised`     | #FFFFFF   | #1C1F26  | Controls, on a card or directly on the canvas: text inputs, search bars, segmented-control track, picker triggers, secondary buttons, chips |
-| Chrome Bar          | `bg-chrome`     | #FFFFFF   | #0E1116  | Persistent bars only: custom tab bar, docked active-workout bar, What's New banner, non-glass fallback for Liquid Glass pills               |
+| Role                 | Token class     | Light hex | Dark hex | Usage                                                                                                                                              |
+| -------------------- | --------------- | --------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cool Mist Canvas     | `bg-background` | #F2F4F7   | #0C0E12  | Screen background (`flex-1 bg-background` on almost every screen), navigation card color, sticky section headers, footer bars                      |
+| Porcelain Card       | `bg-surface`    | #F9FAFB   | #13161B  | Cards, grouped settings rows, bottom sheets, popover menus, swipeable rows                                                                         |
+| Bright Control Fill  | `bg-raised`     | #FFFFFF   | #1C1F26  | Controls, on a card or directly on the canvas: text inputs, search bars, segmented-control track, picker triggers, secondary buttons, chips        |
+| Control on a Control | `bg-control`    | #EAECF1   | #2A2E37  | Buttons and fields set on a `bg-raised` card or control, one step off it: the focus view's stepper buttons and metric tiles on the active-set card |
+| Chrome Bar           | `bg-chrome`     | #FFFFFF   | #0E1116  | Persistent bars only: custom tab bar, docked active-workout bar, What's New banner, non-glass fallback for Liquid Glass pills                      |
 
 In Light, the canvas is the darkest surface and controls are white. In Dark, raised is the lightest surface, so a control on a card always looks lifted.
 
@@ -66,7 +67,9 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 | ---------------- | ------------------------------------------------------------------- | --------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sparky Blue      | `bg-accent-primary`, `text-accent-primary`, `border-accent-primary` | #5087F7   | #427CF0  | Primary buttons, selected chips and days, focused input border, action glyphs, card "Details" links, center Add button, primary chart series                            |
 | Muted Accent     | `--color-accent-muted` (JS only)                                    | #547AC4   | #7096E1  | Read into `useWellnessTokens().accentMuted` but never drawn (no consumer)                                                                                               |
+| Accent Ink       | `--color-accent-ink` (JS only)                                      | #1043B1   | #427CF0  | Focus view current-set card "Set N" heading (accent on the pale-blue card needs a darker blue in light)                                                                 |
 | Pale Accent Text | `--color-accent-text` (JS only)                                     | #E2EBFD   | #F0F5FF  | On-accent text in the Log screen's active filter chips and the What's New chat mockup (2 reads); elsewhere content on accent uses `text-white`                          |
+| On Accent        | `text-on-accent`, `--color-on-accent`                               | #FFFFFF   | #081430  | Label on the focus view's Log set pill: white on the light accent, ink navy on the lighter dark-theme blue                                                              |
 | Active Tab       | `--color-tab-active` (JS only)                                      | #5087F7   | #427CF0  | Focused tab icon and label (equal to Sparky Blue)                                                                                                                       |
 | Inactive Tab     | `--color-tab-inactive` (JS only)                                    | #65718B   | #7B899D  | Unfocused tab icon and label                                                                                                                                            |
 | Switch On Track  | `--color-form-enabled` (JS only)                                    | #7384A5   | #8194BB  | Switch track when on: a muted slate blue, deliberately not the accent                                                                                                   |
@@ -74,18 +77,27 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 
 ### Nutrition and activity metrics
 
-| Role                 | Token class                       | Light hex | Dark hex | Usage                                                                                         |
-| -------------------- | --------------------------------- | --------- | -------- | --------------------------------------------------------------------------------------------- |
-| Calorie Indigo       | `--color-calories` (JS only)      | #506CF7   | #8792E3  | Calorie ring, diary calorie bar, "other" calories segment; also reused for the verified badge |
-| Protein Apricot      | `--color-macro-protein` (JS only) | #F6B151   | #E3AE63  | Protein bars, ring arcs, chart segments                                                       |
-| Carb Leaf Green      | `--color-macro-carbs` (JS only)   | #7AD680   | #89C88D  | Carbohydrate bars, ring arcs, chart segments                                                  |
-| Fat Sky Cyan         | `--color-macro-fat` (JS only)     | #6DCAE9   | #78C4DD  | Fat bars, ring arcs, chart segments                                                           |
-| Fiber Moss           | `--color-macro-fiber` (JS only)   | #47944F   | #568F5C  | Fiber bar                                                                                     |
-| Hydration Steel Blue | `--color-hydration` (JS only)     | #70A7C2   | #4799C2  | Water-bottle gauge fill, hydration settings icon                                              |
-| Exercise Mint        | `bg-exercise`                     | #6DE3A0   | #3EB68A  | Training-load and training-consistency bars                                                   |
-| PR Gold              | `--color-pr` (JS only)            | #D78509   | #F4C452  | Personal-record cards, rows and confetti; kept distinct from Category Amber                   |
-| Heart-Rate Red       | `--color-heart-rate` (JS only)    | #E2363C   | #E96367  | Watch-measured heart rate on workouts and charts; also the finish marker on route maps        |
-| Active-Energy Orange | `--color-active-energy` (JS only) | #F36F16   | #E79055  | Watch-measured active energy; separate from dietary Calorie Indigo                            |
+| Role                 | Token class                       | Light hex | Dark hex | Usage                                                                                                                                             |
+| -------------------- | --------------------------------- | --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Calorie Indigo       | `--color-calories` (JS only)      | #506CF7   | #8792E3  | Calorie ring, diary calorie bar, "other" calories segment; also reused for the verified badge                                                     |
+| Protein Apricot      | `--color-macro-protein` (JS only) | #F6B151   | #E3AE63  | Protein bars, ring arcs, chart segments                                                                                                           |
+| Carb Leaf Green      | `--color-macro-carbs` (JS only)   | #7AD680   | #89C88D  | Carbohydrate bars, ring arcs, chart segments                                                                                                      |
+| Fat Sky Cyan         | `--color-macro-fat` (JS only)     | #6DCAE9   | #78C4DD  | Fat bars, ring arcs, chart segments                                                                                                               |
+| Fiber Moss           | `--color-macro-fiber` (JS only)   | #47944F   | #568F5C  | Fiber bar                                                                                                                                         |
+| Hydration Steel Blue | `--color-hydration` (JS only)     | #70A7C2   | #4799C2  | Water-bottle gauge fill, hydration settings icon                                                                                                  |
+| Exercise Mint        | `bg-exercise`                     | #6DE3A0   | #3EB68A  | Training-load and training-consistency bars                                                                                                       |
+| PR Gold              | `--color-pr` (JS only)            | #D78509   | #F4C452  | Personal-record cards, rows and confetti; kept distinct from Category Amber                                                                       |
+| Plate Red            | `--color-plate-red` (JS only)     | #E2363C   | #E5484D  | 25 kg and 55 lb plates; competition colours, shared by the plate calculator and the Active set plate strip                                        |
+| Plate Blue           | `--color-plate-blue` (JS only)    | #2163DE   | #2E6DE0  | 20 kg and 45 lb plates; competition colours, shared by the plate calculator and the Active set plate strip                                        |
+| Plate Yellow         | `--color-plate-yellow` (JS only)  | #EEBA2B   | #EABF48  | 15 kg and 35 lb plates; competition colours, shared by the plate calculator and the Active set plate strip                                        |
+| Plate Green          | `--color-plate-green` (JS only)   | #36A162   | #3CB46E  | 10 kg and 25 lb plates; competition colours, shared by the plate calculator and the Active set plate strip                                        |
+| Plate White          | `--color-plate-white` (JS only)   | #DCDFE5   | #F2F2F2  | 5 kg and 10 lb plates; competition colours, shared by the plate calculator and the Active set plate strip                                         |
+| Plate Grey           | `--color-plate-grey` (JS only)    | #8B929C   | #8B9098  | Any other plate weight; competition colours, shared by the plate calculator and the Active set plate strip                                        |
+| Plate Steel          | `--color-plate-steel` (JS only)   | #9196A1   | #A5A8B1  | Bar and inner collar in the bar drawing; competition colours, shared by the plate calculator and the Active set plate strip                       |
+| Plate Sleeve         | `--color-plate-sleeve` (JS only)  | #636974   | #55585E  | Bar sleeve end in the bar drawing; competition colours, shared by the plate calculator and the Active set plate strip                             |
+| Plate Label          | `--color-plate-label` (JS only)   | #04122F   | #04122F  | Weight label on the light plates (white, yellow, green, grey); competition colours, shared by the plate calculator and the Active set plate strip |
+| Heart-Rate Red       | `--color-heart-rate` (JS only)    | #E2363C   | #E96367  | Watch-measured heart rate on workouts and charts; also the finish marker on route maps                                                            |
+| Active-Energy Orange | `--color-active-energy` (JS only) | #F36F16   | #E79055  | Watch-measured active energy; separate from dietary Calorie Indigo                                                                                |
 
 ### Watch face preview
 
@@ -104,16 +116,23 @@ The Complications preview draws the watch's own face, so these do not change wit
 
 Eight balanced hues for things that need a distinct color but no fixed meaning. Seven of them (all but amber) tint Settings row icons, and all eight color workout superset rails and the workout-complete confetti.
 
-| Role            | Token class                    | Light hex | Dark hex | Usage                                                   |
-| --------------- | ------------------------------ | --------- | -------- | ------------------------------------------------------- |
-| Category Slate  | `--color-cat-slate` (JS only)  | #6B7280   | #6E7687  | Neutral settings icons, superset rail                   |
-| Category Pink   | `--color-cat-pink` (JS only)   | #E23670   | #CC6688  | Fat-burning fasting stage, provider badges              |
-| Category Violet | `--color-cat-violet` (JS only) | #8D52E0   | #9166CC  | REM sleep stage, ketosis fasting stage, provider badges |
-| Category Orange | `--color-cat-orange` (JS only) | #F89054   | #D18A61  | Awake sleep stage, hard RPE, catabolic fasting stage    |
-| Category Green  | `--color-cat-green` (JS only)  | #2D9534   | #6AA46F  | Provider badges                                         |
-| Category Blue   | `--color-cat-blue` (JS only)   | #236EE7   | #6992D3  | Light sleep stage, provider badges                      |
-| Category Teal   | `--color-cat-teal` (JS only)   | #1E868A   | #5AADAF  | Deep sleep stage, provider badges                       |
-| Category Amber  | `--color-cat-amber` (JS only)  | #CE8E0D   | #D4A954  | Favorite star, moderate RPE, provider badges            |
+| Role            | Token class                    | Light hex | Dark hex | Usage                                                                                                        |
+| --------------- | ------------------------------ | --------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| Category Slate  | `--color-cat-slate` (JS only)  | #6B7280   | #6E7687  | Neutral settings icons, superset rail                                                                        |
+| Category Pink   | `--color-cat-pink` (JS only)   | #E23670   | #CC6688  | Fat-burning fasting stage, provider badges                                                                   |
+| Category Violet | `--color-cat-violet` (JS only) | #8D52E0   | #9166CC  | REM sleep stage, ketosis fasting stage, provider badges                                                      |
+| Category Orange | `--color-cat-orange` (JS only) | #F89054   | #D18A61  | Awake sleep stage, hard RPE, catabolic fasting stage                                                         |
+| Category Green  | `--color-cat-green` (JS only)  | #2D9534   | #6AA46F  | Provider badges                                                                                              |
+| Category Blue   | `--color-cat-blue` (JS only)   | #236EE7   | #6992D3  | Light sleep stage, provider badges                                                                           |
+| Category Teal   | `--color-cat-teal` (JS only)   | #1E868A   | #5AADAF  | Deep sleep stage, provider badges                                                                            |
+| Category Amber  | `--color-cat-amber` (JS only)  | #CE8E0D   | #D4A954  | Favorite star, moderate RPE, provider badges                                                                 |
+| Superset Lilac  | `--color-superset` (JS only)   | #9739C6   | #CC86EA  | Focus view superset group (first run; later runs use the category colors from Orange on, as the watch does)  |
+| Effort Lilac    | `--color-effort` (JS only)     | #9739C6   | #CC86EA  | Focus view post-set effort sheet (number, filled segments, Save)                                             |
+| Rest Orange     | `--color-rest` (JS only)       | #E16009   | #FF9A52  | Focus view rest card, ring and Skip rest button                                                              |
+| Hold Amber      | `--color-hold` (JS only)       | #C47F08   | #F5B13D  | Focus view timed hold card, ring and End hold button                                                         |
+| Hold Text       | `--color-hold-text` (JS only)  | #7C4C03   | #F5B13D  | Focus view hold digits and Ready / Set heading (Hold Amber is too light as text on the tinted card in light) |
+| On Rest         | `--color-on-rest` (JS only)    | #1F1100   | #1F1100  | Label and icon on a Rest Orange fill (Skip rest)                                                             |
+| On Hold         | `--color-on-hold` (JS only)    | #291A00   | #291A00  | Label on a Hold Amber fill (End hold, Start hold)                                                            |
 
 ### Progress tracks
 
@@ -168,13 +187,14 @@ The training calendar and the Load by Sport card colour each sport group with it
 
 ### AMOLED differences
 
-AMOLED uses the Dark values for 54 of the 67 color tokens. Only these 13 change:
+AMOLED uses the Dark values for 63 of the 76 color tokens. Only these 13 change:
 
 | Token                    | AMOLED hex             | Dark hex |
 | ------------------------ | ---------------------- | -------- |
 | `--color-background`     | #000000 (pure black)   | #0C0E12  |
 | `--color-surface`        | #080A0C                | #13161B  |
 | `--color-raised`         | #111318                | #1C1F26  |
+| `--color-control`        | #1F2229                | #2A2E37  |
 | `--color-chrome`         | #000000 at 90% opacity | #0E1116  |
 | `--color-border`         | #1C1F26                | #272C35  |
 | `--color-border-subtle`  | #16181D                | #1E2229  |
@@ -335,6 +355,7 @@ Radius classes in sections 1–5 use the app's remapped scale, not web Tailwind'
 - Keyboard accessory bar (set entry Done / Next / Log, 52pt): hidden behind the keyboard and rising with it.
 - Floating summary bar (food search basket): `absolute left-4 right-4 rounded-xl bg-raised border border-border-subtle px-4 py-3`, 12pt above the bottom inset.
 - Active workout bar: docked above the custom tab bar as a Chrome Bar strip (at least 66pt tall) with a 3px progress line in Sparky Blue on Progress Track. On Liquid Glass it becomes a frosted pill (fully rounded, 20pt side margins, 6pt above the tab bar, hairline border, soft shadow).
+- Focus view (iPhone workout): 44 pt `bg-raised` round or pill controls (`h-11 rounded-full`; 17px bold accent numerals in the header pills), 44 pt exercise circles with a superset wrapped in one `rounded-[28px]` group tinted 14% in its color, table cells `h-11 rounded-[14px] bg-raised` with 19px bold values, a dashed `border-border-strong` Prev cell, and the active set as a `rounded-[14px] bg-accent-primary/10` card (no border) with a bold accent "Set 2" header, and weight and reps fields that are 46 pt `rounded-[14px] bg-control` pills holding a 34 pt round [−], a 24px bold value and a [+] (the pill with the keyboard tints to `bg-accent-primary/20`), under 10px uppercase labels, then a 44 pt `bg-accent-primary` `text-on-accent` Log set pill (18px bold). Sheets and pages (3c): the Exercises sheet is a `bg-surface` bottom card with 56 pt `bg-raised` rows (a 28 pt status circle, a lilac group box with A1 / A2 pills, 48 pt handles), the Rest period and effort pages are full-screen (Set options and Plate calculator are `FocusPage variant="sheet"` bottom sheets) with a 44 pt close button and a title pill, `bg-surface rounded-3xl` cards with 13px uppercase headings, 56 pt `rounded-full` footer buttons (`FocusPageButton`), the effort sheet's number is 120px in Effort Lilac and the PR card is a 120 pt `--color-pr` trophy disc with a Continue button that fills over 5 s. The plate calculator page and the Active set plate strip share one side-view bar drawing (`PlateBarDrawing`: sleeve, collar and plates as vertical bars as tall as their weight, coloured by the `--color-plate-*` tokens: kg 25 red, 20 blue, 15 yellow, 10 green, 5 white; lb 55 red, 45 blue, 35 yellow, 25 green, 10 white; any other weight grey), with a bold "25 + 5 + 1.25 per side" line and "bar 20 kg · 62.5 kg of plates" under it, a two-bar segmented picker plus a "More bars" chip, and a colour key under Plates you own. Units read "kg" and "lb". Thumbnails and previews are still images; only the enlarged demo animates. The bottom bar is a 56 pt back circle beside a 56 pt `rounded-full` accent Log set button (20px bold, the rest in 16px at 75%), in `FooterActionBar`.
 - Rest bar (`ActiveWorkoutRestBar`): docked `bg-surface border-t border-border-subtle px-4 pt-2` with a 4px (`h-1`) progress track, a `text-3xl font-bold` countdown and round `bg-raised` controls.
 
 ### Badges, pills and chips

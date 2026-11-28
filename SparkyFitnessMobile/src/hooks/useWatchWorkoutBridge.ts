@@ -23,6 +23,7 @@ import {
 import {
   newestHeartRateSample,
   useLiveHeartRateStore,
+  useLiveWorkoutEnergyStore,
 } from '../stores/liveHeartRateStore';
 import { saveActiveWorkoutSession } from './useActiveWorkoutAutosave';
 import {
@@ -690,6 +691,11 @@ export function useWatchWorkoutBridge(
           const existing = session.energy.get(exerciseEntryId) ?? 0;
           session.energy.set(exerciseEntryId, existing + kcal);
           session.unposted = true;
+          if (live?.startedAt != null && kcal > 0) {
+            useLiveWorkoutEnergyStore
+              .getState()
+              .add(payload.sessionId, live.startedAt, kcal);
+          }
         }
       }
       if (attributed?.durationsByExercise) {

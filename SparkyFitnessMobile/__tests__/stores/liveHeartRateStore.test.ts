@@ -6,6 +6,8 @@ import {
   RECORDING_HEART_RATE_MAX_AGE_MS,
   useLiveHeartRate,
   useLiveHeartRateStore,
+  useLiveWorkoutCalories,
+  useLiveWorkoutEnergyStore,
   useRecordingHeartRate,
 } from '../../src/stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../../src/stores/activeWorkoutStore';
@@ -159,5 +161,54 @@ describe('newestHeartRateSample', () => {
 
   test('is null without a usable sample', () => {
     expect(newestHeartRateSample(new Map([['a', []]]))).toBeNull();
+  });
+});
+
+describe('live workout energy', () => {
+  beforeEach(() => {
+    useLiveWorkoutEnergyStore.getState().reset();
+    useActiveWorkoutStore.setState({ sessionId: 'session-1', startedAt: 1000 });
+  });
+
+  test('sums the watch batches for the live workout', () => {
+    const { result } = renderHook(() => useLiveWorkoutCalories());
+    expect(result.current).toBeNull();
+    act(() => {
+      useLiveWorkoutEnergyStore.getState().add('session-1', 1000, 12.5);
+      useLiveWorkoutEnergyStore.getState().add('session-1', 1000, 7.5);
+    });
+    expect(result.current).toBe(20);
+  });
+
+  test('ignores a total from another session or run, and clears on reset', () => {
+    const { result } = renderHook(() => useLiveWorkoutCalories());
+    act(() => {
+      useLiveWorkoutEnergyStore.getState().add('session-1', 1000, 20);
+    });
+    act(() => {
+      useActiveWorkoutStore.setState({ startedAt: 2000 });
+    });
+    expect(result.current).toBeNull();
+    act(() => {
+      useActiveWorkoutStore.setState({ startedAt: 1000 });
+    });
+    expect(result.current).toBe(20);
+    act(() => {
+      useActiveWorkoutStore.setState({ sessionId: 'session-2' });
+    });
+    expect(result.current).toBeNull();
+    act(() => {
+      useActiveWorkoutStore.setState({ sessionId: 'session-1' });
+    });
+    act(() => {
+      useLiveWorkoutEnergyStore.getState().reset();
+    });
+    expect(result.current).toBeNull();
+  });
+
+  test('a new run of the same session starts the total over', () => {
+    useLiveWorkoutEnergyStore.getState().add('session-1', 1000, 20);
+    useLiveWorkoutEnergyStore.getState().add('session-1', 2000, 5);
+    expect(useLiveWorkoutEnergyStore.getState().energy?.kcal).toBe(5);
   });
 });

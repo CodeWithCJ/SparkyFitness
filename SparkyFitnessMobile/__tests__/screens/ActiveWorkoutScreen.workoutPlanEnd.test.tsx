@@ -74,12 +74,6 @@ jest.mock('../../src/hooks/useNavigationActionGuard', () => ({
   })),
 }));
 
-// Keep the real useSupersetBorders; only the rail's rendering is stubbed out.
-jest.mock('../../src/components/ActiveWorkoutRail', () => {
-  const actual = jest.requireActual('../../src/components/ActiveWorkoutRail');
-  return { __esModule: true, ...actual, default: () => null };
-});
-
 jest.mock('../../src/components/ActiveWorkoutHeader', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -91,14 +85,16 @@ jest.mock('../../src/components/ActiveWorkoutHeader', () => {
   };
 });
 
-// Minimal card stand-ins: the suite completes sets through the store, so the
-// card only needs to render without touching the network.
-jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
+// The suite completes sets through the store, so the focus view only needs
+// to render without touching the network.
+jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: (props: any) => <View testID={`card-${props.exercise.id}`} />,
+    default: ({ children }: { children?: React.ReactNode }) => (
+      <View testID="focus-view">{children}</View>
+    ),
   };
 });
 

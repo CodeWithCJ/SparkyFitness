@@ -89,8 +89,9 @@ const LEGACY_KEYS = {
 
 type LegacyKey = keyof typeof LEGACY_KEYS;
 
-export type ActiveWorkoutView = 'list' | 'focus';
 export type FocusMediaDefault = 'expanded' | 'minimized';
+/** What a timed hold does at its planned length in the focus view. */
+export type FocusHoldAtZero = 'keep' | 'log';
 
 /** Which stat the active-workout log shows in its per-set metric column. */
 export type ActiveWorkoutMetricColumn =
@@ -196,9 +197,10 @@ export const PREFERENCE_DEFAULTS = {
   watchWorkoutCountdown: 3 as WatchWorkoutCountdown,
   watchHoldCountdown: true,
   watchWorkoutTopLine: 'time' as WatchWorkoutTopLine,
-  activeWorkoutNowCard: false,
-  activeWorkoutView: 'list' as ActiveWorkoutView,
   focusMediaDefault: 'expanded' as FocusMediaDefault,
+  focusNowBanner: true,
+  focusHoldAtZero: 'keep' as FocusHoldAtZero,
+  focusShowPrevious: true,
   watchNutrientOrder: [] as string[],
   shownWatchNutrients: [...DEFAULT_WATCH_NUTRIENTS] as string[],
   watchSetInputStyle: 'crown' as WatchSetInputStyle,
@@ -385,12 +387,15 @@ export type AppPreferencesData = {
   watchHoldCountdown: boolean;
   /** What the new workout view's top line shows first. */
   watchWorkoutTopLine: WatchWorkoutTopLine;
-  /** Whether the active workout pins the Now card under the exercise rail. */
-  activeWorkoutNowCard: boolean;
-  /** Active workout layout: every exercise in one list, or one at a time. */
-  activeWorkoutView: ActiveWorkoutView;
   /** Whether the focus view opens with the large photo card or a thumbnail. */
   focusMediaDefault: FocusMediaDefault;
+  /** Whether the focus view opens the effort sheet after Log set. */
+  /** Whether the focus view shows the Now banner while another exercise is open. */
+  focusNowBanner: boolean;
+  /** A timed hold keeps counting up past its plan, or logs at zero. */
+  focusHoldAtZero: FocusHoldAtZero;
+  /** Whether the focus view's set table shows the Previous column. */
+  focusShowPrevious: boolean;
   /**
    * Order of the nutrients the watch's Goals page can list (standard keys and
    * custom nutrient names). Empty until the wearer drags one.
@@ -506,9 +511,10 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWatchWorkoutCountdown: (value: WatchWorkoutCountdown) => void;
   setWatchHoldCountdown: (value: boolean) => void;
   setWatchWorkoutTopLine: (value: WatchWorkoutTopLine) => void;
-  setActiveWorkoutNowCard: (value: boolean) => void;
-  setActiveWorkoutView: (value: ActiveWorkoutView) => void;
   setFocusMediaDefault: (value: FocusMediaDefault) => void;
+  setFocusNowBanner: (value: boolean) => void;
+  setFocusHoldAtZero: (value: FocusHoldAtZero) => void;
+  setFocusShowPrevious: (value: boolean) => void;
   setWatchNutrientOrder: (order: string[]) => void;
   setWatchNutrientShown: (key: string, isShown: boolean) => void;
   setWatchSetInputStyle: (value: WatchSetInputStyle) => void;
@@ -825,9 +831,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ watchWorkoutCountdown: value }),
       setWatchHoldCountdown: (value) => set({ watchHoldCountdown: value }),
       setWatchWorkoutTopLine: (value) => set({ watchWorkoutTopLine: value }),
-      setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
-      setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
       setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
+      setFocusNowBanner: (value) => set({ focusNowBanner: value }),
+      setFocusHoldAtZero: (value) => set({ focusHoldAtZero: value }),
+      setFocusShowPrevious: (value) => set({ focusShowPrevious: value }),
       setWatchPageHidden: (key, isHidden) =>
         set((state) => ({
           hiddenWatchPages: withMembership(
@@ -951,9 +958,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         watchWorkoutCountdown: state.watchWorkoutCountdown,
         watchHoldCountdown: state.watchHoldCountdown,
         watchWorkoutTopLine: state.watchWorkoutTopLine,
-        activeWorkoutNowCard: state.activeWorkoutNowCard,
-        activeWorkoutView: state.activeWorkoutView,
         focusMediaDefault: state.focusMediaDefault,
+        focusNowBanner: state.focusNowBanner,
+        focusHoldAtZero: state.focusHoldAtZero,
+        focusShowPrevious: state.focusShowPrevious,
         watchNutrientOrder: state.watchNutrientOrder,
         shownWatchNutrients: state.shownWatchNutrients,
         watchSetInputStyle: state.watchSetInputStyle,

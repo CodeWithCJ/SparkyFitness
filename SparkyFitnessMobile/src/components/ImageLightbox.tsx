@@ -32,6 +32,11 @@ export interface ImageLightboxProps {
   getImageSource?: GetImageSource;
   /** Multi-image slideshow on open. Defaults to true (food/meal photos). */
   autoPlay?: boolean;
+  /**
+   * Exercise demo viewer extras: a pause/play button for the slideshow and
+   * animation, and the pinch hint. Off for food photos.
+   */
+  controls?: boolean;
 }
 
 /**
@@ -50,6 +55,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
   onClose,
   getImageSource: getImageSourceProp,
   autoPlay = true,
+  controls = false,
 }) => {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
@@ -176,7 +182,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
                     height: Math.max(0, height - insets.top - insets.bottom),
                   }}
                   contentFit="contain"
-                  autoplay
+                  autoplay={!controls || autoplay}
                 />
               </ZoomableView>
             </View>
@@ -189,19 +195,65 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           testID="lightbox-close"
           hitSlop={12}
           className="absolute"
-          style={{ top: insets.top + 8, right: 16 + insets.right }}
+          style={
+            controls
+              ? { top: insets.top + 8, left: 16 + insets.left }
+              : { top: insets.top + 8, right: 16 + insets.right }
+          }
         >
-          <View className="bg-black/60 rounded-full p-2">
+          <View
+            className={`h-10 w-10 items-center justify-center rounded-full ${
+              controls ? 'border border-white/25 bg-white/20' : 'bg-black/70'
+            }`}
+          >
             <Icon name="close" size={22} color="#fff" />
           </View>
         </Pressable>
+
+        {controls ? (
+          <View
+            className="absolute items-center gap-4"
+            style={{
+              bottom: insets.bottom + 24,
+              left: insets.left,
+              right: insets.right,
+            }}
+            pointerEvents="box-none"
+          >
+            <View
+              className="rounded-full border border-white/25 bg-white/20 px-4 py-2"
+              pointerEvents="none"
+            >
+              <Text className="text-white text-xs font-semibold">
+                {t('imageLightbox.zoomHint', {
+                  defaultValue: 'Pinch to zoom · double-tap to reset',
+                })}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setAutoplay((a) => !a)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                autoplay
+                  ? t('imageLightbox.pause', { defaultValue: 'Pause' })
+                  : t('imageLightbox.play', { defaultValue: 'Play' })
+              }
+              testID="lightbox-playpause"
+              className="h-14 w-14 items-center justify-center rounded-full bg-white active:opacity-80"
+            >
+              <Icon name={autoplay ? 'pause' : 'play'} size={22} color="#000" />
+            </Pressable>
+          </View>
+        ) : null}
 
         <View
           className="absolute items-center"
           style={{
             top: insets.top + 12,
-            left: insets.left,
-            right: insets.right,
+            // Controls put the close button top-left: keep the title centred
+            // on the screen but clear of it.
+            left: insets.left + (controls ? 72 : 0),
+            right: insets.right + (controls ? 72 : 0),
           }}
           pointerEvents="none"
         >
@@ -213,7 +265,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
               {title}
             </Text>
           ) : null}
-          {images.length > 1 ? (
+          {images.length > 1 && !controls ? (
             <Text className="text-white/70 text-xs mt-0.5">
               {index + 1} / {images.length}
             </Text>

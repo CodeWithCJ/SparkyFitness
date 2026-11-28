@@ -1,0 +1,171 @@
+import React from 'react';
+import { StyleSheet } from 'react-native';
+import { fireEvent, render } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import type { PresetSessionResponse } from '@workspace/shared';
+import FocusExercisesSheet, {
+  exercisesItemHeight,
+  EXERCISES_ROW_HEIGHT,
+} from '../../src/components/FocusExercisesSheet';
+
+const insets = { top: 47, bottom: 34, left: 0, right: 0 };
+const frame = { x: 0, y: 0, width: 390, height: 844 };
+
+type Exercise = PresetSessionResponse['exercises'][number];
+
+function makeExercise(
+  id: string,
+  setCount: number,
+  group: number | null = null
+): Exercise {
+  return {
+    id,
+    exercise_id: `ex-${id}`,
+    superset_group: group,
+    exercise_snapshot: {
+      name: id.toUpperCase(),
+      category: 'Strength',
+      images: [],
+    },
+    sets: Array.from({ length: setCount }, (_, i) => ({
+      id: `${id}-s${i}`,
+      set_number: i + 1,
+      weight: null,
+      reps: null,
+    })),
+  } as unknown as Exercise;
+}
+
+function renderSheet(
+  overrides: Partial<Parameters<typeof FocusExercisesSheet>[0]> = {}
+) {
+  const props = {
+    visible: true,
+    exercises: [
+      makeExercise('bench', 2),
+      makeExercise('tri', 2, 1),
+      makeExercise('lat', 2, 1),
+    ],
+    completedSetIds: { 'bench-s0': 1, 'bench-s1': 2 },
+    selectedId: 'bench',
+    undo: { detail: 'BENCH · 80 kg × 8', onUndo: jest.fn() },
+    supersetBorders: new Map([
+      ['tri', { color: '#c9a0f0', isLast: false }],
+      ['lat', { color: '#c9a0f0', isLast: true }],
+    ]),
+    onSelectExercise: jest.fn(),
+    onMoveItem: jest.fn(),
+    onAddExercise: jest.fn(),
+    onEndWorkout: jest.fn(),
+    onClose: jest.fn(),
+    ...overrides,
+  };
+  const utils = render(
+    <SafeAreaProvider initialMetrics={{ insets, frame }}>
+      <FocusExercisesSheet {...props} />
+    </SafeAreaProvider>
+  );
+  return { ...utils, props };
+}
+
+describe('FocusExercisesSheet', () => {
+  it('lists exercises with progress and superset badges', () => {
+    const { getByText, getAllByText } = renderSheet();
+    expect(getByText('BENCH')).toBeTruthy();
+    expect(getByText('2/2 sets')).toBeTruthy();
+    expect(getByText('A1')).toBeTruthy();
+    expect(getByText('A2')).toBeTruthy();
+    expect(getAllByText('Superset')).toHaveLength(1);
+  });
+
+  it('sizes a superset item around its members', () => {
+    expect(
+      exercisesItemHeight({ key: 'a', entryIds: ['x'], groupId: null })
+    ).toBe(EXERCISES_ROW_HEIGHT);
+    expect(
+      exercisesItemHeight({ key: 'g', entryIds: ['x', 'y'], groupId: 1 })
+    ).toBeGreaterThan(2 * EXERCISES_ROW_HEIGHT);
+  });
+
+  it('selects an exercise and closes', () => {
+    const { getByTestId, props } = renderSheet();
+    fireEvent.press(getByTestId('focus-exercise-row-bench'));
+    expect(props.onClose).toHaveBeenCalled();
+    expect(props.onSelectExercise).toHaveBeenCalledWith('bench');
+  });
+
+  it('colours each superset as the strip does', () => {
+    const { getByTestId } = renderSheet({
+      exercises: [
+        makeExercise('a1', 1, 1),
+        makeExercise('a2', 1, 1),
+        makeExercise('b1', 1, 2),
+        makeExercise('b2', 1, 2),
+      ],
+      supersetBorders: new Map([
+        ['a1', { color: '#c9a0f0', isLast: false }],
+        ['a2', { color: '#c9a0f0', isLast: true }],
+        ['b1', { color: '#10b981', isLast: false }],
+        ['b2', { color: '#10b981', isLast: true }],
+      ]),
+    });
+    const flat = (id: string) =>
+      StyleSheet.flatten(getByTestId(id).props.style);
+    expect(flat('focus-exercise-group-a1').borderColor).toBe(
+      'rgba(201, 160, 240, 0.28)'
+    );
+    expect(flat('focus-exercise-group-b1').borderColor).toBe(
+      'rgba(16, 185, 129, 0.28)'
+    );
+  });
+
+  it('opens a superset from one button, not one per member', () => {
+    const { getByTestId, props } = renderSheet();
+    // A press on either member row reaches the group button, once.
+    fireEvent.press(getByTestId('focus-exercise-row-lat'));
+    expect(props.onSelectExercise).toHaveBeenCalledTimes(1);
+    expect(props.onSelectExercise).toHaveBeenCalledWith('tri');
+    expect(getByTestId('focus-exercise-row-lat').props.accessible).toBe(false);
+  });
+
+  it('moves an item through the row accessibility actions, inside the list', () => {
+    const { getByTestId, props } = renderSheet();
+    // Items: bench, then the tri + lat superset.
+    const bench = getByTestId('focus-exercise-row-bench');
+    expect(
+      bench.props.accessibilityActions.map((a: { name: string }) => a.name)
+    ).toEqual(['increment']);
+    fireEvent(bench, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(props.onMoveItem).toHaveBeenCalledWith(0, 1);
+
+    // Either member moves the whole superset; the last item cannot move down.
+    const lat = getByTestId('focus-exercise-group-tri');
+    fireEvent(lat, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    fireEvent(lat, 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+    expect(props.onMoveItem).toHaveBeenCalledTimes(2);
+    expect(props.onMoveItem).toHaveBeenLastCalledWith(1, 0);
+  });
+
+  it('undoes the last logged set, adds an exercise and ends the workout', () => {
+    const { getByTestId, getByText, props } = renderSheet();
+    fireEvent.press(getByTestId('focus-exercises-undo'));
+    expect(props.undo?.onUndo).toHaveBeenCalled();
+    fireEvent.press(getByText('Add exercise'));
+    expect(props.onAddExercise).toHaveBeenCalled();
+    fireEvent.press(getByText('End workout'));
+    expect(props.onEndWorkout).toHaveBeenCalled();
+    fireEvent.press(getByText('Back to workout'));
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('hides Undo set until a set is logged', () => {
+    const { queryByTestId } = renderSheet({ undo: null });
+    expect(queryByTestId('focus-exercises-undo')).toBeNull();
+  });
+});

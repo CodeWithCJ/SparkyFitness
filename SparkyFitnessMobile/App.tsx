@@ -1168,7 +1168,9 @@ function AppContent() {
             component={SafeWorkoutComplete}
             options={{
               headerShown: false,
-              gestureEnabled: true,
+              // Swiping back would skip the post-workout actions, and it
+              // fights the effort slider's drag; Done leaves the screen.
+              gestureEnabled: false,
             }}
           />
           <Stack.Screen

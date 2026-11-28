@@ -28,39 +28,109 @@ describe('ActiveWorkoutFocusChips', () => {
         completedSetIds={{}}
         selectedId="e5"
         supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
     fireEvent(UNSAFE_getByType(ScrollView), 'layout', {
       nativeEvent: { layout: { width: 360, height: 60, x: 0, y: 0 } },
     });
-    // 12 padding + 5 chips of 44 + 5 gaps of 8, plus half a chip, minus half the viewport.
+    // 16 padding + 5 tiles of 72 + 5 gaps of 10, plus half a tile, minus half the viewport.
     expect(scrollTo).toHaveBeenLastCalledWith({
-      x: 12 + 5 * 52 + 22 - 180,
+      x: 16 + 5 * 82 + 36 - 180,
       animated: false,
     });
     scrollTo.mockRestore();
   });
 
-  it('draws a completed chip with a tinted fill and a themed, non-white numeral', () => {
-    const { getByTestId, getByText } = render(
+  it('rings the shown tile, badges the active one and ticks a finished one', () => {
+    const { getByTestId, queryByTestId, getByText } = render(
       <ActiveWorkoutFocusChips
         exercises={exercises}
         completedSetIds={{ '1': true }}
         selectedId="e0"
+        activeId="e0"
         supersetBorders={new Map()}
+        getImageSource={() => null}
+        onSelect={jest.fn()}
+        onAdd={jest.fn()}
+      />
+    );
+    const ring = (id: string) =>
+      StyleSheet.flatten(getByTestId(`focus-chip-ring-${id}`).props.style);
+    expect(ring('e0').borderColor).not.toBe('transparent');
+    expect(ring('e2').borderColor).toBe('transparent');
+    expect(getByTestId('focus-chip-play-e0')).toBeTruthy();
+    expect(getByTestId('focus-chip-done-e1')).toBeTruthy();
+    // Both badges share one size and corner.
+    const play = StyleSheet.flatten(
+      getByTestId('focus-chip-play-e0').props.style
+    );
+    const done = StyleSheet.flatten(
+      getByTestId('focus-chip-done-e1').props.style
+    );
+    expect(play).toMatchObject({
+      right: done.right,
+      bottom: done.bottom,
+      width: done.width,
+      height: done.height,
+    });
+    expect(queryByTestId('focus-chip-play-e2')).toBeNull();
+    // The name sits below the picture, and the strip ends with Add.
+    expect(getByText('Exercise 2')).toBeTruthy();
+    expect(getByTestId('focus-chip-add')).toBeTruthy();
+  });
+
+  it('rings a tile other than the active one in the text colour', () => {
+    const { getByTestId } = render(
+      <ActiveWorkoutFocusChips
+        exercises={exercises}
+        completedSetIds={{}}
+        selectedId="e3"
+        activeId="e0"
+        supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
-    const numeral = StyleSheet.flatten(getByText('2').props.style);
-    expect(numeral.color).toBeDefined();
-    expect(numeral.color).not.toBe('white');
-    const ring = StyleSheet.flatten(
-      getByTestId('focus-chip-ring-e1').props.style
+    const color = (id: string) =>
+      StyleSheet.flatten(getByTestId(`focus-chip-ring-${id}`).props.style)
+        .borderColor;
+    expect(color('e3')).not.toBe('transparent');
+    expect(color('e3')).not.toBe(color('e0'));
+  });
+
+  it('puts a superset on one bar behind its pictures and labels its members A1 and A2', () => {
+    const borders = new Map([
+      ['e2', { color: '#c792ea', isLast: false }],
+      ['e3', { color: '#c792ea', isLast: true }],
+    ]);
+    const { getByTestId, queryByTestId, queryByText } = render(
+      <ActiveWorkoutFocusChips
+        exercises={exercises}
+        completedSetIds={{}}
+        selectedId="e0"
+        supersetBorders={borders}
+        getImageSource={() => null}
+        onSelect={jest.fn()}
+      />
     );
-    expect(ring.backgroundColor).not.toBe(
-      StyleSheet.flatten(getByTestId('focus-chip-ring-e2').props.style)
+    const group = getByTestId('focus-chip-group-e2');
+    expect(
+      StyleSheet.flatten(getByTestId('focus-chip-bar-e2').props.style)
         .backgroundColor
-    );
+    ).toMatch(/^rgba\(199, ?146, ?234/);
+    // Both members sit in the one group.
+    expect(group).toContainElement(getByTestId('focus-chip-e2'));
+    expect(group).toContainElement(getByTestId('focus-chip-e3'));
+    // The superset is one button; its tiles only draw.
+    expect(group.props.accessibilityRole).toBe('button');
+    expect(group.props.accessibilityLabel).toBe('Exercise 2 + Exercise 3');
+    expect(getByTestId('focus-chip-e2').props.accessible).toBe(false);
+    expect(getByTestId('focus-chip-e3').props.onPress).toBeUndefined();
+    // No A1 / A2 pills on the pictures; the position is only spoken.
+    expect(queryByTestId('focus-chip-mark-e2')).toBeNull();
+    expect(queryByText('A1')).toBeNull();
+    expect(queryByText('A2')).toBeNull();
   });
 });

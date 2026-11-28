@@ -3,6 +3,7 @@ import {
   calculatePlateLoad,
   convertPlateWeight,
   isValidPlateWeight,
+  nextLoadableWeight,
   normalizePlates,
   PLATE_PRESETS,
   plateCalcInputFor,
@@ -324,5 +325,62 @@ describe('inventory helpers', () => {
       calculatePlateLoad(plateCalcInputFor(withCollars, bar, 100, 'kg'))
         .collarsWeight
     ).toBe(5);
+  });
+});
+
+describe('nextLoadableWeight', () => {
+  // The standard kg preset on a 20 kg bar.
+  it('steps a loadable weight to its neighbours', () => {
+    expect(nextLoadableWeight(kgInput(82.5), 'up')).toBe(83.5);
+    expect(nextLoadableWeight(kgInput(82.5), 'down')).toBe(82);
+  });
+
+  it('moves a weight that cannot be made to the nearer loadable one', () => {
+    expect(nextLoadableWeight(kgInput(82.7), 'up')).toBe(83.5);
+    expect(nextLoadableWeight(kgInput(82.7), 'down')).toBe(82.5);
+  });
+
+  it('skips weights the plates cannot make', () => {
+    const plates = [{ weight: 20, pairs: 2 }];
+    expect(nextLoadableWeight(kgInput(60, plates), 'up')).toBe(100);
+    expect(nextLoadableWeight(kgInput(100, plates), 'down')).toBe(60);
+  });
+
+  it('stops at the bar and at the heaviest load', () => {
+    const plates = [{ weight: 20, pairs: 1 }];
+    expect(nextLoadableWeight(kgInput(20, plates), 'down')).toBeNull();
+    expect(nextLoadableWeight(kgInput(10, plates), 'down')).toBeNull();
+    expect(nextLoadableWeight(kgInput(20, plates), 'up')).toBe(60);
+    expect(nextLoadableWeight(kgInput(60, plates), 'up')).toBeNull();
+    expect(nextLoadableWeight(kgInput(10, plates), 'up')).toBe(20);
+  });
+
+  it('works in lb and answers in the target unit', () => {
+    const lb = (targetWeight: number) =>
+      plateCalcInputFor(
+        {
+          ...presetInventory('lbs'),
+          plates: [
+            { weight: 45, pairs: 2 },
+            { weight: 10, pairs: 2 },
+          ],
+        },
+        { weight: 45 },
+        targetWeight,
+        'lbs'
+      );
+    expect(nextLoadableWeight(lb(225), 'up')).toBe(245);
+    expect(nextLoadableWeight(lb(225), 'down')).toBe(175);
+    expect(nextLoadableWeight(lb(45), 'down')).toBeNull();
+    // Plates in kg, target in lb: the answer is in lb.
+    const mixed = nextLoadableWeight(
+      {
+        ...kgInput(100, [{ weight: 20, pairs: 1 }]),
+        targetWeight: 100,
+        targetUnit: 'lbs',
+      },
+      'down'
+    );
+    expect(mixed).toBeCloseTo(44.092, 2);
   });
 });

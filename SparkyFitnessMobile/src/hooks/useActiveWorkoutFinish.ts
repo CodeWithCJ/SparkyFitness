@@ -239,7 +239,10 @@ export function useActiveWorkoutFinish({
       );
       useActiveWorkoutStore.getState().clearWorkout();
       if (celebration != null) {
-        navigation.replace('WorkoutComplete', celebration);
+        navigation.replace('WorkoutComplete', {
+          ...celebration,
+          focusStyle: true,
+        });
       } else {
         safeGoBack();
       }

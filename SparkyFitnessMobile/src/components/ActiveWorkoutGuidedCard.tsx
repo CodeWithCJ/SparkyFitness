@@ -10,6 +10,7 @@ import {
   type GuidedSetView,
 } from '../hooks/useGuidedWorkout';
 import { useImageSlideshow } from '../hooks/useImageSlideshow';
+import { formatRestCountdown } from '../utils/workoutSession';
 import {
   setGuidedSpeechMuted,
   useGuidedCaption,
@@ -27,9 +28,10 @@ const IMAGE_ASPECT_RATIO = 3 / 2;
 /**
  * Guided mode (#1507) for standard workouts: one set at a time with the
  * exercise image (captioned with what is being said) and a DONE — NEXT button
- * for rep-based sets. Pause freezes the session; Replay reads the set and its
- * instructions again; the speaker mutes the voice for this workout while the
- * captions carry on. Sits above the normal set list, which stays editable.
+ * for rep-based sets (a hold with no planned time shows a stopwatch instead).
+ * Rest controls are the focus view's bottom rest card, not this card's. Pause
+ * freezes the session; Replay reads the set and its instructions again; the
+ * speaker mutes the voice for this workout while the captions carry on. Sits above the normal set list, which stays editable.
  * Mounted only while the guided-workout preference is on.
  */
 export default function ActiveWorkoutGuidedCard({
@@ -37,10 +39,11 @@ export default function ActiveWorkoutGuidedCard({
   onCompleteSet,
 }: Props) {
   const { t } = useTranslation();
-  const [textMuted, textPrimary] = useCSSVariable([
+  const [textMuted, textPrimary, restColor] = useCSSVariable([
     '--color-text-muted',
     '--color-text-primary',
-  ]) as [string, string];
+    '--color-rest',
+  ]) as [string, string, string];
   const { phase, finish, paused, pause, resume, replay } =
     useGuidedWorkout(onCompleteSet);
   const muted = useGuidedSpeechMuted();
@@ -215,7 +218,10 @@ export default function ActiveWorkoutGuidedCard({
       {set != null && (
         <View className="items-center mt-2">
           {phase.kind === 'rest' && (
-            <Text className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: restColor }}
+            >
               {t('guidedWorkout.card.nextUp', { defaultValue: 'Next up' })}
             </Text>
           )}
@@ -231,10 +237,36 @@ export default function ActiveWorkoutGuidedCard({
         </View>
       )}
 
-      {phase.kind === 'reps' && (
+      {phase.kind === 'timed' && (
+        <Text
+          testID="guided-countdown"
+          accessibilityRole="timer"
+          className="text-5xl font-black text-text-primary text-center mt-3"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {phase.overtimeSec > 0
+            ? `+${formatRestCountdown(phase.overtimeSec * 1000)}`
+            : formatRestCountdown(phase.remainingSec * 1000)}
+        </Text>
+      )}
+
+      {phase.kind === 'stopwatch' && (
+        <Text
+          testID="guided-stopwatch"
+          accessibilityRole="timer"
+          className="text-5xl font-black text-text-primary text-center mt-3"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {formatRestCountdown(phase.elapsedSec * 1000)}
+        </Text>
+      )}
+
+      {(phase.kind === 'reps' ||
+        phase.kind === 'stopwatch' ||
+        (phase.kind === 'timed' && phase.set.hold)) && (
         <>
           <Text className="text-sm text-text-secondary text-center mt-3">
-            {phase.set.target.kind === 'reps'
+            {phase.kind === 'reps' && phase.set.target.kind === 'reps'
               ? t('guidedWorkout.card.doneHintReps', {
                   defaultValue: "Tap when you've done {{count}} reps",
                   count: phase.set.target.reps,

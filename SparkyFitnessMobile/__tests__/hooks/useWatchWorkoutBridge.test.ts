@@ -1,4 +1,7 @@
-import { useLiveHeartRateStore } from '../../src/stores/liveHeartRateStore';
+import {
+  useLiveHeartRateStore,
+  useLiveWorkoutEnergyStore,
+} from '../../src/stores/liveHeartRateStore';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -250,6 +253,7 @@ describe('useWatchWorkoutBridge', () => {
     ]);
     __resetActiveWorkoutStoreForTests();
     useLiveHeartRateStore.setState({ reading: null });
+    useLiveWorkoutEnergyStore.getState().reset();
     mockUpdateWorkout.mockImplementation(async () => getStore().session!);
     mockAttachTelemetry.mockResolvedValue(undefined);
   });
@@ -1486,6 +1490,10 @@ describe('useWatchWorkoutBridge', () => {
         activeEnergyKcal: 7.5,
       });
     });
+
+    await waitFor(() =>
+      expect(useLiveWorkoutEnergyStore.getState().energy?.kcal).toBe(20)
+    );
 
     await act(async () => {
       fire('onWorkoutStop', { sessionId: 'session-1' });

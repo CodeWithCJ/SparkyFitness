@@ -22,7 +22,7 @@ const PLATE_HEIGHT_MIN = 16;
 const PLATE_HEIGHT_MAX = 30;
 
 /** One side of the bar: the bar stub, then the plates from heaviest outwards. */
-export const PlateSide: React.FC<{ load: PlateLoad; barWeight: number }> = ({
+const PlateSide: React.FC<{ load: PlateLoad; barWeight: number }> = ({
   load,
   barWeight,
 }) => {
@@ -64,16 +64,16 @@ export const PlateSide: React.FC<{ load: PlateLoad; barWeight: number }> = ({
 };
 
 /**
- * The plates for one side of the bar, drawn in the exercise header like the
- * bar itself. Only an exactly loadable weight is drawn; anything else shows
- * the nearest loadable weight below it, marked as not exact, never rounded.
+ * The plate load for a set's weight on the person's own inventory, or null
+ * until it is known (the standard preset is never passed off as theirs while
+ * the first load settles or after it failed) and when no bar suits the
+ * equipment.
  */
-export default function PlateBarGraphic({
-  targetWeight,
-  weightUnit,
-  equipment,
-}: PlateBarGraphicProps) {
-  const { t } = useTranslation();
+export function usePlateLoad(
+  targetWeight: number | null,
+  weightUnit: PlateUnit,
+  equipment?: readonly string[] | null
+) {
   const { inventory, hasSaved, isLoading, isError } =
     usePlateInventory(weightUnit);
   const bar = suggestBar(equipment, inventory.bars);
@@ -85,12 +85,25 @@ export default function PlateBarGraphic({
     );
   }, [inventory, bar, targetWeight, weightUnit]);
 
-  // Until the first load settles, or when it failed, the standard preset
-  // would be drawn as the person's own plates. A successful response with
-  // nothing saved keeps the preset, and a loaded inventory survives a later
-  // error.
   if ((isLoading || isError) && !hasSaved) return null;
   if (!bar || !result) return null;
+  return { result, unit: inventory.unit };
+}
+
+/**
+ * The plates for one side of the bar, drawn in the exercise header like the
+ * bar itself. Only an exactly loadable weight is drawn; anything else shows
+ * the nearest loadable weight below it, marked as not exact, never rounded.
+ */
+export default function PlateBarGraphic({
+  targetWeight,
+  weightUnit,
+  equipment,
+}: PlateBarGraphicProps) {
+  const { t } = useTranslation();
+  const load = usePlateLoad(targetWeight, weightUnit, equipment);
+  if (!load) return null;
+  const { result, unit } = load;
 
   if (result.status === 'exact' && result.load) {
     return (
@@ -101,7 +114,7 @@ export default function PlateBarGraphic({
             '{{perSide}} {{unit}} per side on a {{bar}} {{unit}} bar',
           perSide: formatPlateWeight(result.load.perSideWeight),
           bar: formatPlateWeight(result.barWeight),
-          unit: inventory.unit,
+          unit: unit,
         })}
       >
         <PlateSide load={result.load} barWeight={result.barWeight} />
@@ -116,14 +129,14 @@ export default function PlateBarGraphic({
         accessibilityLabel={t('plates.graphicNotExact', {
           defaultValue: 'Your plates cannot make exactly {{weight}} {{unit}}.',
           weight: formatPlateWeight(result.target),
-          unit: inventory.unit,
+          unit: unit,
         })}
       >
         {result.below
           ? t('plates.graphicNearest', {
               defaultValue: 'Plates: nearest {{weight}} {{unit}}',
               weight: formatPlateWeight(result.below.totalWeight),
-              unit: inventory.unit,
+              unit: unit,
             })
           : t('plates.graphicBelowBar', {
               defaultValue: 'Plates: lighter than the bar',

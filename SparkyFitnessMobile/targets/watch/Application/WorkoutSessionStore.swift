@@ -108,9 +108,6 @@ final class WorkoutSessionStore: ObservableObject {
     /// seconds can still be read.
     @Published private(set) var holdEndsAt: Date?
     @Published private(set) var holdTotalSeconds: Int = 0
-    /// The set whose hold countdown just reached 0:00 while running here, so
-    /// the set screen can log it. Cleared when a hold starts or is dropped.
-    @Published private(set) var holdFinishedSetId: String?
     /// Set instead of `holdEndsAt` when a timed set has no planned length and
     /// counts up. `holdStoppedAt` freezes it once the set is logged.
     @Published private(set) var holdStartedAt: Date?
@@ -949,7 +946,6 @@ final class WorkoutSessionStore: ObservableObject {
         holdStartedAt = nil
         holdStoppedAt = nil
         holdLoggedHere = false
-        holdFinishedSetId = nil
         holdSetId = setId
         holdTotalSeconds = seconds
         let start = startedAt ?? Date()
@@ -1119,9 +1115,17 @@ final class WorkoutSessionStore: ObservableObject {
         return max(0, Int(endsAt.timeIntervalSince(now).rounded()))
     }
 
+    /// Seconds past the planned length of a countdown that has run out and is
+    /// still waiting for the wearer to end it. Nil before 0:00 or with no hold.
+    func holdOvertime(for setId: String, now: Date = Date()) -> Int? {
+        guard holdSetId == setId, holdStartedAt == nil, let endsAt = holdEndsAt, now >= endsAt else { return nil }
+        return max(0, Int(now.timeIntervalSince(endsAt).rounded(.down)))
+    }
+
     /// Seconds to log. Nil when the countdown was never started, so the
-    /// phone keeps the planned duration. A finished countdown logs the
-    /// target; stopping early logs how long it actually ran.
+    /// phone keeps the planned duration. The countdown logs how long it ran
+    /// when it is ended: short of the target when stopped early, past it when
+    /// the wearer kept going (it does not log by itself at 0:00).
     func holdLoggedSeconds(for setId: String, now: Date = Date()) -> Int? {
         if holdStartedAt != nil {
             guard let elapsed = stopwatchElapsed(for: setId, now: now), elapsed > 0 else { return nil }
@@ -1129,7 +1133,7 @@ final class WorkoutSessionStore: ObservableObject {
         }
         guard holdSetId == setId, holdEndsAt != nil, holdTotalSeconds > 0 else { return nil }
         let remaining = holdRemaining(for: setId, now: now) ?? 0
-        return min(holdTotalSeconds, max(0, holdTotalSeconds - remaining))
+        return holdTotalSeconds - remaining + (holdOvertime(for: setId, now: now) ?? 0)
     }
 
     /// Marks the current set done, starts the next set's rest, and advances
@@ -1795,7 +1799,6 @@ final class WorkoutSessionStore: ObservableObject {
                 self.stopHoldTimer(cancelCues: !self.holdCuesOwnEnd)
                 guard !self.holdBuzzed else { return }
                 self.holdBuzzed = true
-                self.holdFinishedSetId = self.holdSetId
                 if !self.holdCuesOwnEnd { self.onRestFinished?() }
             }
         }
@@ -1823,6 +1826,5 @@ final class WorkoutSessionStore: ObservableObject {
         holdBuzzed = false
         holdFollowsPhone = false
         holdLoggedHere = false
-        holdFinishedSetId = nil
     }
 }

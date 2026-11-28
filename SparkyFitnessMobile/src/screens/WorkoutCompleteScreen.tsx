@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 
 import Icon, { type IconName } from '../components/Icon';
@@ -13,13 +13,22 @@ import WorkoutCompleteStatTiles from '../components/WorkoutCompleteStatTiles';
 import WorkoutCompletePrCard from '../components/WorkoutCompletePrCard';
 import WorkoutCompleteExerciseList from '../components/WorkoutCompleteExerciseList';
 import WorkoutFeedbackCard from '../components/WorkoutFeedbackCard';
+import FocusWorkoutSummary from '../components/FocusWorkoutSummary';
+import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { workoutSessionQueryKey } from '../hooks/queryKeys';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
-import { useWorkoutCompletePresetSync } from '../hooks/useWorkoutCompletePresetSync';
-import { getWorkout } from '../services/api/exerciseApi';
+import {
+  useWorkoutCompletePresetSync,
+  type PresetUpdateOffer,
+} from '../hooks/useWorkoutCompletePresetSync';
+import {
+  getWorkout,
+  setExerciseEntryEffort,
+} from '../services/api/exerciseApi';
 import { fireSuccessHaptic } from '../services/haptics';
+import { getActiveServerConfig } from '../services/storage';
 import { formatDateToTimeLabel } from '../utils/entryTimeDisplay';
 import { setsDurationMinutes } from '@workspace/shared';
 import {
@@ -32,6 +41,7 @@ import {
   summarizeWorkoutSpan,
   summarizeWorkoutHeartRate,
   hasBodyweightExercise,
+  summarizeWorkoutEffort,
 } from '../utils/workoutSession';
 import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -84,6 +94,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     intervalRepsCompleted,
     intervalStatus,
     intervalScalingNotes,
+    focusStyle = false,
   } = route.params;
 
   const { preferences } = usePreferences();
@@ -173,6 +184,12 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
         : undefined,
     [previousSessionSets, exerciseConfigs, sessionWeightUnit, workoutFormat]
   );
+  // The focus summary asks "Update preset?" in a card instead of an alert: the
+  // same check (structure only, owner only) with its prompt held back.
+  const [presetOffer, setPresetOffer] = useState<PresetUpdateOffer | null>(
+    null
+  );
+  const [updatingPreset, setUpdatingPreset] = useState(false);
   useWorkoutCompletePresetSync({
     session,
     sourcePresetId: presetCheckHandledElsewhere ? null : sourcePresetId,
@@ -180,7 +197,68 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     completedSetIds,
     plannedSetValues,
     assumeSources,
+    skipPrompt: focusStyle,
+    onNeedsUpdate: focusStyle
+      ? (offer) => {
+          // No card without a change to list.
+          if (offer.describeChanges(t).length > 0) setPresetOffer(offer);
+        }
+      : undefined,
   });
+  const handleUpdatePreset = useCallback(async () => {
+    if (presetOffer == null) return;
+    setUpdatingPreset(true);
+    const ok = await presetOffer.update();
+    setUpdatingPreset(false);
+    if (ok) setPresetOffer(null);
+  }, [presetOffer]);
+  const handleKeepPreset = useCallback(() => setPresetOffer(null), []);
+
+  // How hard the person rated the workout (1-10): the saved rating, else what
+  // they tap here. One rating speaks for the whole session on the server.
+  const queryClient = useQueryClient();
+  const [pickedEffort, setPickedEffort] = useState<number | null>(null);
+  const effortWriteRef = useRef<{ latest: number; chain: Promise<unknown> }>({
+    latest: 0,
+    chain: Promise.resolve(),
+  });
+  const savedEffort = summarizeWorkoutEffort(
+    (refreshedSession ?? session).exercises
+  );
+  const effort = pickedEffort ?? savedEffort;
+  const handleRateEffort = useCallback(
+    (rating: number) => {
+      const entryId = session.exercises[0]?.id;
+      if (entryId == null) return;
+      setPickedEffort(rating);
+      // One write at a time, in tap order, so the last tap is the one stored;
+      // a failed older write does not clear a newer pick.
+      const write = ++effortWriteRef.current.latest;
+      // Read at the tap: a queued write starts later, and must still go to the
+      // server this entry is on.
+      const serverConfig = getActiveServerConfig();
+      effortWriteRef.current.chain = effortWriteRef.current.chain
+        .then(async () =>
+          setExerciseEntryEffort(
+            entryId,
+            rating,
+            (await serverConfig) ?? undefined
+          )
+        )
+        .then(() => {
+          if (session.entry_date != null) {
+            invalidateExerciseCache(queryClient, session.entry_date);
+          }
+          return queryClient.invalidateQueries({
+            queryKey: workoutSessionQueryKey(session.id),
+          });
+        })
+        .catch(() => {
+          if (effortWriteRef.current.latest === write) setPickedEffort(null);
+        });
+    },
+    [session.exercises, session.id, session.entry_date, queryClient]
+  );
 
   const finishedTimeText = formatDateToTimeLabel(
     new Date(finishedAt),
@@ -222,14 +300,41 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <WorkoutCompleteHero
-          sessionName={session.name}
-          hasRecords={hasRecords}
-          allSetsLogged={allSetsLogged}
-          totalSetCount={summary.totalSetCount}
-          completedSetCount={summary.completedSetCount}
-          finishedTimeText={finishedTimeText}
-        />
+        {focusStyle ? (
+          <View className="px-4 pt-3">
+            <FocusWorkoutSummary
+              sessionName={session.name}
+              completedSetCount={summary.completedSetCount}
+              totalSetCount={summary.totalSetCount}
+              durationMinutes={durationMinutes}
+              volumeKg={summary.volumeKg}
+              weightUnit={weightUnit}
+              caloriesKcal={caloriesValue}
+              heartRate={heartRate}
+              effort={effort}
+              onRateEffort={handleRateEffort}
+              presetOffer={
+                presetOffer != null
+                  ? {
+                      changes: presetOffer.describeChanges(t),
+                      onUpdate: () => void handleUpdatePreset(),
+                      onKeep: handleKeepPreset,
+                      updating: updatingPreset,
+                    }
+                  : null
+              }
+            />
+          </View>
+        ) : (
+          <WorkoutCompleteHero
+            sessionName={session.name}
+            hasRecords={hasRecords}
+            allSetsLogged={allSetsLogged}
+            totalSetCount={summary.totalSetCount}
+            completedSetCount={summary.completedSetCount}
+            finishedTimeText={finishedTimeText}
+          />
+        )}
 
         <View className="px-4">
           {workoutFormat && workoutFormat !== 'standard' && (
@@ -245,20 +350,22 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             />
           )}
 
-          <WorkoutCompleteStatTiles
-            durationMinutes={durationMinutes}
-            volumeKg={summary.volumeKg}
-            completedSetCount={summary.completedSetCount}
-            totalSetCount={summary.totalSetCount}
-            skippedSetCount={summary.skippedSetCount}
-            caloriesValue={caloriesValue}
-            caloriesFailed={caloriesFailed}
-            heartRate={heartRate}
-            totalDistanceKm={summary.totalDistanceKm}
-            averageRpe={summary.averageRpe}
-            weightUnit={weightUnit}
-            distanceUnit={distanceUnit}
-          />
+          {!focusStyle && (
+            <WorkoutCompleteStatTiles
+              durationMinutes={durationMinutes}
+              volumeKg={summary.volumeKg}
+              completedSetCount={summary.completedSetCount}
+              totalSetCount={summary.totalSetCount}
+              skippedSetCount={summary.skippedSetCount}
+              caloriesValue={caloriesValue}
+              caloriesFailed={caloriesFailed}
+              heartRate={heartRate}
+              totalDistanceKm={summary.totalDistanceKm}
+              averageRpe={summary.averageRpe}
+              weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
+            />
+          )}
 
           <WorkoutCompletePrCard
             prRows={summary.prRows}
@@ -268,6 +375,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
           <WorkoutFeedbackCard
             presetEntryId={session.id}
             exercises={feedbackExercises}
+            effort={effort}
           />
         </View>
 
@@ -299,9 +407,22 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             onPress={handleViewWorkout}
           />
         </View>
-        <Button variant="primary" onPress={handleDone}>
-          {t('workoutComplete.actions.done', { defaultValue: 'Done' })}
-        </Button>
+        {focusStyle ? (
+          <Pressable
+            testID="focus-summary-done"
+            onPress={handleDone}
+            accessibilityRole="button"
+            className="h-14 items-center justify-center rounded-full bg-text-primary active:opacity-80"
+          >
+            <Text className="text-[18px] font-bold text-background">
+              {t('workoutComplete.actions.done', { defaultValue: 'Done' })}
+            </Text>
+          </Pressable>
+        ) : (
+          <Button variant="primary" onPress={handleDone}>
+            {t('workoutComplete.actions.done', { defaultValue: 'Done' })}
+          </Button>
+        )}
       </View>
     </View>
   );

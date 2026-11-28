@@ -358,6 +358,7 @@
 "watch.workout.heartRateReading" = "Heart rate %@";
 "watch.workout.holdLabel" = "Hold";
 "watch.workout.holdRunning" = "%lld seconds left";
+"watch.workout.holdOver" = "%lld seconds past the plan";
 "watch.workout.holdStartHint" = "Starts the hold";
 "watch.workout.getReady" = "Get ready";
 "watch.workout.getReadySkip" = "Tap to skip";
@@ -374,6 +375,7 @@
 "watch.workout.platesLighter" = "Lighter";
 "watch.workout.platesClosest" = "Closest";
 "watch.workout.holdTapToEnd" = "Tap the ring to end early";
+"watch.workout.holdTapToLog" = "Tap the ring to log the set";
 "watch.workout.keepShort" = "Keep";
 "watch.workout.logged" = "logged";
 "watch.workout.metricsTitle" = "Live";

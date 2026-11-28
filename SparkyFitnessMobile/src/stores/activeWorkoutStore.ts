@@ -1139,6 +1139,41 @@ function restSecBeforeNextSet(
 }
 
 /**
+ * The step after `setId` once it is logged: the first uncompleted step after
+ * it, else the earliest uncompleted hole anywhere, else null when every set is
+ * done. `completedSetIds` is the map with `setId` already in it.
+ */
+function nextStepAfter(
+  steps: WorkoutStep[],
+  completedSetIds: CompletedSetMap,
+  setId: string
+): WorkoutStep | null {
+  const index = steps.findIndex((s) => s.setId === setId);
+  return (
+    steps.slice(index + 1).find((s) => completedSetIds[s.setId] == null) ??
+    steps.find((s) => completedSetIds[s.setId] == null) ??
+    null
+  );
+}
+
+/**
+ * The rest logging `setId` would start: the break before the next-up set, 0
+ * when none is owed (back-to-back superset partners, a drop set next), null
+ * when it is the last set so no rest follows. The one rule `completeSet` and
+ * the focus view's Log set button share.
+ */
+export function restSecAfterLoggingSet(
+  session: PresetSessionResponse,
+  steps: WorkoutStep[],
+  completedSetIds: CompletedSetMap,
+  setId: string
+): number | null {
+  if (!steps.some((s) => s.setId === setId)) return null;
+  const next = nextStepAfter(steps, { ...completedSetIds, [setId]: 0 }, setId);
+  return next == null ? null : restSecBeforeNextSet(session, setId, next.setId);
+}
+
+/**
  * Seed the completion map from server-persisted `completed_at` timestamps so
  * a workout started from a session with prior progress resumes where it left
  * off. Missing or unparseable timestamps count as not completed. Also used by
@@ -1950,12 +1985,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // it (its "next set"), else the earliest uncompleted hole anywhere (so
         // logging the last set with earlier holes circles back to them), else
         // null when every set is done.
-        const nextStep =
-          state.steps
-            .slice(targetIndex + 1)
-            .find((s) => completedSetIds[s.setId] == null) ??
-          state.steps.find((s) => completedSetIds[s.setId] == null) ??
-          null;
+        const nextStep = nextStepAfter(state.steps, completedSetIds, setId);
 
         if (!nextStep) {
           // No uncompleted step remains: workout is done. No final rest timer.
@@ -1987,8 +2017,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           activeSetId: nextStep.setId,
           // Zero rest (back-to-back superset partners, or an explicit rest_time
           // of 0) advances straight to ready — no timer flash.
+          // Interval formats own their timing (the HUD's work/rest phases), so
+          // no second rest timer runs alongside it.
           rest:
-            restSec > 0
+            restSec > 0 && state.workoutFormat === 'standard'
               ? startRestForStep(
                   state.steps,
                   nextStep.setId,
@@ -2854,10 +2886,24 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const items = buildExerciseReorderItems(session.exercises);
         const from = items.findIndex((i) => i.entryIds.includes(entryId));
         const to = items.findIndex((i) => i.entryIds.includes(currentEntryId));
-        if (from < 0 || to < 0 || from <= to) return;
+        // The exercise is the current one (or its superset partner): nothing
+        // to move in front of.
+        if (from < 0 || to < 0 || from === to) return;
+        // A finished exercise has nothing left to do.
+        const todo = session.exercises
+          .find((e) => e.id === entryId)
+          ?.sets.some((x) => state.completedSetIds[String(x.id)] == null);
+        if (!todo) return;
+        // One before the current exercise in the order goes just in front of
+        // it (removing it first shifts the current one up a place); one after
+        // it moves up into its place. One already right in front stays put.
+        const target = from < to ? to - 1 : to;
         const edit = buildSessionEditState(state, {
           ...session,
-          exercises: moveSessionExerciseItem(session.exercises, from, to),
+          exercises:
+            from === target
+              ? session.exercises
+              : moveSessionExerciseItem(session.exercises, from, target),
         });
         const picked = edit.session?.exercises.find((e) => e.id === entryId);
         const firstToDo = picked?.sets

@@ -34,11 +34,12 @@ const empty = {
   exercises: [],
 };
 
-function renderCard() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
+const client = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function ui(effort?: number | null) {
+  return (
     <QueryClientProvider client={client}>
       <WorkoutFeedbackCard
         presetEntryId="session-1"
@@ -46,9 +47,15 @@ function renderCard() {
           { id: 'e1', name: 'Bench Press' },
           { id: 'e2', name: 'Row' },
         ]}
+        effort={effort}
       />
     </QueryClientProvider>
   );
+}
+
+function renderCard(effort?: number | null) {
+  client.clear();
+  return render(ui(effort));
 }
 
 describe('WorkoutFeedbackCard', () => {
@@ -68,27 +75,83 @@ describe('WorkoutFeedbackCard', () => {
     }));
   });
 
-  it('saves the session rating as soon as it is picked', async () => {
+  it('has no workout-level difficulty chips', async () => {
     const screen = renderCard();
     await waitFor(() =>
-      expect(screen.getByText('How did it feel?')).toBeTruthy()
+      expect(screen.getByText('Notes for next time')).toBeTruthy()
     );
+    expect(screen.queryByText('Too hard')).toBeNull();
+    expect(screen.queryByText('Just right')).toBeNull();
+  });
+
+  it('does not save on mount, then follows the effort rating', async () => {
+    const screen = renderCard(7);
+    await waitFor(() =>
+      expect(screen.getByText('Notes for next time')).toBeTruthy()
+    );
+    expect(mockSave).not.toHaveBeenCalled();
     await act(async () => {
-      fireEvent.press(screen.getByText('Too hard'));
+      screen.rerender(ui(9));
     });
     await waitFor(() =>
-      expect(mockSave).toHaveBeenCalledWith('session-1', {
+      expect(mockSave).toHaveBeenLastCalledWith('session-1', {
         session: { difficulty: 'too_hard', pain: false, pain_note: null },
         exercises: [],
       })
     );
-    await waitFor(() => expect(screen.getByText('Saved')).toBeTruthy());
+    await act(async () => {
+      screen.rerender(ui(2));
+    });
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenLastCalledWith('session-1', {
+        session: { difficulty: 'too_easy', pain: false, pain_note: null },
+        exercises: [],
+      })
+    );
+    await act(async () => {
+      screen.rerender(ui(5));
+    });
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenLastCalledWith('session-1', {
+        session: { difficulty: 'just_right', pain: false, pain_note: null },
+        exercises: [],
+      })
+    );
+  });
+
+  it('keeps the other answers when the effort changes', async () => {
+    mockFetch.mockResolvedValue({
+      ...empty,
+      session: {
+        difficulty: null,
+        pain: true,
+        pain_note: 'left knee',
+        updated_at: 'x',
+      },
+    });
+    const screen = renderCard(null);
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('left knee')).toBeTruthy()
+    );
+    await act(async () => {
+      screen.rerender(ui(10));
+    });
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenLastCalledWith('session-1', {
+        session: {
+          difficulty: 'too_hard',
+          pain: true,
+          pain_note: 'left knee',
+        },
+        exercises: [],
+      })
+    );
   });
 
   it('records pain on the exercises named', async () => {
     const screen = renderCard();
     await waitFor(() =>
-      expect(screen.getByText('How did it feel?')).toBeTruthy()
+      expect(screen.getByText('Notes for next time')).toBeTruthy()
     );
     await act(async () => {
       fireEvent(
@@ -118,25 +181,18 @@ describe('WorkoutFeedbackCard', () => {
     ).toBeTruthy();
   });
 
-  it('shows existing feedback and offers a retry when saving fails', async () => {
-    mockFetch.mockResolvedValue({
-      ...empty,
-      session: {
-        difficulty: 'too_easy',
-        pain: false,
-        pain_note: null,
-        updated_at: 'x',
-      },
-    });
+  it('offers a retry when saving fails', async () => {
     mockSave.mockRejectedValueOnce(new Error('offline'));
     const screen = renderCard();
     await waitFor(() =>
-      expect(
-        screen.getByText('Too easy').parent?.parent?.props.accessibilityState
-      ).toEqual({ selected: true })
+      expect(screen.getByText('Notes for next time')).toBeTruthy()
     );
     await act(async () => {
-      fireEvent.press(screen.getByText('Just right'));
+      fireEvent(
+        screen.getByLabelText('Any pain or discomfort?'),
+        'valueChange',
+        true
+      );
     });
     await waitFor(() =>
       expect(
@@ -161,7 +217,7 @@ describe('WorkoutFeedbackCard', () => {
       );
     });
     await waitFor(() =>
-      expect(screen.getByText('How did it feel?')).toBeTruthy()
+      expect(screen.getByText('Notes for next time')).toBeTruthy()
     );
     expect(mockSave).not.toHaveBeenCalled();
   });
