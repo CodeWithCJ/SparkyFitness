@@ -237,6 +237,19 @@ export default function ActiveWorkoutGuidedCard({
         </View>
       )}
 
+      {phase.kind === 'timed' && (
+        <Text
+          testID="guided-countdown"
+          accessibilityRole="timer"
+          className="text-5xl font-black text-text-primary text-center mt-3"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {phase.overtimeSec > 0
+            ? `+${formatRestCountdown(phase.overtimeSec * 1000)}`
+            : formatRestCountdown(phase.remainingSec * 1000)}
+        </Text>
+      )}
+
       {phase.kind === 'stopwatch' && (
         <Text
           testID="guided-stopwatch"
@@ -248,7 +261,9 @@ export default function ActiveWorkoutGuidedCard({
         </Text>
       )}
 
-      {(phase.kind === 'reps' || phase.kind === 'stopwatch') && (
+      {(phase.kind === 'reps' ||
+        phase.kind === 'stopwatch' ||
+        (phase.kind === 'timed' && phase.set.hold)) && (
         <>
           <Text className="text-sm text-text-secondary text-center mt-3">
             {phase.kind === 'reps' && phase.set.target.kind === 'reps'

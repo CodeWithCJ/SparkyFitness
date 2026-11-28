@@ -202,12 +202,14 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(
       useActiveWorkoutStore.getState().setTimerStartedAt['3']
     ).toBeDefined();
-    expect(screen.queryByText('DONE — NEXT')).toBeNull();
+    expect(screen.getByTestId('guided-countdown')).toHaveTextContent('0:20');
 
     act(() => jest.advanceTimersByTime(10_000));
     expect(spoken().at(-1)).toEqual(['Halfway.']);
 
-    // At zero the set logs its target duration and the workout completes.
+    // With "Log at zero" the set logs its target duration and the workout
+    // completes.
+    useAppPreferencesStore.setState({ focusHoldAtZero: 'log' });
     act(() => jest.advanceTimersByTime(10_250));
     const done = useActiveWorkoutStore.getState();
     expect(done.completedSetIds['3']).toBeDefined();
@@ -248,6 +250,47 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(done.completedSetIds['3']).toBeDefined();
     expect(done.session?.exercises[1]?.sets[0]?.duration).toBe(42);
     expect(done.setTimerStartedAt['3']).toBeUndefined();
+  });
+
+  function startPlank() {
+    __resetActiveWorkoutStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    useActiveWorkoutStore.getState().completeSet('1');
+    useActiveWorkoutStore.getState().dismissRest();
+    useActiveWorkoutStore.getState().completeSet('2');
+    useActiveWorkoutStore.getState().dismissRest();
+    renderCard();
+    act(() => jest.advanceTimersByTime(250));
+    act(() => jest.advanceTimersByTime(3000));
+  }
+
+  it('counts a planned hold down, runs past zero and logs the time held on DONE', () => {
+    startPlank();
+    expect(screen.getByTestId('guided-countdown')).toHaveTextContent('0:20');
+
+    mockCue.mockClear();
+    act(() => jest.advanceTimersByTime(20_250));
+    // Past the plan the set is still open: cue once, counting up.
+    expect(mockCue).toHaveBeenCalledWith('finish');
+    expect(
+      useActiveWorkoutStore.getState().completedSetIds['3']
+    ).toBeUndefined();
+    act(() => jest.advanceTimersByTime(7000));
+    expect(screen.getByTestId('guided-countdown')).toHaveTextContent('+0:07');
+
+    fireEvent.press(screen.getByText('DONE — NEXT'));
+    const done = useActiveWorkoutStore.getState();
+    expect(done.completedSetIds['3']).toBeDefined();
+    expect(done.session?.exercises[1]?.sets[0]?.duration).toBe(27);
+    expect(done.setTimerStartedAt['3']).toBeUndefined();
+  });
+
+  it('ends a forgotten hold at twice the plan', () => {
+    startPlank();
+    act(() => jest.advanceTimersByTime(40_500));
+    const done = useActiveWorkoutStore.getState();
+    expect(done.completedSetIds['3']).toBeDefined();
+    expect(done.session?.exercises[1]?.sets[0]?.duration).toBe(40);
   });
 
   it('resumes a running timed set silently after a remount', () => {
@@ -292,6 +335,7 @@ describe('ActiveWorkoutGuidedCard', () => {
   });
 
   it('pause freezes the timed set and resume carries on from there', () => {
+    useAppPreferencesStore.setState({ focusHoldAtZero: 'log' });
     const store = useActiveWorkoutStore.getState();
     store.completeSet('1');
     useActiveWorkoutStore.getState().dismissRest();

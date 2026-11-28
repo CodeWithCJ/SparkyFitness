@@ -42,6 +42,11 @@ export interface GuidedSetView {
    * and logs the time held, instead of waiting on a bare DONE tap.
    */
   stopwatch: boolean;
+  /**
+   * A timed hold (planned length or not): its time is the time held, so with
+   * "Keep counting" at zero it runs past the plan until DONE.
+   */
+  hold: boolean;
   setNumber: number;
   totalSets: number;
 }
@@ -58,6 +63,8 @@ export type GuidedPhase =
       set: GuidedSetView;
       remainingSec: number;
       totalSec: number;
+      /** Seconds past the plan; 0 until a hold runs over. */
+      overtimeSec: number;
     }
   /** A hold with no planned time: the stopwatch counts up until DONE. */
   | { kind: 'stopwatch'; set: GuidedSetView; elapsedSec: number }
@@ -102,6 +109,7 @@ function describeGuidedSet(
   const desc = describeActiveSetAssumed(session, setId, state);
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const snapshot = exercise.exercise_snapshot;
+  const isHold = modality === 'duration' || isWeightDurationModality(modality);
   const target = resolveGuidedSetTarget(modality, {
     reps: desc?.reps,
     duration: desc?.durationSec,
@@ -112,9 +120,8 @@ function describeGuidedSet(
     images: guidedExerciseImages(snapshot?.images),
     instructions: snapshot?.instructions ?? [],
     target,
-    stopwatch:
-      target.kind === 'open' &&
-      (modality === 'duration' || isWeightDurationModality(modality)),
+    stopwatch: target.kind === 'open' && isHold,
+    hold: isHold,
     setNumber: desc?.setNumber ?? 1,
     totalSets: desc?.setCount ?? exercise.sets.length,
   };
@@ -128,6 +135,8 @@ interface GetReady {
 interface GuidedMemo {
   announcedSetId: string | null;
   halfwaySetId: string | null;
+  /** The hold whose end-of-plan cue has played. */
+  finishedSetId: string | null;
   completingSetId: string | null;
   lastBeep: string | null;
   getReady: GetReady | null;
@@ -141,6 +150,7 @@ function freshMemo(): GuidedMemo {
   return {
     announcedSetId: null,
     halfwaySetId: null,
+    finishedSetId: null,
     completingSetId: null,
     lastBeep: null,
     getReady: null,
@@ -254,6 +264,7 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
     const beginSet = (set: GuidedSetView) => {
       memo.completingSetId = null;
       memo.halfwaySetId = null;
+      memo.finishedSetId = null;
       speak(buildGuidedSetStartCues(set), true);
       if (set.target.kind === 'time' || set.stopwatch) {
         useActiveWorkoutStore.getState().startSetTimer(set.setId);
@@ -310,15 +321,28 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
       if (set.target.kind !== 'time' || startedAt == null) return;
       const totalSec = set.target.seconds;
       const remaining = Math.ceil((startedAt + totalSec * 1000 - nowMs) / 1000);
+      // A hold runs past its plan until DONE (up to twice the plan, so a
+      // forgotten one cannot run for hours), as the Start hold card does;
+      // "Log at zero" in the focus settings ends it at the plan instead.
+      const keepCounting =
+        set.hold &&
+        useAppPreferencesStore.getState().focusHoldAtZero === 'keep';
+      if (remaining <= 0 && keepCounting) {
+        if (memo.finishedSetId !== set.setId) {
+          memo.finishedSetId = set.setId;
+          playIntervalCue('finish');
+        }
+        if (nowMs < startedAt + totalSec * 2000) return;
+      }
       if (remaining <= 0) {
         if (memo.completingSetId === set.setId) return;
         memo.completingSetId = set.setId;
         state.stopSetTimer(set.setId);
         // Log the target, not the wall clock: a set that ran out while the
         // app was backgrounded must not record the extra time.
-        useActiveWorkoutStore
-          .getState()
-          .updateSetField(set.setId, { duration: totalSec });
+        useActiveWorkoutStore.getState().updateSetField(set.setId, {
+          duration: keepCounting ? totalSec * 2 : totalSec,
+        });
         latestRef.current.onCompleteSet(set.setId);
         return;
       }
@@ -437,7 +461,10 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
     if (setId == null) return;
     // A stopwatch hold logs the time held; stopping it writes the duration.
     const state = useActiveWorkoutStore.getState();
-    if (describeGuidedSet(state, setId)?.stopwatch) state.stopSetTimer(setId);
+    const set = describeGuidedSet(state, setId);
+    if (set?.stopwatch || (set?.hold && set.target.kind === 'time')) {
+      state.stopSetTimer(setId);
+    }
     onCompleteSet(setId);
   }, [onCompleteSet]);
 
@@ -473,6 +500,10 @@ export function useGuidedWorkout(onCompleteSet: (setId: string) => void): {
       remainingSec: Math.max(
         0,
         Math.ceil((timerStartedAt + totalSec * 1000 - clockNow) / 1000)
+      ),
+      overtimeSec: Math.max(
+        0,
+        Math.floor((clockNow - timerStartedAt) / 1000) - totalSec
       ),
     };
   } else if (activeSet.stopwatch && timerStartedAt != null) {
