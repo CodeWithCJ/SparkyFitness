@@ -3,7 +3,7 @@ import { todayInZone, type TreatmentEffectiveness } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import symptomService from '../../services/symptomService.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { normalizeActionArgs } from './dates.js';
+import { normalizeActionArgs, normalizeDayValue } from './dates.js';
 import {
   dayString,
   formatConfirmation,
@@ -58,6 +58,17 @@ symptom_id is a definition id (UUID); id is an entry id (from log_entry, list_en
       inputSchema: manageSymptomsInput,
       execute: async (rawArgs: Record<string, unknown>) => {
         const normalized = normalizeActionArgs(rawArgs, tz, VALID_ACTIONS);
+        // from/to are days too, but have no "date" in their names.
+        for (const key of ['from', 'to']) {
+          if (
+            normalized &&
+            typeof normalized === 'object' &&
+            Object.hasOwn(normalized, key)
+          ) {
+            const args = normalized as Record<string, unknown>;
+            args[key] = normalizeDayValue(args[key], tz);
+          }
+        }
         const parsed = manageSymptomsSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);

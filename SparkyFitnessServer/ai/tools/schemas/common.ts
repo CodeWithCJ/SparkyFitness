@@ -1,6 +1,23 @@
 import { z } from 'zod';
 import { VALID_PROVIDER_TYPES } from '../../../constants/foodProviders.js';
 
+// Models send flags as strings, and z.coerce.boolean() reads "false" as
+// true. Accepted: booleans, the numbers 1/0, and the strings true/false/1/0
+// (trimmed, any case). null and blank strings mean not set. Anything else is
+// left for z.boolean() to reject.
+export function parseFlag(value: unknown): unknown {
+  if (value === null) return undefined;
+  if (value === 1 || value === 0) return value === 1;
+  if (typeof value !== 'string') return value;
+  const word = value.trim().toLowerCase();
+  if (word === '') return undefined;
+  if (word === 'true' || word === '1') return true;
+  if (word === 'false' || word === '0') return false;
+  return value;
+}
+
+export const flagSchema = z.preprocess(parseFlag, z.boolean().optional());
+
 // Day-string input. Accepts strict YYYY-MM-DD plus the forgiving forms small
 // local models commonly emit: "today"/"yesterday"/"tomorrow" keywords and ISO
 // timestamps ("2026-07-10T00:00:00"). Handlers call normalizeDayKeywords()

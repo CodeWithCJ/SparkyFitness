@@ -5782,6 +5782,67 @@ describe('update_food_variant', () => {
     );
   });
 
+  it.each([
+    [null, false],
+    ['', false],
+    ['false', false],
+    ['FALSE', false],
+    [0, false],
+    ['true', true],
+    [1, true],
+  ])('reads update_existing_entries %j as %s', async (flag, refreshes) => {
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+    });
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Oatmeal',
+      user_id: 'user-1',
+    });
+    vi.mocked(foodRepository.updateFoodVariant).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+      calories: 390,
+      serving_size: 100,
+      serving_unit: 'g',
+    });
+    vi.mocked(foodCoreService.updateFoodEntriesSnapshot).mockResolvedValue({
+      message: 'Food entries updated successfully.',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_food_variant',
+        variant_id: VARIANT_ID,
+        calories: 390,
+        update_existing_entries: flag,
+      } as never,
+      opts
+    );
+
+    expect(String(result)).not.toContain('Error');
+    expect(
+      vi.mocked(foodCoreService.updateFoodEntriesSnapshot).mock.calls.length
+    ).toBe(refreshes ? 1 : 0);
+  });
+
+  it('rejects an update_existing_entries value that is not a flag', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_food_variant',
+        variant_id: VARIANT_ID,
+        calories: 390,
+        update_existing_entries: 'yes please',
+      } as never,
+      opts
+    );
+
+    expect(String(result)).toContain('update_existing_entries');
+    expect(foodRepository.updateFoodVariant).not.toHaveBeenCalled();
+    expect(foodCoreService.updateFoodEntriesSnapshot).not.toHaveBeenCalled();
+  });
+
   it('rejects a default-variant lookup on a food the user does not own', async () => {
     vi.mocked(foodRepository.getFoodById).mockResolvedValue({
       id: FOOD_ID,
