@@ -61,6 +61,7 @@ const ClinicalRecordImportDialog = ({
     setIncludeVitals(true);
     setIncludeLabs(true);
     setDragActive(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleOpenChange = (next: boolean) => {
@@ -95,6 +96,7 @@ const ClinicalRecordImportDialog = ({
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
     await processFile(file);
   };
