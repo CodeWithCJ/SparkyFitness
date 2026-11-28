@@ -23,6 +23,11 @@ describe('evaluateArithmetic', () => {
     ['1 000/2', 500],
     ['1.001,5/2', 500.75],
     ['1 000/2 + 1.001,5', 1501.5],
+    // A leading comma (or dot) starts a decimal, matching parseDecimalInput:
+    // `,5` is 0.5, so `,5*2` and `2*,5` evaluate.
+    [',5*2', 1],
+    [',5+1', 1.5],
+    ['2*,5', 1],
   ])('evaluates %s', (expression, expected) => {
     expect(evaluateArithmetic(expression)).toBeCloseTo(expected);
   });
@@ -55,6 +60,9 @@ describe('evaluateArithmetic', () => {
     // A space group that is not exactly three digits is malformed (the
     // mobile parseDecimalInput rejects it too), so it must not be stripped.
     '1 0000/2',
+    // A lone comma has no digits; only a leading comma followed by digits is
+    // a decimal.
+    ',',
   ])('rejects invalid or non-finite input %s', (expression) => {
     expect(evaluateArithmetic(expression)).toBeUndefined();
   });

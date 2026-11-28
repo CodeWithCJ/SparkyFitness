@@ -75,7 +75,7 @@ export function evaluateArithmetic(input: string): number | undefined {
     }
     const number = expression
       .slice(position)
-      .match(/^(?:\d[\d\s\u00a0\u202f.,]*|\.\d+)(?:[eE][+-]?\d+)?/);
+      .match(/^(?:\d[\d\s\u00a0\u202f.,]*|[.,]\d+)(?:[eE][+-]?\d+)?/);
     if (!number) return NaN;
     position += number[0].length;
     return normalizeNumberToken(number[0]);
