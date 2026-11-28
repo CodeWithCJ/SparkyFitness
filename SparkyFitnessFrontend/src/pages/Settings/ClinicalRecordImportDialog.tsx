@@ -30,7 +30,7 @@ interface ClinicalRecordImportDialogProps {
   onImportComplete?: () => void;
 }
 
-export const ClinicalRecordImportDialog = ({
+const ClinicalRecordImportDialog = ({
   open,
   onOpenChange,
   onImportComplete,

@@ -45,7 +45,7 @@ describe('Clinical Record Routes (/api/v2/clinical-records)', () => {
   const app = express();
   app.use(express.json());
   app.use('/api/v2/clinical-records', clinicalRecordRoutes);
-  app.use((err: any, req: any, res: any, next: any) => {
+  app.use((err: any, _req: any, res: any, _next: any) => {
     res
       .status(err.name === 'ValidationError' ? 400 : 500)
       .json({ error: err.message });
