@@ -3155,6 +3155,9 @@
       },
       "medications": {
         "description": "药物、补充剂和 GLP-1 追踪。补充剂的营养素仍会计入你的总量。"
+      },
+      "aiCoaches": {
+        "description": "AI 教练会关注你的食物、训练和睡眠，有值得说的事就发一条短消息。请在“设置 → 健康 → 教练”中设置。"
       }
     },
     "foodProviders": {
@@ -11536,6 +11539,378 @@
       "lift": "举重",
       "distance": "距离",
       "pace": "配速"
+    }
+  },
+  "coaches": {
+    "saved": "已保存。",
+    "saveFailed": "无法保存你的教练设置。",
+    "previewFailed": "无法检查该教练。",
+    "because": "原因：{{reason}}",
+    "rulesToggle": "何时会发声",
+    "settings": {
+      "title": "教练",
+      "description": "AI 教练会查看你的数据，重要时会发声",
+      "off": "教练已关闭。开启后即可收到查看你食物、训练和睡眠的教练发来的短消息。",
+      "turnOn": "开启教练",
+      "loadError": "无法加载你的教练。",
+      "weekday": "运行日",
+      "focusHabit": "要专注的习惯",
+      "noHabit": "暂无"
+    },
+    "aboutMe": {
+      "title": "关于我",
+      "description": "你的教练和 Sparky 对话会使用这些数据。你可以随时更改或清除。",
+      "diet": "饮食",
+      "tone": "语气",
+      "notSet": "未设置",
+      "foodsAvoid": "要避免的食物",
+      "foodsPrefer": "我喜欢的食物",
+      "notes": "教练还应该知道什么",
+      "allergies": "过敏",
+      "noAllergies": "未保存任何项目。",
+      "allergiesHint": "在“设置 → 营养与饮食 → 过敏原偏好”中管理。",
+      "clear": "全部清除",
+      "clearTitle": "清除“关于我”？",
+      "clearDescription": "你的饮食、语气、食物和备注会从所有教练和 Sparky 对话中移除。过敏设置不受影响。"
+    },
+    "diets": {
+      "omnivore": "无限制",
+      "vegetarian": "素食",
+      "vegan": "纯素",
+      "pescatarian": "鱼素",
+      "keto": "生酮",
+      "halal": "清真",
+      "kosher": "犹太洁食",
+      "other": "其他"
+    },
+    "tones": {
+      "friendly": "友善且简短",
+      "direct": "直接",
+      "encouraging": "鼓励",
+      "neutral": "中性"
+    },
+    "schedule": {
+      "title": "教练何时查看",
+      "description": "教练只会在这些时间（你自己的时区）查看你的数据，且只在有值得说的事时才发声。",
+      "checkInTime": "查看时间",
+      "removeTime": "删除此时间",
+      "addTime": "添加一个时间",
+      "maxMessages": "每天最多多少条消息",
+      "maxMessagesTooltip": "限制所有已开启教练每天合计的消息数量，避免通知过多，并减少 AI 用量。"
+    },
+    "pause": {
+      "title": "暂停教练",
+      "description": "生病、旅行或受伤了？教练会保持静默，直到你选择的日期。",
+      "until": "暂停至 {{date}}。",
+      "untilLabel": "至",
+      "reason": "原因",
+      "pause": "暂停",
+      "resume": "立即恢复",
+      "reasons": {
+        "sick": "生病",
+        "travel": "旅行",
+        "injury": "受伤",
+        "other": "其他"
+      }
+    },
+    "list": {
+      "title": "你的教练",
+      "cost": "教练只在有规则匹配时才使用你的 AI 提供商。没有提供商时，会改为收到一条固定短消息。",
+      "create": "自己创建一个教练",
+      "limit": "你自己的教练已达到 {{count}} 个上限。",
+      "aiDecides": "由 AI 决定何时发声。",
+      "customRules": "{{count}} 条规则"
+    },
+    "preview": {
+      "button": "现在会发声吗？",
+      "tooltip": "用今天已记录的食物和运动模拟该教练，查看是否有规则现在触发，不消耗 AI token。",
+      "yes": "会，它会发声：",
+      "no": "不会。当前没有匹配项，因此它会保持静默。",
+      "today": "预览今天",
+      "aiDecides": "每次查看都由 AI 决定，因此这里无法预先检查。"
+    },
+    "thread": {
+      "sparky": "Sparky",
+      "label": "对话对象",
+      "unread": "{{count}} 条未读",
+      "readOnly": "请在设置中添加 AI 提供商，才能回复你的教练。",
+      "otherUnread": "未读消息"
+    },
+    "names": {
+      "recovery": "恢复",
+      "consistency": "持续",
+      "nutrition": "营养",
+      "sleep_recovery": "睡眠与恢复",
+      "custom": "教练",
+      "daily_outlook": "每日展望",
+      "weekly_review": "每周回顾",
+      "training": "训练",
+      "habits": "习惯"
+    },
+    "descriptions": {
+      "recovery": "同时查看训练和食物，让你在辛苦训练后吃够蛋白质和碳水。",
+      "consistency": "留意记录空档和连续记录，帮你温和地重新开始。",
+      "nutrition": "查看今天的蛋白质、纤维、热量和水分与目标的差距。",
+      "sleep_recovery": "对比昨晚睡眠与你的平常水平，以及近期训练。",
+      "daily_outlook": "每天早上：根据睡眠和近期训练，说明今天可以冲、正常或放松。",
+      "weekly_review": "每周一次：这一周表现如何，若体重趋势允许，建议新的热量目标。",
+      "training": "查看你的举重，在重量可以上调或放松时提出计划调整。",
+      "habits": "一次帮一个习惯，晚上有温和提醒。"
+    },
+    "when": {
+      "morning": "早上",
+      "evening": "晚上",
+      "any": "任何查看",
+      "first_morning": "第一次早上查看",
+      "weekday": "每周一次",
+      "after_workout": "运动之后"
+    },
+    "units": {
+      "percent": "%",
+      "hours": "小时",
+      "minutes": "分钟",
+      "days": "天",
+      "ratio": "比例",
+      "direction": "方向",
+      "count": "数量",
+      "flag": "标记",
+      "phase": "阶段"
+    },
+    "directions": {
+      "toward": "趋向目标",
+      "away": "远离目标",
+      "flat": "平稳",
+      "fertile": "受孕期",
+      "ovulation": "排卵期",
+      "menstrual": "月经期",
+      "follicular": "卵泡期",
+      "luteal": "黄体期"
+    },
+    "ops": {
+      "lt": "低于",
+      "lte": "最多为",
+      "gt": "高于",
+      "gte": "至少为",
+      "eq": "等于"
+    },
+    "signals": {
+      "protein_pct_of_goal": "蛋白质（占目标 %）",
+      "carbs_pct_of_goal": "碳水（占目标 %）",
+      "fiber_pct_of_goal": "纤维（占目标 %）",
+      "calories_pct_of_goal": "热量（占目标 %）",
+      "water_pct_of_goal": "水分（占目标 %）",
+      "hours_since_strength": "距离上次力量训练多少小时",
+      "hours_since_hard_cardio": "距离上次高强度有氧多少小时",
+      "sleep_minutes_vs_avg": "睡眠相对你的平常水平",
+      "training_load_ratio": "训练负荷对比 4 周平均",
+      "weight_trend_direction": "体重趋势",
+      "days_since_last_log": "距离上次记录多少天",
+      "logging_streak_days": "连续记录天数",
+      "new_prs_since_last_checkin": "新个人记录",
+      "protein_goal_hit_streak_days": "连续达到蛋白质目标的天数",
+      "calorie_goal_hit_streak_days": "连续达到热量目标的天数",
+      "stalled_lifts": "停滞不前的举重项目",
+      "mood_checkin_today": "今天心情记录（1 = 有）",
+      "focus_habit_done_today": "今天完成专注习惯（1 = 有）",
+      "focus_habit_streak_days": "专注习惯连续天数",
+      "cycle_phase": "月经周期阶段",
+      "workout_is_strength": "运动属于力量训练（1 = 是）",
+      "workout_is_cardio": "运动属于有氧（1 = 是）",
+      "workout_duration_min": "运动时长",
+      "workout_hard": "运动属于高强度（1 = 是）",
+      "workout_new_pr": "运动创下记录（1 = 是）"
+    },
+    "rules": {
+      "recovery": {
+        "protein_after_strength": "力量训练后蛋白质偏低",
+        "carbs_after_hard_cardio": "高强度有氧后碳水偏低",
+        "after_strength_session": "完成一次辛苦力量训练",
+        "new_pr": "你创下记录"
+      },
+      "consistency": {
+        "logging_gap": "你有一段时间没有记录",
+        "nothing_logged_today": "今天暂无任何记录",
+        "streak_7": "连续记录一周",
+        "streak_30": "连续记录一个月",
+        "energy_question": "问我今天精神如何"
+      },
+      "nutrition": {
+        "fiber_low": "纤维偏低",
+        "protein_low": "蛋白质偏低",
+        "water_low": "水分偏低",
+        "protein_streak": "连续几天达到蛋白质目标"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "高负荷一周前睡眠不足",
+        "short_sleep": "睡眠比平常短很多"
+      },
+      "daily_outlook": {
+        "outlook": "早上展望"
+      },
+      "weekly_review": {
+        "weekly": "每周回顾"
+      },
+      "training": {
+        "weekly_plan_review": "每周训练计划回顾",
+        "stall": "有举重项目停滞",
+        "after_workout_review": "运动之后"
+      },
+      "habits": {
+        "not_done_evening": "今天尚未完成习惯",
+        "streak_win": "习惯连续记录"
+      }
+    },
+    "templates": {
+      "recovery": {
+        "protein_after_strength": "你完成力量训练 {{hours_since_strength}} 小时，蛋白质达到目标的 {{protein_pct_of_goal}}%。吃一餐高蛋白食物有助恢复。",
+        "carbs_after_hard_cardio": "完成高强度有氧后，碳水达到目标的 {{carbs_pct_of_goal}}%。补充一些碳水有助恢复体力。",
+        "after_strength_session": "这次练得不错（{{workout_minutes}} 分钟）。接下来几小时内吃一餐高蛋白食物有助恢复。",
+        "new_pr": "你创下新个人记录。做得很好。"
+      },
+      "consistency": {
+        "logging_gap": "你已经 {{days_since_last_log}} 天没有记录。不必补齐，记录下一餐就能回到正轨。",
+        "nothing_logged_today": "今天暂无任何记录。记录下一餐就足以开始。",
+        "streak_7": "你已经连续记录 {{logging_streak_days}} 天。保持得很好。",
+        "streak_30": "连续 {{logging_streak_days}} 天都有记录。这是真正的习惯。"
+      },
+      "nutrition": {
+        "fiber_low": "纤维达到目标的 {{fiber_pct_of_goal}}%。蔬菜、水果、豆类或燕麦都会有帮助。",
+        "protein_low": "今天蛋白质达到目标的 {{protein_pct_of_goal}}%。可以考虑吃一餐高蛋白食物。",
+        "water_low": "水分达到目标的 {{water_pct_of_goal}}%。喝一两杯会有帮助。",
+        "protein_streak": "你已经连续 {{protein_goal_hit_streak_days}} 天达到蛋白质目标。"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "你睡得比平常少，而训练负荷偏高。今天可以考虑做轻松一点。",
+        "short_sleep": "你睡得比平常少很多。今天放松一点，保住今晚的睡眠。"
+      },
+      "daily_outlook": {
+        "outlook": {
+          "push": "今天可以冲：近期训练负荷轻，你也休息充足。",
+          "normal": "正常训练日：睡眠和训练负荷都比较稳定。",
+          "easy": "今天放松一点：睡眠不足或训练周负荷重，都表示需要恢复。"
+        }
+      },
+      "weekly_review": {
+        "weekly": "你这一周：在 {{days_logged}} 个有记录的日子，大约 {{followed_target_percent}}% 达到目标。"
+      },
+      "training": {
+        "weekly_plan_review": "每周查看你的训练计划。",
+        "stall": "你有 {{stalled_lifts}} 个举重项目已经停滞。",
+        "after_workout_review": "这次练得不错（{{workout_minutes}} 分钟）。"
+      },
+      "habits": {
+        "streak_win": "专注习惯连续 {{focus_habit_streak_days}} 天。继续保持。"
+      }
+    },
+    "answerFailed": "无法保存你的答案。",
+    "kind": {
+      "win": "成果",
+      "outlook": "展望"
+    },
+    "weekdays": {
+      "0": "星期日",
+      "1": "星期一",
+      "2": "星期二",
+      "3": "星期三",
+      "4": "星期四",
+      "5": "星期五",
+      "6": "星期六"
+    },
+    "editor": {
+      "created": "教练已创建。",
+      "deleted": "教练已删除。",
+      "newTitle": "自己创建一个教练",
+      "editTitle": "编辑教练",
+      "description": "选择它谈论什么、可以查看什么，以及何时发声。",
+      "name": "名称",
+      "instructions": "它应该如何跟我说话",
+      "access": "它可以查看什么",
+      "when": "它应该何时发声",
+      "modeRules": "只在这些规则匹配时",
+      "modeRulesHint": "在没有规则匹配之前，不会使用 AI。",
+      "modeAi": "交给 AI 决定",
+      "modeAiHint": "每次查看使用一次 AI 调用（一天最多 {{count}} 次）来决定是否发声。",
+      "modeAiNeedsProvider": "需要 AI 提供商。请先在设置中添加一个。",
+      "aiRule": "它应该留意什么？",
+      "aiRulePlaceholder": "如果 3 月 14 日半马之前有什么不对劲，告诉我。",
+      "addRule": "添加一条规则",
+      "removeRule": "删除这条规则",
+      "addCondition": "添加另一个条件",
+      "removeCondition": "删除该条件",
+      "whenLabel": "何时",
+      "signalLabel": "要留意的数字",
+      "valueLabel": "数值",
+      "opLabel": "比较",
+      "deleteTitle": "删除该教练？",
+      "deleteBody": "其设置会被移除。它已经发送的消息会留在对话中。"
+    },
+    "suggestion": {
+      "goalDayProtein": "今天蛋白质目标提高到 {{to}} g（原本 {{from}} g）？明天会回到你平时的设置。",
+      "calorieTarget": "从今天起新的每日热量目标：{{to}} {{unit}}（当前 {{from}}）。",
+      "planChanges": "训练计划调整：{{up}} 次加重、{{down}} 天放松。",
+      "apply": "应用",
+      "dismiss": "不用了",
+      "applyFailed": "无法应用。可能已处理，或当前已不适用。",
+      "status": {
+        "applied": "已应用。",
+        "dismissed": "未应用。",
+        "expired": "这是另一天的建议。"
+      }
+    },
+    "feedback": {
+      "helpful": "有帮助",
+      "notHelpful": "没有帮助"
+    },
+    "knowledge": {
+      "title": "我的教练知道什么",
+      "nothing": "“关于我”尚未保存任何内容。",
+      "avoids": "避免：{{foods}}",
+      "likes": "喜欢：{{foods}}",
+      "allergies": "过敏：{{list}}",
+      "noCoaches": "没有教练开启。",
+      "muted": "已停止提及：{{rule}}",
+      "unmute": "重新开启"
+    },
+    "questions": {
+      "answer": "你的答案",
+      "low": "低",
+      "high": "高",
+      "yes": "是",
+      "notYetButton": "尚未",
+      "markedDone": "已标记完成。",
+      "notYet": "记下了。今天尚未完成。",
+      "saved": "已保存到你的查看记录。",
+      "energy": {
+        "ask": "你今天精神如何？"
+      },
+      "mood": {
+        "ask": "你今天心情如何？"
+      },
+      "focus": {
+        "ask": "你今天专注力如何？"
+      },
+      "habit_done": {
+        "ask": "你今天有做专注习惯吗？"
+      }
+    },
+    "checkInNow": {
+      "title": "立即查看",
+      "tooltip": "强制教练立即查看你当前的日记并评估规则，不必等下一次排定的查看。",
+      "button": "立即查看",
+      "resetToday": "重置今天次数",
+      "resetFailed": "无法重置今天次数。",
+      "openChat": "打开对话",
+      "failed": "无法执行查看。",
+      "last": "上次查看：{{when}}。",
+      "never": "尚未执行过查看。教练会在你设置的查看时间执行。",
+      "where": "消息会出现在 Sparky 对话按钮，位于写下该消息的教练下方。",
+      "sent_other": "{{count}} 条新消息。打开对话查看。",
+      "reason": {
+        "paused": "教练已暂停。",
+        "no_coaches": "没有教练开启。请在下方列表开启一个。",
+        "limit_reached": "今天的消息上限已达到。",
+        "nothing_to_say": "当前没有要说的：没有规则匹配今天数据，或教练今天已经说过。"
+      }
     }
   }
 }
