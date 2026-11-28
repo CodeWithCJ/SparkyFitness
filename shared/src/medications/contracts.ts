@@ -192,6 +192,7 @@ export interface CreateMedicationEntryInput {
   dose_unit_snapshot?: string | null;
   notes?: string | null;
   source?: string;
+  schedules?: CreateScheduleInput[];
   custom_fields?: Record<string, unknown> | null;
 }
 

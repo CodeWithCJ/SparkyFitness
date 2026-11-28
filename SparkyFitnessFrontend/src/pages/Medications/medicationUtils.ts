@@ -172,7 +172,7 @@ export const formatDaysOfWeek = (days: number[] | null) => {
   return days.map((d) => names[d] ?? '').join(', ');
 };
 
-const translateMealRelation = (withMeal: MedicationWithMeal): string => {
+export const translateMealRelation = (withMeal: MedicationWithMeal): string => {
   switch (withMeal) {
     case 'before':
       return i18n.t('medications.mealRelation.before', 'Before meal');
@@ -222,6 +222,39 @@ export const formatScheduleDescription = (
     default:
       return `${sched.schedule_type_id}${timeStr}${mealStr}`;
   }
+};
+
+/**
+ * Summarises all active schedules for a medication, grouping multiple same-day times.
+ * e.g. "Daily at 08:00 & 20:00" or "As needed"
+ */
+export const formatAllSchedulesSummary = (
+  schedules: MedicationSchedule[] | undefined | null,
+  timeFormat: string
+): string => {
+  if (!schedules || schedules.length === 0) return '';
+  const active = schedules.filter((s) => s.active !== false);
+  if (active.length === 0) return '';
+
+  // If there's only one schedule, use formatScheduleDescription directly
+  if (active.length === 1 && active[0]) {
+    return formatScheduleDescription(active[0], timeFormat);
+  }
+
+  // Check if all active schedules are daily with times and no differing meal instructions
+  const allDaily = active.every((s) => s.schedule_type_id === 'daily');
+  const allHaveTime = active.every((s) => Boolean(s.time_of_day));
+  const noMealRelations = active.every((s) => !s.with_meal);
+
+  if (allDaily && allHaveTime && noMealRelations) {
+    const times = active
+      .slice()
+      .sort((a, b) => (a.time_of_day || '').localeCompare(b.time_of_day || ''))
+      .map((s) => formatTimeOfDayString(s.time_of_day!, timeFormat));
+    return `${i18n.t('medications.scheduleDesc.daily', 'Daily')} (${times.join(', ')})`;
+  }
+
+  return active.map((s) => formatScheduleDescription(s, timeFormat)).join('; ');
 };
 
 // Normalises a free-text number input into a `dose_amount` the API will accept. The

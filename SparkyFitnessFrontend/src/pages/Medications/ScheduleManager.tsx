@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Clock, Trash2 } from 'lucide-react';
+import { Settings, Clock, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
@@ -25,10 +25,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   useAddScheduleMutation,
+  useUpdateScheduleMutation,
   useDeleteScheduleMutation,
 } from '@/hooks/useMedications';
 import {
@@ -61,6 +61,65 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
+    null
+  );
+
+  const resetForm = () => {
+    setEditingScheduleId(null);
+    setScheduleTypeId('daily');
+    setTimeOfDay('09:00');
+    setDoseAmount('');
+    setWithMeal(null);
+    setDaysOfWeek([]);
+    setIntervalDays('1');
+    setDayOfMonth('1');
+    setCycleOnDays('7');
+    setCycleOffDays('7');
+    setPrnReason('');
+    setPrnMaxPerDay('');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const openAddDialog = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const openEditDialog = (sched: MedicationSchedule) => {
+    setEditingScheduleId(sched.id);
+    // Normalize specific_days to weekly for UI consistency, while keeping stored weekdays
+    const normalizedType =
+      sched.schedule_type_id === 'specific_days'
+        ? 'weekly'
+        : sched.schedule_type_id || 'daily';
+    setScheduleTypeId(normalizedType);
+    setTimeOfDay(sched.time_of_day ? sched.time_of_day.slice(0, 5) : '');
+    setDoseAmount(sched.dose_amount != null ? String(sched.dose_amount) : '');
+    setWithMeal(sched.with_meal || null);
+    setDaysOfWeek(sched.days_of_week || []);
+    setIntervalDays(
+      sched.interval_days != null ? String(sched.interval_days) : '1'
+    );
+    setDayOfMonth(
+      sched.day_of_month != null ? String(sched.day_of_month) : '1'
+    );
+    setCycleOnDays(
+      sched.cycle_on_days != null ? String(sched.cycle_on_days) : '7'
+    );
+    setCycleOffDays(
+      sched.cycle_off_days != null ? String(sched.cycle_off_days) : '7'
+    );
+    setPrnReason(sched.prn_reason || '');
+    setPrnMaxPerDay(
+      sched.prn_max_per_day != null ? String(sched.prn_max_per_day) : ''
+    );
+    setStartDate(sched.start_date ? String(sched.start_date).slice(0, 10) : '');
+    setEndDate(sched.end_date ? String(sched.end_date).slice(0, 10) : '');
+    setOpen(true);
+  };
+
   const handleTypeChange = (val: string) => {
     setScheduleTypeId(val);
     if ((val === 'every_n_days' || val === 'cyclic') && !startDate) {
@@ -69,12 +128,14 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   };
 
   const addMutation = useAddScheduleMutation(med.id);
+  const updateMutation = useUpdateScheduleMutation();
   const deleteMutation = useDeleteScheduleMutation();
 
   const handleSave = () => {
     const body: Partial<MedicationSchedule> & { schedule_type_id: string } = {
       schedule_type_id: scheduleTypeId,
-      time_of_day: scheduleTypeId === 'prn' ? null : timeOfDay,
+      time_of_day:
+        scheduleTypeId === 'prn' ? null : timeOfDay ? timeOfDay : null,
       dose_amount: positiveDoseOrNull(doseAmount),
       with_meal: withMeal || null,
       start_date: startDate || null,
@@ -95,24 +156,24 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
       body.prn_max_per_day = prnMaxPerDay ? Number(prnMaxPerDay) : null;
     }
 
-    addMutation.mutate(body, {
-      onSuccess: () => {
-        setOpen(false);
-        setScheduleTypeId('daily');
-        setTimeOfDay('09:00');
-        setDoseAmount('');
-        setWithMeal(null);
-        setDaysOfWeek([]);
-        setIntervalDays('1');
-        setDayOfMonth('1');
-        setCycleOnDays('7');
-        setCycleOffDays('7');
-        setPrnReason('');
-        setPrnMaxPerDay('');
-        setStartDate('');
-        setEndDate('');
-      },
-    });
+    if (editingScheduleId) {
+      updateMutation.mutate(
+        { id: editingScheduleId, body },
+        {
+          onSuccess: () => {
+            setOpen(false);
+            resetForm();
+          },
+        }
+      );
+    } else {
+      addMutation.mutate(body, {
+        onSuccess: () => {
+          setOpen(false);
+          resetForm();
+        },
+      });
+    }
   };
 
   const toggleDay = (day: number) => {
@@ -132,16 +193,22 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
           <Settings className="h-4 w-4 text-muted-foreground" />{' '}
           {t('medications.schedule.title', 'Schedule Rules')}
         </CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              {t('medications.schedule.addRule', 'Add Rule')}
-            </Button>
-          </DialogTrigger>
+        <Dialog
+          open={open}
+          onOpenChange={(val) => {
+            setOpen(val);
+            if (!val) resetForm();
+          }}
+        >
+          <Button variant="outline" size="sm" onClick={openAddDialog}>
+            {t('medications.schedule.addRule', 'Add Rule')}
+          </Button>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {t('medications.schedule.addRule', 'Add Rule')}
+                {editingScheduleId
+                  ? t('medications.schedule.editRule', 'Edit Schedule Rule')
+                  : t('medications.schedule.addRule', 'Add Rule')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
@@ -467,14 +534,17 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                 onClick={handleSave}
                 disabled={
                   addMutation.isPending ||
+                  updateMutation.isPending ||
                   ((scheduleTypeId === 'every_n_days' ||
                     scheduleTypeId === 'cyclic') &&
                     !startDate)
                 }
               >
-                {addMutation.isPending
+                {addMutation.isPending || updateMutation.isPending
                   ? t('medications.common.saving', 'Saving…')
-                  : t('medications.schedule.addRule', 'Add Rule')}
+                  : editingScheduleId
+                    ? t('medications.schedule.saveRule', 'Save Changes')
+                    : t('medications.schedule.addRule', 'Add Rule')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -508,19 +578,33 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => deleteMutation.mutate(sched.id)}
-                  disabled={deleteMutation.isPending}
-                  aria-label={t(
-                    'medications.scheduleManager.deleteScheduleRule',
-                    'Delete schedule rule'
-                  )}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => openEditDialog(sched)}
+                    aria-label={t(
+                      'medications.scheduleManager.editScheduleRule',
+                      'Edit schedule rule'
+                    )}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => deleteMutation.mutate(sched.id)}
+                    disabled={deleteMutation.isPending}
+                    aria-label={t(
+                      'medications.scheduleManager.deleteScheduleRule',
+                      'Delete schedule rule'
+                    )}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

@@ -50,46 +50,6 @@ export const MedicationNutrientsSchema = z
 export type MedicationNutrients = z.infer<typeof MedicationNutrientsSchema>;
 
 // --------------------------------------------------------------------------
-// Medications
-// --------------------------------------------------------------------------
-const MedicationFieldsSchema = z.object({
-  name: z.string().min(1, 'name is required'),
-  display_name: optionalNullableString,
-  type_id: optionalNullableString,
-  route_id: optionalNullableString,
-  strength_value: optionalNullableNumber,
-  strength_unit: optionalNullableString,
-  dose_amount: positiveDoseAmount,
-  dose_unit: optionalNullableString,
-  rxnorm_rxcui: optionalNullableString,
-  ndc: optionalNullableString,
-  prescriber: optionalNullableString,
-  pharmacy: optionalNullableString,
-  rx_number: optionalNullableString,
-  reason_text: optionalNullableString,
-  effectiveness_rating: optionalNullableInt,
-  color: optionalNullableString,
-  icon: optionalNullableString,
-  photo_path: optionalNullableString,
-  is_active: z.boolean().optional(),
-  is_quick: z.boolean().optional(),
-  is_glp1: z.boolean().optional(),
-  is_supplement: z.boolean().optional(),
-  nutrients: MedicationNutrientsSchema.optional(),
-  notes: optionalNullableString,
-  source: z.string().optional(),
-  custom_fields: customFields,
-});
-
-export const CreateMedicationBodySchema = MedicationFieldsSchema.loose();
-export type CreateMedicationBody = z.infer<typeof CreateMedicationBodySchema>;
-
-// Update is a partial patch — every field optional, including name.
-export const UpdateMedicationBodySchema =
-  MedicationFieldsSchema.partial().loose();
-export type UpdateMedicationBody = z.infer<typeof UpdateMedicationBodySchema>;
-
-// --------------------------------------------------------------------------
 // Schedules
 // --------------------------------------------------------------------------
 export const CreateScheduleBodySchema = z
@@ -120,6 +80,50 @@ export type CreateScheduleBody = z.infer<typeof CreateScheduleBodySchema>;
 // Update is a partial patch — every field optional, including schedule_type_id.
 export const UpdateScheduleBodySchema = CreateScheduleBodySchema.partial();
 export type UpdateScheduleBody = z.infer<typeof UpdateScheduleBodySchema>;
+
+// --------------------------------------------------------------------------
+// Medications
+// --------------------------------------------------------------------------
+const MedicationFieldsSchema = z.object({
+  name: z.string().min(1, 'name is required'),
+  display_name: optionalNullableString,
+  type_id: optionalNullableString,
+  route_id: optionalNullableString,
+  strength_value: optionalNullableNumber,
+  strength_unit: optionalNullableString,
+  dose_amount: positiveDoseAmount,
+  dose_unit: optionalNullableString,
+  rxnorm_rxcui: optionalNullableString,
+  ndc: optionalNullableString,
+  prescriber: optionalNullableString,
+  pharmacy: optionalNullableString,
+  rx_number: optionalNullableString,
+  reason_text: optionalNullableString,
+  effectiveness_rating: optionalNullableInt,
+  color: optionalNullableString,
+  icon: optionalNullableString,
+  photo_path: optionalNullableString,
+  is_active: z.boolean().optional(),
+  is_quick: z.boolean().optional(),
+  is_glp1: z.boolean().optional(),
+  is_supplement: z.boolean().optional(),
+  nutrients: MedicationNutrientsSchema.optional(),
+  notes: optionalNullableString,
+  source: z.string().optional(),
+  custom_fields: customFields,
+  schedules: z
+    .array(CreateScheduleBodySchema)
+    .max(20, 'At most 20 schedules may be created at once')
+    .optional(),
+});
+
+export const CreateMedicationBodySchema = MedicationFieldsSchema.loose();
+export type CreateMedicationBody = z.infer<typeof CreateMedicationBodySchema>;
+
+// Update is a partial patch — every field optional, including name.
+export const UpdateMedicationBodySchema =
+  MedicationFieldsSchema.partial().loose();
+export type UpdateMedicationBody = z.infer<typeof UpdateMedicationBodySchema>;
 
 // --------------------------------------------------------------------------
 // Pens / vials

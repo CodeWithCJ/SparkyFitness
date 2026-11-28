@@ -44,12 +44,14 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MedicationDetail } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
 import AddMedicationDialog, { MedTypeIcon } from './AddMedicationDialog';
-import { countMedicationNutrients } from './medicationUtils';
+import {
+  countMedicationNutrients,
+  formatAllSchedulesSummary,
+} from './medicationUtils';
 import ScheduleManager from './ScheduleManager';
 import TodayMedications from './TodayMedications';
 import SymptomsHub from '../Symptoms/SymptomsHub';
 import MedicationDisclaimer from './MedicationDisclaimer';
-import { formatScheduleDescription } from './medicationUtils';
 
 export default function Medications() {
   const { t } = useTranslation();
@@ -442,12 +444,12 @@ export default function Medications() {
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                           <span>{formatDose(med) ?? med.type_id}</span>
-                          {med.schedules?.[0] && (
+                          {med.schedules && med.schedules.length > 0 && (
                             <>
                               <span>·</span>
                               <span>
-                                {formatScheduleDescription(
-                                  med.schedules[0],
+                                {formatAllSchedulesSummary(
+                                  med.schedules,
                                   timeFormat
                                 )}
                               </span>

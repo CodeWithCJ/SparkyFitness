@@ -508,6 +508,22 @@
       "clear": "Clear",
       "inactive": "Inactive"
     },
+    "form": {
+      "scheduleAndFrequency": "Schedule & Times",
+      "scheduleHint": "Configure how often and when this medication is taken throughout the day.",
+      "doseOverride": "Dose",
+      "defaultDosePlaceholder": "{{dose}} (default)",
+      "addTimeSlot": "Add another time",
+      "timeSlotLabel": "Time slot {{index}}"
+    },
+    "frequency": {
+      "onceDaily": "Once daily",
+      "bid": "2x daily (BID)",
+      "tid": "3x daily (TID)",
+      "qid": "4x daily (QID)",
+      "prn": "As needed",
+      "custom": "Custom"
+    },
     "today": {
       "medicationsTitle": "Today's medications",
       "medicationsDescription": "Track scheduled doses and log as-needed medications",
@@ -937,6 +953,8 @@
       "heading": "Schedules & Reminders",
       "subheading": "Configure reminders and intake rules",
       "addRule": "Add Rule",
+      "editRule": "Edit Rule",
+      "saveRule": "Save Rule",
       "title": "Add Schedule Rule",
       "type": "Schedule Type",
       "daily": "Every day",
@@ -1110,7 +1128,8 @@
     "scheduleManager": {
       "eGForPainFor": "e.g. For pain, For headache",
       "noScheduleRulesConfiguredYet": "No schedule rules configured yet.",
-      "deleteScheduleRule": "Delete schedule rule"
+      "deleteScheduleRule": "Delete schedule rule",
+      "editScheduleRule": "Edit schedule rule"
     },
     "todayMedications": {
       "prn": "PRN"
@@ -9587,6 +9606,8 @@
       "medicationUpdated": "Medication updated.",
       "couldNotRemoveMedication": "Could not remove medication.",
       "medicationRemoved": "Medication removed.",
+      "couldNotUpdateSchedule": "Could not update schedule.",
+      "scheduleUpdated": "Schedule updated.",
       "couldNotLogInjection": "Could not log injection.",
       "injectionLogged": "Injection logged.",
       "couldNotUpdateInjectionEntry": "Could not update injection entry.",

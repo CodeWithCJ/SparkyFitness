@@ -56,6 +56,28 @@ jest.mock('../../src/hooks/useSupplementLookup', () => ({
 }));
 
 const mockEnsureCatalog = jest.fn();
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: { time_format: '12h' },
+    isLoading: false,
+  }),
+}));
+jest.mock('../../src/components/TimeSheet', () => {
+  const ReactModule = require('react');
+  const { Pressable, Text } = require('react-native');
+  const MockTimeSheet = ReactModule.forwardRef(
+    (
+      { onSelectTime }: { onSelectTime: (time: string) => void },
+      _ref: unknown
+    ) => (
+      <Pressable onPress={() => onSelectTime('21:15')}>
+        <Text>mock-time-sheet</Text>
+      </Pressable>
+    )
+  );
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return { __esModule: true, default: MockTimeSheet };
+});
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
   useCustomNutrients: () => ({ customNutrients: [] }),
   useEnsureCatalogNutrients: () => ({

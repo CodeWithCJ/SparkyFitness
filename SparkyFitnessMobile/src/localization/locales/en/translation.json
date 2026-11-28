@@ -1601,7 +1601,20 @@
       "invalidNumber": "Invalid number",
       "invalidNumberMessage": "Please enter valid numeric values for strength and dose.",
       "updateFailed": "Failed to update medication: {{error}}",
-      "createFailed": "Failed to create medication: {{error}}"
+      "createFailed": "Failed to create medication: {{error}}",
+      "scheduleAndFrequency": "Schedule & Times",
+      "scheduleHint": "Configure how often and when this medication is taken throughout the day.",
+      "doseOverride": "Dose",
+      "addTimeSlot": "Add another time",
+      "removeTimeSlot": "Remove time slot {{index}}"
+    },
+    "frequency": {
+      "onceDaily": "Once daily",
+      "bid": "2x daily (BID)",
+      "tid": "3x daily (TID)",
+      "qid": "4x daily (QID)",
+      "prn": "As needed",
+      "custom": "Custom"
     },
     "detail": {
       "deleteTitle": "Delete Medication",

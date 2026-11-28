@@ -639,6 +639,33 @@ export const useAddScheduleMutation = (medId: string) => {
   });
 };
 
+export const useUpdateScheduleMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: Partial<MedicationSchedule>;
+    }) => medicationService.updateSchedule(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+      invalidateReports(queryClient);
+    },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateSchedule',
+        'Could not update schedule.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.scheduleUpdated',
+        'Schedule updated.'
+      ),
+    },
+  });
+};
+
 export const useDeleteScheduleMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({

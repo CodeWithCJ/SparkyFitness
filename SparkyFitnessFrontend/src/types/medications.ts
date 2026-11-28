@@ -5,6 +5,7 @@
 import type {
   FoodVariantNutrientField,
   MedicationWithMeal,
+  CreateScheduleInput,
 } from '@workspace/shared';
 
 /**
@@ -45,7 +46,7 @@ export interface Medication {
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  schedules?: MedicationSchedule[];
+  schedules?: MedicationSchedule[] | CreateScheduleInput[];
 }
 
 export interface MedicationSchedule {
