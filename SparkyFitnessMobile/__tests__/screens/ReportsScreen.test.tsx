@@ -9,6 +9,16 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
+let mockFeaturesOff = new Set<string>();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => !mockFeaturesOff.has(key),
+  }),
+}));
+let mockConnected = true;
+jest.mock('../../src/hooks/useServerConnection', () => ({
+  useServerConnection: () => ({ isConnected: mockConnected }),
+}));
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
 }));
@@ -43,6 +53,8 @@ describe('ReportsScreen', () => {
   beforeEach(() => {
     navigate.mockClear();
     __resetAppPreferencesStoreForTests();
+    mockFeaturesOff = new Set();
+    mockConnected = true;
   });
 
   it.each([
@@ -54,6 +66,7 @@ describe('ReportsScreen', () => {
     ['mood', 'MoodReport'],
     ['exercise', 'ExerciseStatistics'],
     ['heartRate', 'HeartRateReport'],
+    ['oralCare', 'OralCareReport'],
     ['compare', 'CompareReport'],
   ])('opens the %s report', (key, route) => {
     const { getByTestId } = render(<ReportsScreen {...props} />);
@@ -103,5 +116,44 @@ describe('ReportsScreen', () => {
     });
     const { getByTestId } = render(<ReportsScreen {...props} />);
     expect(getByTestId('reports-link-compare')).toBeTruthy();
+  });
+
+  it('leaves Oral care off while oral care is turned off, keeping its place', () => {
+    mockFeaturesOff = new Set(['oralCare']);
+    const { queryByTestId, getByTestId } = render(<ReportsScreen {...props} />);
+    expect(queryByTestId('reports-link-oralCare')).toBeNull();
+    expect(getByTestId('reports-link-compare')).toBeTruthy();
+    // Nothing else is gone, so no notice.
+    expect(queryByTestId('features-off-notice')).toBeNull();
+    expect(useAppPreferencesStore.getState().hiddenReports).toEqual([]);
+  });
+
+  it('says features are off when the only reports left are of features turned off', () => {
+    useAppPreferencesStore.setState({
+      hiddenReports: [
+        'nutrition',
+        'hydration',
+        'substances',
+        'sleep',
+        'measurements',
+        'mood',
+        'exercise',
+        'heartRate',
+        'compare',
+      ],
+    });
+    mockFeaturesOff = new Set(['oralCare']);
+    const { queryAllByTestId, getByTestId, unmount } = render(
+      <ReportsScreen {...props} />
+    );
+    expect(queryAllByTestId(/^reports-link-/)).toHaveLength(0);
+    fireEvent.press(getByTestId('features-off-manage'));
+    expect(navigate).toHaveBeenCalledWith('FeatureSettings');
+    unmount();
+
+    mockConnected = false;
+    const offline = render(<ReportsScreen {...props} />);
+    expect(offline.getByTestId('features-off-notice')).toBeTruthy();
+    expect(offline.queryByTestId('features-off-manage')).toBeNull();
   });
 });

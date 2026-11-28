@@ -8,9 +8,9 @@ import {
   useMedications,
   useMedicationEntries,
 } from '../../src/hooks/useMedications';
-import { useMedicationsFeatureState } from '../../src/hooks/useMedicationsFeatureState';
+import { useFeatureOnState } from '../../src/hooks/useFeatureOnState';
 import { useServerConfigs } from '../../src/hooks/useServerConfigs';
-import type { MedicationsFeatureState } from '../../src/utils/medicationsFeatureState';
+import type { FeatureOnState } from '../../src/utils/featureOnState';
 import {
   cancelMedicationRemindersOfOtherServers,
   reconcileMedicationReminders,
@@ -34,8 +34,8 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useMedicationEntries: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useMedicationsFeatureState', () => ({
-  useMedicationsFeatureState: jest.fn(),
+jest.mock('../../src/hooks/useFeatureOnState', () => ({
+  useFeatureOnState: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useServerConfigs', () => ({
@@ -62,7 +62,7 @@ const mockUseMedications = useMedications as jest.MockedFunction<
 const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
   typeof useMedicationEntries
 >;
-const mockUseFeatureState = jest.mocked(useMedicationsFeatureState);
+const mockUseFeatureState = jest.mocked(useFeatureOnState);
 const mockUseServerConfigs = jest.mocked(useServerConfigs);
 const mockReconcile = reconcileMedicationReminders as jest.MockedFunction<
   typeof reconcileMedicationReminders
@@ -103,7 +103,7 @@ function mockQueries({
   return { refetchMeds, refetchEntries };
 }
 
-function mockFeatureState(state: MedicationsFeatureState) {
+function mockFeatureState(state: FeatureOnState) {
   const refetch = jest.fn();
   mockUseFeatureState.mockReturnValue({ state, refetch } as never);
   return refetch;
@@ -535,7 +535,7 @@ describe('MedicationReminderReconciler', () => {
       expect(mockReconcile).not.toHaveBeenCalled();
     });
 
-    it.each<MedicationsFeatureState>(['on', 'off'])(
+    it.each<FeatureOnState>(['on', 'off'])(
       "does not cancel other servers' reminders or replay presses itself once the state is known (%s)",
       (state) => {
         mockFeatureState(state);
@@ -621,7 +621,7 @@ describe('MedicationReminderReconciler', () => {
       expect(mockReconcile).toHaveBeenCalledTimes(1);
     });
 
-    it.each<MedicationsFeatureState>(['on', 'off', 'unknown'])(
+    it.each<FeatureOnState>(['on', 'off', 'unknown'])(
       'reads the feature choices again when the app returns to the foreground (%s)',
       (state) => {
         const refetchChoices = mockFeatureState(state);

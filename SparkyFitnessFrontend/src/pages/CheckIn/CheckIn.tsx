@@ -25,11 +25,15 @@ import {
   Camera,
   HeartPulse,
   Sparkles,
+  type LucideIcon,
 } from 'lucide-react';
+import { filterByFeature, type FeatureKey } from '@workspace/shared';
 import Tooth from '@/components/icons/Tooth';
 import { useTranslation } from 'react-i18next';
 import { MindfulnessSection } from './MindfulnessSection';
 import { OralCareSection } from './OralCareSection';
+import { FeatureRoute } from '@/components/FeatureRoute';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -102,6 +106,53 @@ const CheckIn = () => {
   };
 
   const activeTab = searchParams.get('tab') || 'measurements';
+  const { isShown } = useWebFeatures();
+
+  // A tab of an optional feature names it in `feature`; its button leaves
+  // while that feature is off (Settings > Features).
+  const checkInTabs: {
+    id: string;
+    label: string;
+    icon: LucideIcon;
+    feature?: FeatureKey;
+  }[] = [
+    {
+      id: 'measurements',
+      label: t('checkIn.tabs.measurements', 'Measurements'),
+      icon: Activity,
+    },
+    {
+      id: 'fasting',
+      label: t('checkIn.tabs.fasting', 'Fasting & Mood'),
+      icon: Timer,
+    },
+    {
+      id: 'mindfulness',
+      label: t('checkIn.tabs.mindfulness', 'Mindfulness'),
+      icon: Sparkles,
+    },
+    {
+      id: 'oralCare',
+      label: t('checkIn.tabs.oralCare', 'Oral care'),
+      icon: Tooth,
+      feature: 'oralCare',
+    },
+    {
+      id: 'sleep',
+      label: t('checkIn.tabs.sleep', 'Sleep'),
+      icon: Moon,
+    },
+    {
+      id: 'photos',
+      label: t('checkIn.tabs.photos', 'Photos'),
+      icon: Camera,
+    },
+    {
+      id: 'symptoms',
+      label: t('checkIn.tabs.symptoms', 'Symptoms'),
+      icon: HeartPulse,
+    },
+  ];
 
   const handleTabChange = (value: string) => {
     setSearchParams((prev) => {
@@ -120,43 +171,7 @@ const CheckIn = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-2 border-b">
           {/* Tab Selector on the Left */}
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1">
-            {[
-              {
-                id: 'measurements',
-                label: t('checkIn.tabs.measurements', 'Measurements'),
-                icon: Activity,
-              },
-              {
-                id: 'fasting',
-                label: t('checkIn.tabs.fasting', 'Fasting & Mood'),
-                icon: Timer,
-              },
-              {
-                id: 'mindfulness',
-                label: t('checkIn.tabs.mindfulness', 'Mindfulness'),
-                icon: Sparkles,
-              },
-              {
-                id: 'oralCare',
-                label: t('checkIn.tabs.oralCare', 'Oral care'),
-                icon: Tooth,
-              },
-              {
-                id: 'sleep',
-                label: t('checkIn.tabs.sleep', 'Sleep'),
-                icon: Moon,
-              },
-              {
-                id: 'photos',
-                label: t('checkIn.tabs.photos', 'Photos'),
-                icon: Camera,
-              },
-              {
-                id: 'symptoms',
-                label: t('checkIn.tabs.symptoms', 'Symptoms'),
-                icon: HeartPulse,
-              },
-            ].map((tab) => {
+            {filterByFeature(checkInTabs, isShown).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -291,7 +306,9 @@ const CheckIn = () => {
         </TabsContent>
 
         <TabsContent value="oralCare" className="focus-visible:outline-none">
-          <OralCareSection selectedDate={selectedDate} />
+          <FeatureRoute feature="oralCare">
+            <OralCareSection selectedDate={selectedDate} />
+          </FeatureRoute>
         </TabsContent>
 
         <TabsContent value="sleep" className="focus-visible:outline-none">

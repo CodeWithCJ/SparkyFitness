@@ -90,4 +90,31 @@ describe('ReportsControls', () => {
     rerender(controls());
     expect(medicationsPill()).toBeInTheDocument();
   });
+
+  const oralCarePill = () =>
+    screen.queryByRole('button', { name: 'Oral care' });
+
+  it('shows the Oral care pill only while oral care is on (or its choice is loading)', () => {
+    const { rerender } = render(controls());
+    expect(oralCarePill()).toBeInTheDocument();
+
+    setWebFeatureChoices(undefined);
+    rerender(controls());
+    expect(oralCarePill()).toBeInTheDocument();
+
+    setWebFeatureChoices({ oralCare: false });
+    rerender(controls());
+    expect(oralCarePill()).not.toBeInTheDocument();
+    expect(medicationsPill()).toBeInTheDocument();
+  });
+
+  it("shows the Oral care pill to someone acting for the owner, whatever the owner's choice", () => {
+    setWebFeatureChoices({ oralCare: false });
+    const { rerender } = render(controls());
+    expect(oralCarePill()).not.toBeInTheDocument();
+
+    mockActingOnBehalf = true;
+    rerender(controls());
+    expect(oralCarePill()).toBeInTheDocument();
+  });
 });

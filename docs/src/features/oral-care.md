@@ -2,6 +2,8 @@
 
 Track brushing, flossing and the rest of your oral care, with a daily brushing goal and a streak. Oral care is on the web (**Check-In → Oral care**) and in the mobile app (the **+** menu's **Oral care** row, and an optional Dashboard card).
 
+Oral care is on by default. To hide it, turn it off in **Settings → Features**: the website and the mobile app each have their own switch. Turning it off only hides it: the Check-In tab and the Oral care report on the website, and the **+** menu row, the Dashboard card, the Reports entry and the brushing reminder settings in the app. Opening one of them anyway (a saved link, or the brushing timer's Lock Screen activity) shows that Oral care is turned off, with a button to turn it back on. In the app, brushing reminders also stop while it is off, and come back with the same times when you turn it on again; a brushing timer already running is never cut off. Your sessions, your goal and your reminder times are kept. Apple Health keeps syncing brushes both ways, and the AI assistant can still read them. With a server that does not have **Settings → Features** yet, oral care stays on and the switch asks you to update the server.
+
 ## Logging
 
 Pick what you did: **Brushing**, **Flossing**, **Mouthwash**, **Tongue cleaning** or **Other**. For **Other**, give it a name, such as "Water flosser" or "Retainer clean"; names you used before are offered again.
@@ -41,7 +43,7 @@ Android: Health Connect has no toothbrushing record, so on Android brushes are l
 
 ## Reminders (mobile)
 
-Turn on **Brushing reminders** under **Settings → Notifications** for a daily nudge, morning and evening by default, with up to three times a day.
+Turn on **Brushing reminders** under **Settings → Notifications** for a daily nudge, morning and evening by default, with up to three times a day. While Oral care is turned off in **Settings → Features** they stop, and the Notifications screen leaves them out.
 
 ## Sharing and the assistant
 

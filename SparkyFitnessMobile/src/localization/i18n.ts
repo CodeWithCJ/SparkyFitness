@@ -177,4 +177,26 @@ export function initializeI18n(language: SupportedLanguage): Promise<void> {
   return initPromise;
 }
 
+/**
+ * For code that can run while the app itself is not open (a background task,
+ * a notification action): sets up i18n once, unless the app already did, so
+ * what it schedules is not in English. `preferred` is a locale or a stored
+ * language preference; none, or 'system', means the device's language. A
+ * failed setup leaves the English fallbacks.
+ */
+export async function ensureI18nInitialized(
+  preferred: string | null | undefined
+): Promise<void> {
+  if (i18n.isInitialized) return;
+  try {
+    await initializeI18n(
+      normalizeLanguage(
+        preferred && preferred !== 'system' ? preferred : getDeviceLanguage()
+      )
+    );
+  } catch {
+    // English fallbacks.
+  }
+}
+
 export default i18n;

@@ -331,10 +331,14 @@ const Reports = () => {
           </ChartErrorBoundary>
         );
       case 'oral-care':
+        // Reached by address while Oral care is off, it says so instead of
+        // showing the report, as Medications does.
         return (
-          <ChartErrorBoundary>
-            <OralCareReport startDate={startDate} endDate={endDate} />
-          </ChartErrorBoundary>
+          <FeatureRoute feature="oralCare">
+            <ChartErrorBoundary>
+              <OralCareReport startDate={startDate} endDate={endDate} />
+            </ChartErrorBoundary>
+          </FeatureRoute>
         );
       case 'exercise-charts':
         return (

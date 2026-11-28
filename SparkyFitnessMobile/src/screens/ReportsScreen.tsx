@@ -2,11 +2,20 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { REPORT_KEYS, type ReportKey } from '../constants/reports';
+import { isShownByFeature } from '@workspace/shared';
+
+import {
+  REPORT_FEATURES,
+  REPORT_KEYS,
+  type ReportKey,
+} from '../constants/reports';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { resolveKeyOrder } from '../utils/reorderUtils';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
+import { useServerConnection } from '../hooks/useServerConnection';
 import ReportScreenLayout from '../components/reports/ReportScreenLayout';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import Icon, { type IconName } from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -39,6 +48,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
 
   const reportOrder = useAppPreferencesStore((s) => s.reportOrder);
   const hiddenReports = useAppPreferencesStore((s) => s.hiddenReports);
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const { isConnected } = useServerConnection();
 
   const links: ReportLink[] = [
     {
@@ -133,13 +144,30 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
     },
   ];
 
+  // A report of a feature turned off in Settings → Features is left out, as
+  // a report the person hid is.
   const visibleLinks = resolveKeyOrder(reportOrder, REPORT_KEYS)
-    .filter((key) => !hiddenReports.includes(key))
+    .filter(
+      (key) =>
+        !hiddenReports.includes(key) &&
+        isShownByFeature(REPORT_FEATURES[key], isFeatureOn)
+    )
     .map((key) => links.find((link) => link.key === key))
     .filter((link): link is ReportLink => link !== undefined);
 
   return (
     <ReportScreenLayout header={header}>
+      {/* Customize Reports keeps one report shown, so the list is empty only
+          when the reports left were of features turned off since. */}
+      {visibleLinks.length === 0 && (
+        <FeaturesOffNotice
+          onManage={
+            isConnected
+              ? () => navigation.navigate('FeatureSettings')
+              : undefined
+          }
+        />
+      )}
       <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
         {visibleLinks.map((link, index) => (
           <Pressable

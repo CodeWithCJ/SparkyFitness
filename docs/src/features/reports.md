@@ -23,6 +23,7 @@ The below reports are available when using SparkyFitness in a web browser.
 | **[Sleep](#sleep)** | Sleep insights | Wearable / health sync |
 | **[Stress](#stress)** | Stress and mood trends | Wearable / health sync |
 | **[Medications](#medications)** | Medication adherence, symptoms, and reporting for your health professionals | Medication and symptom logs |
+| **[Oral care](#oral-care)** | Brushing against your goal, streaks and time | [Oral care](/features/oral-care) sessions |
 | **[Table View](#table)** | Raw food diary, exercise, body measurement, and custom measurement data, ready for export | Food diary, exercise entries, body measurements (including synced metrics), and custom measurement categories |
 
 > [!TIP]
@@ -151,6 +152,14 @@ The **Medications** tab (*Medications Report* — "Analyze dose correlations, si
 - **Sharing with your prescriber:** the **Prescriber-Ready Data Export** card offers a **Print / Save PDF Report** button that produces a clean PDF summary you can hand to your doctor, plus a **Download CSV Data** button for the raw numbers.
 
 While Medications is turned off on the website (**Settings → Features**), the **Medications** button leaves Reports, and a link to this report shows a notice that offers to turn Medications back on instead. Your **Customize Charts** choices are kept. Someone viewing your reports from their own account still sees it, as their permissions allow.
+
+- - -
+
+### Oral care
+
+The **Oral care** tab shows, for the chosen range, the days you met your brushing goal, your streaks, brushes and minutes per day against your goal, and how often you flossed or logged other care. See [Oral Care](/features/oral-care#reports).
+
+While Oral care is turned off on the website (**Settings → Features**), the **Oral care** button leaves Reports and a link to this report offers to turn it back on. Someone viewing your reports from their own account still sees it, as their permissions allow. The mobile app's Reports list and **Customize Reports** leave it out while Oral care is off in the app.
 
 
 - - -

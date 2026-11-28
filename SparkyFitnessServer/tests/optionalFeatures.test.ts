@@ -29,16 +29,18 @@ function keys(count: number, value: boolean | null = true) {
 }
 
 describe('optional features registry', () => {
-  it('lists cycle, stored in cycle_settings, then medications, lab results and AI coaches, chosen per app', () => {
+  it('lists cycle, stored in cycle_settings, then medications, lab results, oral care and AI coaches, chosen per app', () => {
     expect(FEATURE_KEYS).toEqual([
       'cycle',
       'medications',
       'labResults',
+      'oralCare',
       'aiCoaches',
     ]);
     expect(featureStorage('cycle')).toBe('cycleSettings');
     expect(featureStorage('medications')).toBe('choices');
     expect(featureStorage('labResults')).toBe('choices');
+    expect(featureStorage('oralCare')).toBe('choices');
   });
 
   it('keeps choices for the website and the mobile app', () => {
@@ -49,6 +51,7 @@ describe('optional features registry', () => {
     expect(isFeatureKey('cycle')).toBe(true);
     expect(isFeatureKey('labResults')).toBe(true);
     expect(isFeatureKey('medications')).toBe(true);
+    expect(isFeatureKey('oralCare')).toBe(true);
     expect(isFeatureKey('notAFeature')).toBe(false);
     // Inherited object members are not features.
     expect(isFeatureKey('toString')).toBe(false);
@@ -189,6 +192,40 @@ describe('medications on and off', () => {
         cycleEnabled: undefined,
       })
     ).toBe(false);
+  });
+});
+
+describe('oral care on and off', () => {
+  it.each(FEATURE_PLATFORMS)('is on by default (%s)', (platform) => {
+    for (const choices of [undefined, null, {}, { web: {}, mobile: {} }]) {
+      expect(
+        isFeatureEnabled('oralCare', platform, {
+          choices,
+          cycleEnabled: undefined,
+        })
+      ).toBe(true);
+      expect(
+        isFeatureExplicitlyOff('oralCare', platform, {
+          choices,
+          cycleEnabled: undefined,
+        })
+      ).toBe(false);
+    }
+  });
+
+  it('is turned off in one app only', () => {
+    const sources = {
+      choices: { mobile: { oralCare: false } },
+      cycleEnabled: undefined,
+    };
+    expect(isFeatureEnabled('oralCare', 'mobile', sources)).toBe(false);
+    expect(isFeatureExplicitlyOff('oralCare', 'mobile', sources)).toBe(true);
+    expect(isFeatureEnabled('oralCare', 'web', sources)).toBe(true);
+    expect(isFeatureEnabledAnywhere('oralCare', sources)).toBe(true);
+  });
+
+  it('owns no custom measurement categories', () => {
+    expect(FEATURE_CUSTOM_CATEGORIES.oralCare).toBeUndefined();
   });
 });
 

@@ -16,6 +16,8 @@ import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
 import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
 import { fetchFeatureChoices } from '../../src/services/api/featureChoicesApi';
+import { reconcileOralCareReminders } from '../../src/services/oralCareReminderService';
+import * as i18nModule from '../../src/localization/i18n';
 import {
   listEntries,
   listMedications,
@@ -77,6 +79,10 @@ jest.mock('../../src/services/api/medicationsApi', () => ({
 jest.mock('../../src/services/medicationReminderService', () => ({
   reconcileMedicationReminders: jest.fn(() => Promise.resolve()),
   cancelMedicationRemindersOfOtherServers: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock('../../src/services/oralCareReminderService', () => ({
+  reconcileOralCareReminders: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../src/services/medicationNotificationHandler', () => ({
@@ -1838,6 +1844,265 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
           accountGeneration: accountGeneration(),
         });
       });
+    });
+  });
+
+  describe('Brushing reminders and the Oral care switch (#3487)', () => {
+    const mockFetchChoices = jest.mocked(fetchFeatureChoices);
+    const mockReconcileBrushing = jest.mocked(reconcileOralCareReminders);
+    const mockReconcileMedications = jest.mocked(reconcileMedicationReminders);
+    const oralCareOff = { feature_choices: { mobile: { oralCare: false } } };
+    const brushingWanted = {
+      oralCareRemindersEnabled: true,
+      oralCareReminderTimes: ['07:30', '21:15'],
+      notificationsEnabled: true,
+    };
+
+    beforeEach(() => {
+      __resetAppPreferencesStoreForTests();
+      queryClient.clear();
+      storage.loadLastSyncedTime.mockResolvedValue(
+        new Date('2024-01-15T08:00:00Z').toISOString()
+      );
+      healthService.loadHealthPreference.mockImplementation((key: string) =>
+        Promise.resolve(key === 'isStepsSyncEnabled')
+      );
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      mockReconcileBrushing.mockResolvedValue(undefined);
+      mockReconcileMedications.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      queryClient.clear();
+    });
+
+    test('schedules the brushing times while oral care is on', async () => {
+      useAppPreferencesStore.setState(brushingWanted);
+      mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+
+      await triggerManualSync();
+
+      // Only when the scheduled ones are not already these times in this
+      // language, so a run does not rewrite them every time.
+      expect(mockReconcileBrushing).toHaveBeenCalledWith({
+        mode: 'on',
+        times: ['07:30', '21:15'],
+        dismissDelivered: false,
+        skipWhenCurrent: true,
+      });
+    });
+
+    test('sets up the language before either kind of reminder is written, in a run with the app closed', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+        languagePreference: 'de',
+      });
+      mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+      const ensureI18n = jest
+        .spyOn(i18nModule, 'ensureI18nInitialized')
+        .mockResolvedValue(undefined);
+
+      await triggerManualSync();
+
+      expect(ensureI18n).toHaveBeenCalledWith('de');
+      expect(ensureI18n.mock.invocationCallOrder[0]).toBeLessThan(
+        mockReconcileMedications.mock.invocationCallOrder[0]
+      );
+      expect(ensureI18n.mock.invocationCallOrder[0]).toBeLessThan(
+        mockReconcileBrushing.mock.invocationCallOrder[0]
+      );
+      ensureI18n.mockRestore();
+    });
+
+    test('stops them, clearing those shown, while oral care is off in the app', async () => {
+      useAppPreferencesStore.setState(brushingWanted);
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).toHaveBeenCalledWith({
+        mode: 'off',
+        times: ['07:30', '21:15'],
+        dismissDelivered: true,
+        skipWhenCurrent: true,
+      });
+      // The preferences are never written.
+      expect(useAppPreferencesStore.getState()).toMatchObject(brushingWanted);
+    });
+
+    test('reads the choices once for both kinds of reminder', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+
+      await triggerManualSync();
+
+      expect(mockFetchChoices).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      // Medications stays on: only oral care was turned off.
+      expect(mockReconcileMedications).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ active: true })
+      );
+    });
+
+    test('reads the choices for brushing reminders alone', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: false,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+
+      await triggerManualSync();
+
+      expect(mockFetchChoices).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'off', dismissDelivered: true })
+      );
+      expect(mockReconcileMedications).toHaveBeenCalledWith([], [], {
+        active: false,
+      });
+    });
+
+    test.each([
+      ['the read fails', () => Promise.reject(new Error('offline'))],
+      ['the answer is empty', () => Promise.resolve(undefined as never)],
+    ])('leaves them as they are when %s', async (_label, answer) => {
+      useAppPreferencesStore.setState(brushingWanted);
+      mockFetchChoices.mockImplementation(answer);
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).not.toHaveBeenCalled();
+    });
+
+    test('touches nothing with brushing reminders off', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        oralCareRemindersEnabled: false,
+        medicationRemindersEnabled: false,
+      });
+
+      await triggerManualSync();
+
+      expect(mockFetchChoices).not.toHaveBeenCalled();
+      expect(mockReconcileBrushing).not.toHaveBeenCalled();
+    });
+
+    test('leaves them to the app when it learned otherwise while the choices were read', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: false,
+      });
+      mockFetchChoices.mockImplementation(async () => {
+        jest.setSystemTime(Date.now() + 1_000);
+        queryClient.setQueryData(featureChoicesQueryKey, {
+          feature_choices: {},
+        });
+        return oralCareOff;
+      });
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).not.toHaveBeenCalled();
+    });
+
+    test('still reconciles brushing reminders when the medication pass fails', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+      mockReconcileMedications.mockRejectedValue(new Error('boom'));
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'on' })
+      );
+    });
+
+    test('leaves them to the app when the account changes while the choices are read', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: false,
+      });
+      mockFetchChoices.mockImplementation(async () => {
+        // The person signs in to another account meanwhile.
+        bumpAccountGeneration();
+        return oralCareOff;
+      });
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      [
+        'no health metric is on',
+        () => healthService.loadHealthPreference.mockResolvedValue(false),
+      ],
+      [
+        'the health provider cannot start',
+        () => healthService.initHealthConnect.mockResolvedValue(false),
+      ],
+    ])('still applies the switch when %s', async (_label, setUp) => {
+      setUp();
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'off', dismissDelivered: true })
+      );
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
+    });
+
+    test('still applies the switch when the health upload fails, and reports the failure', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([
+        { value: 5000 },
+      ]);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      api.syncHealthData.mockRejectedValue(new Error('Network error'));
+
+      await expect(triggerManualSync()).rejects.toThrow('Network error');
+
+      expect(api.syncHealthData).toHaveBeenCalled();
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'off', dismissDelivered: true })
+      );
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
+    });
+
+    test('runs the reminder passes once in a run whose health sync goes through', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalled();
+      expect(mockFetchChoices).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
     });
   });
 });

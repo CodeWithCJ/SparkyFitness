@@ -16,12 +16,12 @@ const NO_HIDDEN_CATEGORIES: ReadonlySet<string> = new Set();
  * Which optional features (#3487) show on this website, from the shared
  * registry. Every entry point to one (tab, + menu item, link) asks this
  * instead of reading where the switch is stored: the website's own
- * `feature_choices` (medications, lab results), or for cycle its account-wide
- * switch in `cycle_settings.enabled`.
+ * `feature_choices` (medications, lab results, oral care, AI coaches), or for
+ * cycle its account-wide switch in `cycle_settings.enabled`.
  *
  * While a value is loading or could not be read, or the server is older than
  * Features, `isEnabled` gives the feature's default (cycle off, as before
- * Features; medications and lab results on), so a network error or an old
+ * Features; AI coaches off; the others on), so a network error or an old
  * server never hides something that was showing. `isExplicitlyOff` is only
  * for a feature the person turned off: data shown outside the feature's own
  * pages (the reproductive Health categories, cycle hub symptoms) hides only

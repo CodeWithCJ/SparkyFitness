@@ -135,7 +135,7 @@ jest.mock('@/pages/Reports/MoodChart', () => ({
 }));
 jest.mock('@/pages/Reports/OralCareReport', () => ({
   __esModule: true,
-  default: () => null,
+  default: () => <p>Oral care report</p>,
 }));
 jest.mock('@/pages/Reports/CustomCategoryReport', () => ({
   CustomCategoryReport: () => null,
@@ -149,9 +149,9 @@ function CurrentSearch() {
   return <p data-testid="search">{useLocation().search}</p>;
 }
 
-function renderReports() {
+function renderReports(tab = 'medications-reports') {
   return render(
-    <MemoryRouter initialEntries={['/reports?tab=medications-reports']}>
+    <MemoryRouter initialEntries={[`/reports?tab=${tab}`]}>
       <Reports />
       <CurrentSearch />
     </MemoryRouter>
@@ -205,5 +205,44 @@ describe('Reports > Medications by address', () => {
     mockActingOnBehalf = true;
     renderReports();
     expect(screen.getByText('Medication report')).toBeInTheDocument();
+  });
+});
+
+describe('Reports > Oral care by address', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActingOnBehalf = false;
+    setWebFeatureChoices({});
+  });
+
+  it('shows the report while oral care is on or its choice is loading, not while it is off', () => {
+    const { unmount } = renderReports('oral-care');
+    expect(screen.getByText('Oral care report')).toBeInTheDocument();
+    unmount();
+
+    setWebFeatureChoices(undefined);
+    const loading = renderReports('oral-care');
+    expect(screen.getByText('Oral care report')).toBeInTheDocument();
+    loading.unmount();
+
+    setWebFeatureChoices({ oralCare: false });
+    renderReports('oral-care');
+    expect(screen.queryByText('Oral care report')).not.toBeInTheDocument();
+  });
+
+  it('says oral care is off instead of the report, and keeps the tab', () => {
+    setWebFeatureChoices({ oralCare: false });
+    renderReports('oral-care');
+    expect(screen.getByText('Oral care is turned off')).toBeInTheDocument();
+    expect(screen.getByTestId('search')).toHaveTextContent('tab=oral-care');
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on' }));
+    expect(setWebFeatureOn).toHaveBeenCalledWith('oralCare', true);
+  });
+
+  it("shows the report to someone acting for the owner, whatever the owner's choice", () => {
+    setWebFeatureChoices({ oralCare: false });
+    mockActingOnBehalf = true;
+    renderReports('oral-care');
+    expect(screen.getByText('Oral care report')).toBeInTheDocument();
   });
 });

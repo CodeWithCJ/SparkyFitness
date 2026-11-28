@@ -12,6 +12,7 @@ import {
 } from '@workspace/shared';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import FeatureOffView from '../components/FeatureOffView';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
@@ -21,6 +22,8 @@ import {
   useOralCareHistory,
   useOralCareMutations,
 } from '../hooks/useOralCare';
+import { useSetMobileFeatureChoice } from '../hooks/useFeatureChoices';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -52,10 +55,16 @@ const OralCareScreen: React.FC<Props> = ({ route, navigation }) => {
   const [date] = useState(
     () => route.params?.date ?? useDiaryDateStore.getState().selectedDate
   );
-  const dayQuery = useOralCareDay(date);
-  const historyQuery = useOralCareHistory(date);
-  const { createSession, deleteSession, saveGoal } = useOralCareMutations();
   const [timerVisible, setTimerVisible] = useState(false);
+  // Reached while oral care is off in Settings → Features (the brushing Live
+  // Activity and its link open this screen), it says so instead of the day.
+  // A brushing timer already open is never cut off.
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const featureChoice = useSetMobileFeatureChoice();
+  const isOff = !isFeatureOn('oralCare') && !timerVisible;
+  const dayQuery = useOralCareDay(date, !isOff);
+  const historyQuery = useOralCareHistory(date, !isOff);
+  const { createSession, deleteSession, saveGoal } = useOralCareMutations();
 
   const header = useScreenHeader({ left: { kind: 'back' } });
 
@@ -146,6 +155,21 @@ const OralCareScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const renderContent = () => {
+    if (isOff) {
+      return (
+        <FeatureOffView
+          title={t('featureSettings.off.title', {
+            defaultValue: '{{name}} is turned off',
+            name: t('oralCare.title', { defaultValue: 'Oral care' }),
+          })}
+          turnOnDisabled={
+            featureChoice.state !== 'ready' || featureChoice.isPending
+          }
+          onTurnOn={() => featureChoice.setFeatureOn('oralCare', true)}
+          onOpenFeatures={() => navigation.navigate('FeatureSettings')}
+        />
+      );
+    }
     if (dayQuery.isLoading) {
       return (
         <StatusView

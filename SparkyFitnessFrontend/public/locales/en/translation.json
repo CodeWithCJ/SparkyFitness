@@ -3677,6 +3677,9 @@
       "labResults": {
         "description": "Record blood tests and follow each marker over time."
       },
+      "oralCare": {
+        "description": "Log brushing, flossing and the rest, with a daily goal and a streak."
+      },
       "aiCoaches": {
         "description": "AI coaches that watch your food, training and sleep and send a short message when something is worth saying. Set them up in Settings → Wellness → Coaches."
       }

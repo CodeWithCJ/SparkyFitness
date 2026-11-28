@@ -48,10 +48,9 @@ import {
   reconcileMedicationReminders,
 } from './medicationReminderService';
 import { retryPendingMedicationActions } from './medicationNotificationHandler';
-import {
-  medicationsFeatureState,
-  type MedicationsFeatureState,
-} from '../utils/medicationsFeatureState';
+import { reconcileOralCareReminders } from './oralCareReminderService';
+import { ensureI18nInitialized } from '../localization/i18n';
+import { featureOnState, type FeatureOnState } from '../utils/featureOnState';
 import { getTodayDate } from '../utils/dateUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -147,7 +146,28 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         budget: BACKGROUND_TELEMETRY_BUDGET,
         interactive: false,
       });
-  await runBackgroundSync(taskId, telemetry);
+  // A health sync that fails (an upload that throws) is rethrown once the
+  // reminders below are done, as before.
+  let healthSyncFailure: { error: unknown } | null = null;
+  try {
+    await runBackgroundSync(taskId, telemetry);
+  } catch (error) {
+    healthSyncFailure = { error };
+  }
+  // Once per run, whatever the health sync did: it returns early with no
+  // metric on, when the health provider cannot start, on a locked device and
+  // after an account change, or fails, and the reminders follow the feature
+  // switches all the same.
+  try {
+    await reconcileRemindersInBackground();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[Background Sync] Reminder reconciliation failed: ${message}`,
+      'ERROR'
+    );
+  }
+  if (healthSyncFailure) throw healthSyncFailure.error;
   // Best effort: the OS decides when this task runs, so uploads of work
   // logged offline also go out on reconnect and when the app opens.
   registerAllOutboxHandlers();
@@ -404,16 +424,6 @@ const runBackgroundSync = async (
         );
       }
 
-      try {
-        await reconcileMedicationRemindersInBackground();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await addLog(
-          `[Background Sync] Medication reminder reconciliation failed: ${message}`,
-          'ERROR'
-        );
-      }
-
       // AI coaches (#2013): a message a coach wrote since the last run shows
       // as a local notification. Its own failures never reach the sync above.
       try {
@@ -435,43 +445,88 @@ const runBackgroundSync = async (
 
 /**
  * Whether a newer read of the feature choices than the one this run started at
- * `readStartedAt` says something else about Medications: the app, running in
+ * `readStartedAt` says something else about `feature`: the app, running in
  * the same JS runtime (a HealthKit observer run, or a manual sync), learned
  * it meanwhile and reconciles the reminders itself. A headless run has an
  * empty query cache, so its own read stands.
  */
-const medicationsStateChangedSince = (
+const featureStateChangedSince = (
+  feature: 'medications' | 'oralCare',
   readStartedAt: number,
-  featureState: MedicationsFeatureState
+  featureState: FeatureOnState
 ): boolean => {
   const cached = queryClient.getQueryState<FeatureChoicesResponse | null>(
     featureChoicesQueryKey
   );
   if (!cached || cached.data === undefined) return false;
   if (cached.dataUpdatedAt <= readStartedAt) return false;
-  return medicationsFeatureState(cached.data) !== featureState;
+  return featureOnState(feature, cached.data) !== featureState;
+};
+
+/** One read of the feature choices, shared by the reminder passes of a run:
+ * the answer (null from a server older than Features), or undefined with why
+ * there is none. */
+interface FeatureChoicesRead {
+  response: FeatureChoicesResponse | null | undefined;
+  failure: string;
+  startedAt: number;
+}
+
+const readFeatureChoices = async (): Promise<FeatureChoicesRead> => {
+  const startedAt = Date.now();
+  try {
+    return {
+      response: await fetchFeatureChoices(),
+      failure: 'empty answer',
+      startedAt,
+    };
+  } catch (error) {
+    return {
+      response: undefined,
+      failure: error instanceof Error ? error.message : String(error),
+      startedAt,
+    };
+  }
 };
 
 /**
- * Reconciles medication reminders against fresh server schedules. With
- * reminders disabled the fetches are skipped but the reconcile still runs so
- * any pending reminders get cancelled. Medications turned off in Settings →
- * Features (#3487) cancels them the same way. When the choices cannot be read
- * the active server's reminders are left exactly as they are: a run that
- * cannot tell must not cancel reminders the person wants, nor bring back ones
- * they turned off. Those of a server switched away from still stop, and
- * waiting Taken / Skip presses are replayed. A reconcile is the last caller's
- * (see `reconcileMedicationReminders`), so this run never reconciles on a
- * state the app has read differently since: the app owns that one.
+ * Reconciles the reminders that follow a feature switch (#3487): medication
+ * and brushing reminders. The choices are read once, and only when either
+ * kind of reminder is wanted; each pass runs even when the other fails.
  */
-const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
+const reconcileRemindersInBackground = async (): Promise<void> => {
   const prefs = useAppPreferencesStore.getState();
-  if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
-    await reconcileMedicationReminders([], [], { active: false });
-    return;
-  }
+  const medicationsWanted =
+    prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
+  // With brushing reminders off, the app cancelled them when the setting
+  // changed; nothing here schedules them.
+  const brushingWanted =
+    prefs.oralCareRemindersEnabled && prefs.notificationsEnabled;
 
-  // The passes below are bound to the account signed in now and to the
+  const logFailure = async (kind: string, error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[Background Sync] ${kind} reminder reconciliation failed: ${message}`,
+      'ERROR'
+    );
+  };
+
+  if (!medicationsWanted) {
+    // The fetches are skipped but the reconcile still runs, so any pending
+    // reminders get cancelled.
+    try {
+      await reconcileMedicationReminders([], [], { active: false });
+    } catch (error) {
+      await logFailure('Medication', error);
+    }
+  }
+  if (!medicationsWanted && !brushingWanted) return;
+  // A run with the app closed has not set up i18n, so the reminders below
+  // (and their Android channel names) would be written in English, or with
+  // empty texts.
+  await ensureI18nInitialized(prefs.languagePreference);
+
+  // The medication passes are bound to the account signed in now and to the
   // server active now. One read before an account change (another server, or
   // another account on the same one) is dropped when it reaches the queue,
   // and one that runs after a switch to another server does nothing (an
@@ -487,17 +542,46 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
   } catch {
     serverId = undefined;
   }
-  const readStartedAt = Date.now();
-  let featureState: MedicationsFeatureState = 'unknown';
-  let readFailure = 'empty answer';
-  try {
-    featureState = medicationsFeatureState(await fetchFeatureChoices());
-  } catch (error) {
-    readFailure = error instanceof Error ? error.message : String(error);
+  const read = await readFeatureChoices();
+
+  if (medicationsWanted) {
+    try {
+      await reconcileMedicationRemindersInBackground(read, {
+        accountGeneration,
+        serverId,
+      });
+    } catch (error) {
+      await logFailure('Medication', error);
+    }
   }
+  if (brushingWanted) {
+    try {
+      await reconcileBrushingRemindersInBackground(read, accountGeneration);
+    } catch (error) {
+      await logFailure('Brushing', error);
+    }
+  }
+};
+
+/**
+ * Reconciles medication reminders against fresh server schedules, while the
+ * reminder preferences want them. Medications turned off in Settings →
+ * Features (#3487) cancels them. When the choices cannot be read the active
+ * server's reminders are left exactly as they are: a run that cannot tell
+ * must not cancel reminders the person wants, nor bring back ones they turned
+ * off. Those of a server switched away from still stop, and waiting Taken /
+ * Skip presses are replayed. A reconcile is the last caller's (see
+ * `reconcileMedicationReminders`), so this run never reconciles on a state
+ * the app has read differently since: the app owns that one.
+ */
+const reconcileMedicationRemindersInBackground = async (
+  read: FeatureChoicesRead,
+  bound: { accountGeneration: number; serverId: string | null | undefined }
+): Promise<void> => {
+  const featureState = featureOnState('medications', read.response);
   if (featureState === 'unknown') {
     await addLog(
-      `[Background Sync] Medication reminders left as they are: feature choices could not be read (${readFailure})`,
+      `[Background Sync] Medication reminders left as they are: feature choices could not be read (${read.failure})`,
       'WARNING'
     );
     // The reconcile that would replay waiting presses is not run; the replay
@@ -508,7 +592,9 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
   }
 
   const deferToNewerRead = async (): Promise<boolean> => {
-    if (!medicationsStateChangedSince(readStartedAt, featureState)) {
+    if (
+      !featureStateChangedSince('medications', read.startedAt, featureState)
+    ) {
       return false;
     }
     await addLog(
@@ -522,8 +608,8 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
     if (await deferToNewerRead()) return;
     await reconcileMedicationReminders([], [], {
       active: false,
-      serverId,
-      accountGeneration,
+      serverId: bound.serverId,
+      accountGeneration: bound.accountGeneration,
     });
     return;
   }
@@ -536,8 +622,58 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
   if (await deferToNewerRead()) return;
   await reconcileMedicationReminders(medications, entries, {
     active: true,
-    serverId,
-    accountGeneration,
+    serverId: bound.serverId,
+    accountGeneration: bound.accountGeneration,
+  });
+};
+
+/**
+ * Brushing reminders follow Oral care in Settings → Features (#3487), so a
+ * switch made on another phone applies here without opening the app: off
+ * cancels them and clears those shown; on schedules the preference times,
+ * unless the scheduled ones are already those times in today's language
+ * (`skipWhenCurrent`), so a run does not rewrite them every time. When the
+ * choices cannot be read they are left exactly as they are, and a state the
+ * app has read differently since (checked again right before the reconcile)
+ * is the app's to apply, as is everything after an account change during the
+ * run: the choices belong to the account the run started for. They hold no
+ * account data, so they are not bound to a server.
+ */
+const reconcileBrushingRemindersInBackground = async (
+  read: FeatureChoicesRead,
+  accountGeneration: number
+): Promise<void> => {
+  const featureState = featureOnState('oralCare', read.response);
+  if (featureState === 'unknown') {
+    await addLog(
+      `[Background Sync] Brushing reminders left as they are: feature choices could not be read (${read.failure})`,
+      'WARNING'
+    );
+    return;
+  }
+  if (featureStateChangedSince('oralCare', read.startedAt, featureState)) {
+    await addLog(
+      '[Background Sync] Brushing reminders left to the app: it read the feature choices again meanwhile',
+      'DEBUG'
+    );
+    return;
+  }
+  // The choices were read for the account signed in when the run started;
+  // after a switch they say nothing about the one signed in now.
+  if (currentAccountGeneration() !== accountGeneration) {
+    await addLog(
+      '[Background Sync] Brushing reminders left to the app: the account changed during the run',
+      'DEBUG'
+    );
+    return;
+  }
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.oralCareRemindersEnabled || !prefs.notificationsEnabled) return;
+  await reconcileOralCareReminders({
+    mode: featureState === 'on' ? 'on' : 'off',
+    times: prefs.oralCareReminderTimes,
+    dismissDelivered: featureState === 'off',
+    skipWhenCurrent: true,
   });
 };
 

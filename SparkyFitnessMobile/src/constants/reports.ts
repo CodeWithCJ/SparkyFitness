@@ -1,3 +1,4 @@
+import type { FeatureKey } from '@workspace/shared';
 import type { SleepAnalyticsMetric } from '../utils/sleepAnalytics';
 import { NUTRIENT_META } from './nutrients';
 
@@ -20,6 +21,15 @@ export const REPORT_KEYS = [
 ] as const;
 
 export type ReportKey = (typeof REPORT_KEYS)[number];
+
+/**
+ * Reports that belong to an optional feature (Settings → Features): the hub
+ * and Customize Reports leave them out while it is off, and their place,
+ * switch and sections are kept for when it comes back.
+ */
+export const REPORT_FEATURES: Partial<Record<ReportKey, FeatureKey>> = {
+  oralCare: 'oralCare',
+};
 
 export type Translator = (
   key: string,

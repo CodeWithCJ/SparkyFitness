@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { FeatureChoicesResponse } from '@workspace/shared';
-import { useMedicationsFeatureState } from '../../src/hooks/useMedicationsFeatureState';
+import { useFeatureOnState } from '../../src/hooks/useFeatureOnState';
 import { fetchFeatureChoices } from '../../src/services/api/featureChoicesApi';
 import { getSettings } from '../../src/services/api/cycleApi';
 import {
@@ -26,8 +26,8 @@ const getMock = jest.mocked(fetchFeatureChoices);
 
 let queryClient: QueryClient;
 
-function setup() {
-  return renderHook(() => useMedicationsFeatureState(), {
+function setup(feature: 'medications' | 'oralCare' = 'medications') {
+  return renderHook(() => useFeatureOnState(feature), {
     wrapper: createQueryWrapper(queryClient),
   });
 }
@@ -82,4 +82,14 @@ it('reads the choices again on refetch', async () => {
 
   await waitFor(() => expect(result.current.state).toBe('off'));
   expect(getMock).toHaveBeenCalledTimes(2);
+});
+
+it('reads the state of the feature it is asked about', async () => {
+  getMock.mockResolvedValue({
+    feature_choices: { mobile: { oralCare: false } },
+  });
+  const oralCare = setup('oralCare');
+  await waitFor(() => expect(oralCare.result.current.state).toBe('off'));
+  const medications = setup('medications');
+  await waitFor(() => expect(medications.result.current.state).toBe('on'));
 });

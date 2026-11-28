@@ -72,6 +72,7 @@ const ReportsControls = ({
       id: 'oral-care',
       label: t('reports.oralCareTab', 'Oral care'),
       icon: Tooth,
+      feature: 'oralCare',
     },
     {
       id: 'exercise-charts',

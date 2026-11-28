@@ -376,11 +376,27 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
     left: { kind: 'back' },
   });
 
-  // While Medications is off in Settings → Features its reminder settings are
-  // left out (and kept as they are); one line says so instead.
+  // While Medications or Oral care is off in Settings → Features its reminder
+  // settings are left out (and kept as they are). One "Some features are
+  // turned off" line says so, in place of the first group left out
+  // (Medications', or Oral care's when only it is off).
   const { isEnabled: isFeatureOn } = useMobileFeatures();
   const medicationsOn = isFeatureOn('medications');
+  const oralCareOn = isFeatureOn('oralCare');
   const { isConnected } = useServerConnection();
+  const featuresOffNoticeAt = !medicationsOn
+    ? 'medications'
+    : !oralCareOn
+      ? 'oralCare'
+      : null;
+  const featuresOffNotice = (
+    <FeaturesOffNotice
+      className="mb-4"
+      onManage={
+        isConnected ? () => navigation.navigate('FeatureSettings') : undefined
+      }
+    />
+  );
 
   return (
     <View className="flex-1 bg-background">
@@ -461,16 +477,9 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
           </SettingsRowGroup>
         )}
 
-        {notificationsEnabled && !medicationsOn && (
-          <FeaturesOffNotice
-            className="mb-4"
-            onManage={
-              isConnected
-                ? () => navigation.navigate('FeatureSettings')
-                : undefined
-            }
-          />
-        )}
+        {notificationsEnabled &&
+          featuresOffNoticeAt === 'medications' &&
+          featuresOffNotice}
 
         {notificationsEnabled && medicationsOn && (
           <SettingsRowGroup
@@ -705,7 +714,11 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
           </SettingsRowGroup>
         )}
 
-        {notificationsEnabled && (
+        {notificationsEnabled &&
+          featuresOffNoticeAt === 'oralCare' &&
+          featuresOffNotice}
+
+        {notificationsEnabled && oralCareOn && (
           <SettingsRowGroup
             title={t('notificationSettings.oralCare', {
               defaultValue: 'Oral care',

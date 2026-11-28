@@ -8,8 +8,15 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import { initializeI18n } from '../../src/localization/i18n';
 
+let mockConnected = true;
 jest.mock('../../src/hooks/useServerConnection', () => ({
-  useServerConnection: () => ({ isConnected: true }),
+  useServerConnection: () => ({ isConnected: mockConnected }),
+}));
+let mockFeaturesOff = new Set<string>();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => !mockFeaturesOff.has(key),
+  }),
 }));
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
   useCustomNutrients: () => ({
@@ -36,11 +43,12 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+const navigation = { navigate: jest.fn(), goBack: jest.fn() };
 const renderScreen = () =>
   render(
     <ReportsSettingsScreen
       {...({
-        navigation: { navigate: jest.fn(), goBack: jest.fn() },
+        navigation,
         route: { params: {} },
       } as never)}
     />
@@ -58,6 +66,9 @@ describe('ReportsSettingsScreen', () => {
 
   beforeEach(() => {
     __resetAppPreferencesStoreForTests();
+    jest.clearAllMocks();
+    mockConnected = true;
+    mockFeaturesOff = new Set();
   });
 
   test('lists the reports in the saved order, adding ones it lacks', () => {
@@ -113,6 +124,87 @@ describe('ReportsSettingsScreen', () => {
     expect(
       screen.getByTestId('reports-report-switch-exercise').props.disabled
     ).toBe(false);
+  });
+
+  describe('while oral care is turned off', () => {
+    beforeEach(() => {
+      mockFeaturesOff = new Set(['oralCare']);
+    });
+
+    test('leaves out its row and its sections, and says so once', () => {
+      renderScreen();
+
+      expect(orderedRowKeys()).not.toContain('oralCare');
+      expect(
+        screen.queryByTestId('reports-section-oralCare.summary')
+      ).toBeNull();
+      expect(screen.queryByText('Oral care report')).toBeNull();
+      expect(screen.getAllByText('Some features are turned off')).toHaveLength(
+        1
+      );
+      fireEvent.press(screen.getByTestId('features-off-manage'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    test('offers no way to Features while offline', () => {
+      mockConnected = false;
+      renderScreen();
+
+      expect(screen.getByTestId('features-off-notice')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-manage')).toBeNull();
+    });
+
+    test('keeps its place when the reports around it move', () => {
+      renderScreen();
+
+      // Oral care sits between Heart Rate and Compare.
+      fireEvent(
+        screen.getByTestId('reports-report-drag-handle-compare'),
+        'accessibilityAction',
+        { nativeEvent: { actionName: 'decrement' } }
+      );
+
+      const order = useAppPreferencesStore.getState().reportOrder;
+      expect(order.slice(-3)).toEqual(['compare', 'oralCare', 'heartRate']);
+    });
+
+    test('counts only the reports listed when keeping one shown', () => {
+      useAppPreferencesStore.setState({
+        hiddenReports: [
+          'nutrition',
+          'hydration',
+          'substances',
+          'sleep',
+          'measurements',
+          'mood',
+          'exercise',
+          'heartRate',
+        ],
+      });
+      renderScreen();
+
+      // Compare is the last report the page can list, so it stays on.
+      expect(
+        screen.getByTestId('reports-report-switch-compare').props.disabled
+      ).toBe(true);
+    });
+
+    test('comes back in its place, with its switch as it was, once turned on', () => {
+      useAppPreferencesStore.setState({ hiddenReports: ['oralCare'] });
+      renderScreen();
+      screen.unmount();
+
+      mockFeaturesOff = new Set();
+      renderScreen();
+      expect(orderedRowKeys().slice(-2)).toEqual(['oralCare', 'compare']);
+      expect(
+        screen.getByTestId('reports-report-switch-oralCare').props.value
+      ).toBe(false);
+      expect(
+        screen.getByTestId('reports-section-oralCare.summary')
+      ).toBeTruthy();
+      expect(screen.queryByTestId('features-off-notice')).toBeNull();
+    });
   });
 
   test('changes the default range', () => {

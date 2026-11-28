@@ -242,6 +242,25 @@ function MedicationsFeatureRows() {
   );
 }
 
+/** Brushing reminders stop while it is off and come back when it is on; a
+ * brushing timer already running is never cut off. */
+function OralCareFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="oralCare"
+      icon="oral-care"
+      title={t('featureSettings.oralCare.title', {
+        defaultValue: 'Oral care',
+      })}
+      description={t('featureSettings.oralCare.description', {
+        defaultValue:
+          'Log brushing, flossing and the rest, with a daily goal and a streak. While it is off, brushing reminders stop and come back when you turn it on.',
+      })}
+    />
+  );
+}
+
 /** AI coaches (#2013): messages from coaches in Sparky chat. Off by default. */
 function AiCoachesFeatureRows() {
   const { t } = useTranslation();
@@ -268,6 +287,8 @@ function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
       return <MedicationsFeatureRows />;
     case 'labResults':
       return <LabResultsFeatureRows />;
+    case 'oralCare':
+      return <OralCareFeatureRows />;
     case 'aiCoaches':
       return <AiCoachesFeatureRows />;
   }

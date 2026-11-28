@@ -15,11 +15,12 @@
  * still apply while a feature is on, and are kept while it is off.
  *
  * The switch hides UI only. No route, importer, sync or MCP tool checks it,
- * with two exceptions: the mobile app's medication reminders stop while
- * `medications` is off there, come back when it is on, and are left as they
- * are while the app cannot tell (see the repo-root AGENTS.md); and the AI
- * coaches check-in job on the server runs only for people who have turned
- * `aiCoaches` on in at least one app (`isFeatureEnabledAnywhere`).
+ * with two exceptions: the mobile app's medication and brushing reminders stop
+ * while `medications` or `oralCare` is off there, come back when it is on, and
+ * stay on or off as they were while the app cannot tell (see the repo-root
+ * AGENTS.md); and the AI coaches check-in job on the server runs only for
+ * people who have turned `aiCoaches` on in at least one app
+ * (`isFeatureEnabledAnywhere`).
  *
  * A feature that has shipped on one platform only lists that platform in
  * `platforms`; each app's Features screen then offers it only where it exists
@@ -75,6 +76,7 @@ export const OPTIONAL_FEATURES = {
   cycle: { group: 'health', defaultEnabled: false, storage: 'cycleSettings' },
   medications: { group: 'health', defaultEnabled: true, storage: 'choices' },
   labResults: { group: 'health', defaultEnabled: true, storage: 'choices' },
+  oralCare: { group: 'health', defaultEnabled: true, storage: 'choices' },
   aiCoaches: {
     group: 'wellbeing',
     defaultEnabled: false,

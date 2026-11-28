@@ -54,6 +54,13 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
+// Items of features turned off in Settings → Features.
+let mockUnavailableItems = new Set<string>();
+jest.mock('../../src/hooks/useAddMenuItemAvailable', () => ({
+  useAddMenuItemAvailable: () => (key: string) =>
+    !mockUnavailableItems.has(key),
+}));
+
 function renderAddSheet(
   overrides: Partial<React.ComponentProps<typeof AddSheet>> = {}
 ) {
@@ -84,6 +91,7 @@ describe('AddSheet', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUnavailableItems = new Set();
     mockBottomSheetControls.openCount = 0;
     mockBottomSheetControls.isPresentBlocked = false;
     mockBottomSheetControls.onDismiss = undefined;
@@ -283,6 +291,53 @@ describe('AddSheet', () => {
     act(() => ref.current?.present());
 
     expect(queryByText('Copy from yesterday')).toBeNull();
+  });
+
+  describe('items of optional features', () => {
+    afterEach(() => __resetAppPreferencesStoreForTests());
+
+    it('offers the Oral care row while oral care is on, and leaves it out while it is off', () => {
+      const onAddOralCare = jest.fn();
+      const shown = renderAddSheet({ onAddOralCare });
+      fireEvent.press(shown.getByText('Oral care'));
+      expect(onAddOralCare).toHaveBeenCalledTimes(1);
+      shown.unmount();
+
+      mockUnavailableItems = new Set(['oralCare']);
+      const hidden = renderAddSheet({ onAddOralCare });
+      expect(hidden.queryByText('Oral care')).toBeNull();
+      // The rest of the sheet is untouched.
+      expect(hidden.getByText('Symptoms & Health')).toBeTruthy();
+    });
+
+    it('leaves the card slot of a turned-off item empty, keeping the other cards', () => {
+      __resetAppPreferencesStoreForTests();
+      useAppPreferencesStore.setState({
+        addMenuCards: ['oralCare', 'exercise', 'measurements', 'scanFood'],
+      });
+      mockUnavailableItems = new Set(['oralCare']);
+      const { queryByText, getByText, getByTestId } = renderAddSheet({
+        onAddOralCare: jest.fn(),
+      });
+      expect(queryByText('Oral care')).toBeNull();
+      // Its slot stays, empty, so the other cards keep their width.
+      expect(getByTestId('add-sheet-empty-card-oralCare')).toBeTruthy();
+      expect(getByText('Measure')).toBeTruthy();
+      // Food, moved off the cards, is still offered below them.
+      expect(getByText('Food')).toBeTruthy();
+    });
+
+    it('offers the cycle row only while cycle is on', () => {
+      const onOpenCycle = jest.fn();
+      const shown = renderAddSheet({ onOpenCycle, cycleLabel: 'Cycle' });
+      fireEvent.press(shown.getByText('Cycle'));
+      expect(onOpenCycle).toHaveBeenCalledTimes(1);
+      shown.unmount();
+
+      mockUnavailableItems = new Set(['wellness']);
+      const hidden = renderAddSheet({ onOpenCycle, cycleLabel: 'Cycle' });
+      expect(hidden.queryByText('Cycle')).toBeNull();
+    });
   });
 
   it('dismisses from Done without counting as an action', () => {

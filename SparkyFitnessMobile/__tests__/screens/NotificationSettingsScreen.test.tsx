@@ -90,9 +90,15 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 let mockMedicationsOn = true;
+let mockOralCareOn = true;
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
-    isEnabled: (key: string) => key !== 'medications' || mockMedicationsOn,
+    isEnabled: (key: string) =>
+      key === 'medications'
+        ? mockMedicationsOn
+        : key === 'oralCare'
+          ? mockOralCareOn
+          : true,
   }),
 }));
 
@@ -143,6 +149,7 @@ describe('NotificationSettingsScreen', () => {
     mockRequestPermission.mockResolvedValue('granted');
     mockTimeSheetRenders.length = 0;
     mockMedicationsOn = true;
+    mockOralCareOn = true;
     mockConnected = true;
   });
 
@@ -358,6 +365,58 @@ describe('NotificationSettingsScreen', () => {
         useAppPreferencesStore.setState({ notificationsEnabled: false });
       });
       expect(queryByTestId('features-off-notice')).toBeNull();
+    });
+  });
+
+  describe('while Oral care is turned off in Features', () => {
+    const reminderSettings = {
+      oralCareRemindersEnabled: true,
+      oralCareReminderTimes: ['07:30', '22:00'],
+    };
+
+    it('leaves out the Oral care group and says so once, in its place', () => {
+      useAppPreferencesStore.setState(reminderSettings);
+      mockOralCareOn = false;
+      const { queryByText, getAllByText, getByText, toJSON } = renderScreen();
+
+      expect(queryByText('Brushing reminders')).toBeNull();
+      expect(getAllByText('Some features are turned off')).toHaveLength(1);
+      expect(getByText('Medication Reminders')).toBeTruthy();
+      // The line sits where the group was, after Medications.
+      const text = JSON.stringify(toJSON());
+      expect(text.indexOf('Medication Reminders')).toBeLessThan(
+        text.indexOf('Some features are turned off')
+      );
+      expect(useAppPreferencesStore.getState()).toMatchObject(reminderSettings);
+    });
+
+    it('says so once when Medications is off too, in Medications’ place', () => {
+      mockOralCareOn = false;
+      mockMedicationsOn = false;
+      const { queryByText, getAllByText, toJSON } = renderScreen();
+
+      expect(queryByText('Brushing reminders')).toBeNull();
+      expect(queryByText('Medication Reminders')).toBeNull();
+      expect(getAllByText('Some features are turned off')).toHaveLength(1);
+      const text = JSON.stringify(toJSON());
+      expect(text.indexOf('Some features are turned off')).toBeLessThan(
+        text.indexOf('Mood check-ins')
+      );
+    });
+
+    it('shows the reminder settings as they were once it is back on', () => {
+      useAppPreferencesStore.setState(reminderSettings);
+      mockOralCareOn = false;
+      const view = renderScreen();
+      expect(view.queryByLabelText('Brushing reminders')).toBeNull();
+
+      mockOralCareOn = true;
+      view.rerender(
+        <NotificationSettingsScreen navigation={mockNavigation} route={route} />
+      );
+      expect(view.getByLabelText('Brushing reminders').props.value).toBe(true);
+      expect(view.queryByTestId('features-off-notice')).toBeNull();
+      expect(useAppPreferencesStore.getState()).toMatchObject(reminderSettings);
     });
   });
 

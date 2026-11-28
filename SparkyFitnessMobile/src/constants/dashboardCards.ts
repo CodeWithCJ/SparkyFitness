@@ -36,6 +36,7 @@ export const DASHBOARD_CARD_FEATURES: Partial<
   cycle: 'cycle',
   medications: 'medications',
   labResults: 'labResults',
+  oralCare: 'oralCare',
 };
 
 export const DASHBOARD_CARD_TITLES: Record<
