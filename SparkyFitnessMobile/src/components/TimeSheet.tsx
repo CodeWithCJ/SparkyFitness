@@ -46,7 +46,7 @@ export function dateToTimeString(date: Date): string {
 }
 
 export interface TimeSheetRef {
-  present: () => void;
+  present: (initialTime?: string) => void;
   dismiss: () => void;
 }
 
@@ -87,8 +87,9 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(
     const [displayed, setDisplayed] = useState('');
 
     useImperativeHandle(ref, () => ({
-      present: () => {
-        setDisplayed(dateToTimeString(timeStringToDate(value)));
+      present: (initialTime?: string) => {
+        const timeToSeed = initialTime !== undefined ? initialTime : value;
+        setDisplayed(dateToTimeString(timeStringToDate(timeToSeed)));
         bottomSheetRef.current?.present();
       },
       dismiss: () => bottomSheetRef.current?.dismiss(),

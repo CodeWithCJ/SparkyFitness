@@ -243,7 +243,8 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
 
   const openTimePickerForSlot = (index: number) => {
     setActiveTimeSlotIndex(index);
-    timeSheetRef.current?.present();
+    const slotTime = scheduleTimes[index]?.time || '09:00';
+    timeSheetRef.current?.present(slotTime);
   };
 
   const handleTimeSelected = (time: string) => {
@@ -1450,7 +1451,6 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
         </View>
       )}
       <TimeSheet
-        key={activeTimeSlotIndex ?? 'none'}
         ref={timeSheetRef}
         value={
           activeTimeSlotIndex !== null
