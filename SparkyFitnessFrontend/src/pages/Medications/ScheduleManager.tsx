@@ -89,8 +89,13 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
 
   const openEditDialog = (sched: MedicationSchedule) => {
     setEditingScheduleId(sched.id);
-    setScheduleTypeId(sched.schedule_type_id || 'daily');
-    setTimeOfDay(sched.time_of_day ? sched.time_of_day.slice(0, 5) : '09:00');
+    // Normalize specific_days to weekly for UI consistency, while keeping stored weekdays
+    const normalizedType =
+      sched.schedule_type_id === 'specific_days'
+        ? 'weekly'
+        : sched.schedule_type_id || 'daily';
+    setScheduleTypeId(normalizedType);
+    setTimeOfDay(sched.time_of_day ? sched.time_of_day.slice(0, 5) : '');
     setDoseAmount(sched.dose_amount != null ? String(sched.dose_amount) : '');
     setWithMeal(sched.with_meal || null);
     setDaysOfWeek(sched.days_of_week || []);
@@ -129,7 +134,8 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const handleSave = () => {
     const body: Partial<MedicationSchedule> & { schedule_type_id: string } = {
       schedule_type_id: scheduleTypeId,
-      time_of_day: scheduleTypeId === 'prn' ? null : timeOfDay,
+      time_of_day:
+        scheduleTypeId === 'prn' ? null : timeOfDay ? timeOfDay : null,
       dose_amount: positiveDoseOrNull(doseAmount),
       with_meal: withMeal || null,
       start_date: startDate || null,

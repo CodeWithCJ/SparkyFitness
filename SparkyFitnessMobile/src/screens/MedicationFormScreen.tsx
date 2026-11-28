@@ -38,6 +38,7 @@ import { useSupplementLabelScan } from '../hooks/useSupplementLabelScan';
 import { prepareLabelPhoto } from '../utils/labelPhoto';
 import { useExternalProviders } from '../hooks/useExternalProviders';
 import { usePreferences } from '../hooks/usePreferences';
+import { parseDecimalInput } from '../utils/numericInput';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import {
   GLP1_DRUG_PROFILES,
@@ -256,8 +257,11 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
   };
 
   const addScheduleTimeSlot = () => {
+    if (scheduleTimes.length >= 20) return;
     setScheduleFrequency('custom');
-    setScheduleTimes((prev) => [...prev, { time: '12:00', doseOverride: '' }]);
+    setScheduleTimes((prev) =>
+      prev.length >= 20 ? prev : [...prev, { time: '12:00', doseOverride: '' }]
+    );
   };
 
   const removeScheduleTimeSlot = (index: number) => {
@@ -820,17 +824,20 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
       } else {
         let med;
         const initialSchedules: CreateScheduleInput[] | undefined =
-          scheduleTimes.length > 0
-            ? scheduleTimes.map((slot) => ({
-                schedule_type_id: 'daily',
-                time_of_day: slot.time || null,
-                dose_amount:
-                  !isSupplement &&
-                  slot.doseOverride.trim() &&
-                  !Number.isNaN(parseFloat(slot.doseOverride))
-                    ? parseFloat(slot.doseOverride)
-                    : null,
-              }))
+          !isSupplement && scheduleTimes.length > 0
+            ? scheduleTimes.map((slot) => {
+                const parsedDose = parseDecimalInput(slot.doseOverride.trim());
+                return {
+                  schedule_type_id: 'daily',
+                  time_of_day: slot.time || null,
+                  dose_amount:
+                    slot.doseOverride.trim() &&
+                    !Number.isNaN(parsedDose) &&
+                    parsedDose > 0
+                      ? parsedDose
+                      : null,
+                };
+              })
             : undefined;
 
         try {
@@ -1127,6 +1134,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
                               : 'bg-background border-chrome-border'
                           }`}
                           accessibilityRole="button"
+                          accessibilityState={{ selected: isSelected }}
                           activeOpacity={0.7}
                         >
                           <Text
@@ -1203,19 +1211,21 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
                         </View>
                       ))}
 
-                      <TouchableOpacity
-                        onPress={addScheduleTimeSlot}
-                        className="flex-row items-center gap-1.5 pt-1 self-start"
-                        accessibilityRole="button"
-                        activeOpacity={0.7}
-                      >
-                        <Icon name="add" size={16} color={accentPrimary} />
-                        <Text className="text-xs font-medium text-accent-primary">
-                          {t('medications.form.addTimeSlot', {
-                            defaultValue: 'Add another time',
-                          })}
-                        </Text>
-                      </TouchableOpacity>
+                      {scheduleTimes.length < 20 && (
+                        <TouchableOpacity
+                          onPress={addScheduleTimeSlot}
+                          className="flex-row items-center gap-1.5 pt-1 self-start"
+                          accessibilityRole="button"
+                          activeOpacity={0.7}
+                        >
+                          <Icon name="add" size={16} color={accentPrimary} />
+                          <Text className="text-xs font-medium text-accent-primary">
+                            {t('medications.form.addTimeSlot', {
+                              defaultValue: 'Add another time',
+                            })}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   )}
                 </View>
@@ -1440,10 +1450,11 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
         </View>
       )}
       <TimeSheet
+        key={activeTimeSlotIndex ?? 'none'}
         ref={timeSheetRef}
         value={
           activeTimeSlotIndex !== null
-            ? scheduleTimes[activeTimeSlotIndex]?.time || ''
+            ? scheduleTimes[activeTimeSlotIndex]?.time || '09:00'
             : ''
         }
         timeFormat={preferences?.time_format}

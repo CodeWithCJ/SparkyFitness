@@ -77,6 +77,10 @@ export function mealTimingLabel(value: string, t: TFunction): string {
       return t('medications.types.withMeal', { defaultValue: 'With meal' });
     case 'after':
       return t('medications.types.afterMeal', { defaultValue: 'After meal' });
+    case 'away_from_meals':
+      return t('medications.types.awayFromMeals', {
+        defaultValue: 'Away from meals',
+      });
     default:
       return value;
   }
