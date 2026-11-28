@@ -108,4 +108,42 @@ describe('Clinical Record Routes (/api/v2/clinical-records)', () => {
     expect(res.body.labsImported).toBe(2); // mocked labResultRepository
     expect(res.body.labReportId).toBe('report-abc-123');
   });
+
+  it('POST /import filters out qualitative or non-numeric labs before calling importLabReport', async () => {
+    const labRepo = await import('../models/labResultRepository.js');
+    vi.mocked(labRepo.importLabReport).mockClear();
+
+    const res = await request(app)
+      .post('/api/v2/clinical-records/import')
+      .send({
+        labs: [
+          {
+            markerName: 'Strep A',
+            entryDate: '2026-11-27',
+            recordedAt: '2026-11-27T10:00:00Z',
+            valueText: 'Negative',
+            unit: '',
+          },
+          {
+            markerName: 'Glucose',
+            entryDate: '2026-11-27',
+            recordedAt: '2026-11-27T10:00:00Z',
+            valueNumeric: 95,
+            unit: 'mg/dL',
+          },
+        ],
+      });
+
+    expect(res.status).toBe(201);
+    expect(labRepo.importLabReport).toHaveBeenCalledTimes(1);
+    const payload = vi.mocked(labRepo.importLabReport).mock.calls[0][1];
+    expect(payload.results).toHaveLength(1);
+    expect(payload.results[0]).toEqual({
+      marker_name: 'Glucose',
+      value_numeric: 95,
+      unit: 'mg/dL',
+      ref_range_low: null,
+      ref_range_high: null,
+    });
+  });
 });

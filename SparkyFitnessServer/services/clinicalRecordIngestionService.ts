@@ -105,52 +105,59 @@ export async function executeClinicalImport(
 
   // 2. Ingest labs through labResultRepository.importLabReport
   if (data.labs && data.labs.length > 0) {
-    // Generate or use clientRequestId for idempotency
-    const baseRequestId =
-      data.clientRequestId || `clinical_${crypto.randomUUID()}`;
+    // Only ingest labs with a finite numeric value to avoid fabricating 0 for qualitative/missing values
+    const numericLabs = data.labs.filter(
+      (l) =>
+        typeof l.valueNumeric === 'number' && Number.isFinite(l.valueNumeric)
+    );
 
-    // Group labs by entryDate to preserve each lab's historical date
-    const labsByDate = new Map<string, ParsedLab[]>();
-    for (const lab of data.labs) {
-      const dateKey =
-        lab.entryDate ||
-        (lab.recordedAt
-          ? lab.recordedAt.slice(0, 10)
-          : new Date().toISOString().slice(0, 10));
-      const group = labsByDate.get(dateKey) || [];
-      group.push(lab);
-      labsByDate.set(dateKey, group);
-    }
+    if (numericLabs.length > 0) {
+      // Generate or use clientRequestId for idempotency
+      const baseRequestId =
+        data.clientRequestId || `clinical_${crypto.randomUUID()}`;
 
-    for (const [entryDate, group] of labsByDate.entries()) {
-      const reportPayload = {
-        client_request_id: `${baseRequestId}_${entryDate}`,
-        lab_name: 'Epic MyChart / Clinical Import',
-        entry_date: entryDate,
-        results: group.map((l) => ({
-          marker_name: l.markerName,
-          value_numeric: l.valueNumeric ?? 0,
-          value_text: l.valueText ?? null,
-          unit: l.unit ?? '',
-          ref_range_low: l.refRangeLow ?? null,
-          ref_range_high: l.refRangeHigh ?? null,
-        })),
-      };
+      // Group labs by entryDate to preserve each lab's historical date
+      const labsByDate = new Map<string, ParsedLab[]>();
+      for (const lab of numericLabs) {
+        const dateKey =
+          lab.entryDate ||
+          (lab.recordedAt
+            ? lab.recordedAt.slice(0, 10)
+            : new Date().toISOString().slice(0, 10));
+        const group = labsByDate.get(dateKey) || [];
+        group.push(lab);
+        labsByDate.set(dateKey, group);
+      }
 
-      try {
-        const reportRes = await labResultRepository.importLabReport(
-          userId,
-          reportPayload,
-          actor
-        );
-        if (reportRes && reportRes.report) {
-          labReportId = reportRes.report.id;
-          labsImported += (reportRes.results || []).length;
+      for (const [entryDate, group] of labsByDate.entries()) {
+        const reportPayload = {
+          client_request_id: `${baseRequestId}_${entryDate}`,
+          lab_name: 'Epic MyChart / Clinical Import',
+          entry_date: entryDate,
+          results: group.map((l) => ({
+            marker_name: l.markerName,
+            value_numeric: l.valueNumeric!,
+            unit: l.unit ?? '',
+            ref_range_low: l.refRangeLow ?? null,
+            ref_range_high: l.refRangeHigh ?? null,
+          })),
+        };
+
+        try {
+          const reportRes = await labResultRepository.importLabReport(
+            userId,
+            reportPayload,
+            actor
+          );
+          if (reportRes && reportRes.report) {
+            labReportId = reportRes.report.id;
+            labsImported += (reportRes.results || []).length;
+          }
+        } catch (err) {
+          errors.push(
+            `Failed to import lab report for ${entryDate}: ${err instanceof Error ? err.message : String(err)}`
+          );
         }
-      } catch (err) {
-        errors.push(
-          `Failed to import lab report for ${entryDate}: ${err instanceof Error ? err.message : String(err)}`
-        );
       }
     }
   }
