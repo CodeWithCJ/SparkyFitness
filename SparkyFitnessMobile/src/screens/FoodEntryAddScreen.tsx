@@ -1676,7 +1676,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         assignment: buildMealPlanFoodAssignment(
           ingredient,
           mealPlanTarget,
-          quantityText
+          hasOperator(quantityText) ? String(ingredient.quantity) : quantityText
         ),
       });
     } else {
@@ -1885,7 +1885,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               },
               mealPlanTarget,
               quantity,
-              quantityText
+              hasOperator(quantityText) ? String(quantity) : quantityText
             ),
           });
           navigation.dispatch(StackActions.pop(returnDepth));

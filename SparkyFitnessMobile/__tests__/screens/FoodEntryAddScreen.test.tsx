@@ -2034,6 +2034,62 @@ describe('FoodEntryAddScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('evaluates an expression quantity before handing it to the meal-plan editor', async () => {
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 2,
+        mealTypeId: 'lunch',
+        mealTypeName: 'Lunch',
+        assignmentIndex: 0,
+      },
+    });
+
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '100/2');
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignment: expect.objectContaining({
+            item_type: 'food',
+            quantity: 50,
+            quantityText: '50',
+          }),
+        })
+      );
+    });
+  });
+
+  it('evaluates an expression quantity before handing a meal to the meal-plan editor', () => {
+    const screen = renderScreen({
+      item: baseMealItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 4,
+        mealTypeId: 'dinner',
+        mealTypeName: 'Dinner',
+        assignmentIndex: 1,
+      },
+    });
+
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '2 + 1');
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignment: expect.objectContaining({
+          item_type: 'meal',
+          quantity: 3,
+          quantityText: '3',
+        }),
+      })
+    );
+  });
+
   it('returns a reusable meal assignment to the meal-plan editor', () => {
     const screen = renderScreen({
       item: baseMealItem,
