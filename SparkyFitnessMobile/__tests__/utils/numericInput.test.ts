@@ -1,7 +1,9 @@
 import {
   DECIMAL_INPUT_REGEX,
+  EXPRESSION_INPUT_REGEX,
   parseDecimalInput,
   parseSignedDecimalInput,
+  hasOperator,
 } from '../../src/utils/numericInput';
 
 describe('parseDecimalInput', () => {
@@ -227,5 +229,55 @@ describe('parseSignedDecimalInput', () => {
   it('rejects a bare or doubled sign', () => {
     expect(parseSignedDecimalInput('-')).toBeNaN();
     expect(parseSignedDecimalInput('--5')).toBeNaN();
+  });
+});
+
+describe('hasOperator', () => {
+  it('is false for plain numbers and empty input', () => {
+    expect(hasOperator('')).toBe(false);
+    expect(hasOperator('100')).toBe(false);
+    expect(hasOperator('1.5')).toBe(false);
+    expect(hasOperator('1,5')).toBe(false);
+    expect(hasOperator('1 234')).toBe(false);
+  });
+
+  it('is true for each arithmetic operator', () => {
+    expect(hasOperator('1+1')).toBe(true);
+    expect(hasOperator('1-1')).toBe(true);
+    expect(hasOperator('1*1')).toBe(true);
+    expect(hasOperator('1/1')).toBe(true);
+    expect(hasOperator('(1)')).toBe(true);
+  });
+
+  it('is true when an operator appears anywhere in the text', () => {
+    expect(hasOperator('100/2')).toBe(true);
+    expect(hasOperator('1 + 1/2')).toBe(true);
+    expect(hasOperator('(100+100)/2')).toBe(true);
+    expect(hasOperator('1*2-3/4')).toBe(true);
+  });
+});
+
+describe('EXPRESSION_INPUT_REGEX', () => {
+  it('allows empty input so users can clear the field', () => {
+    expect(EXPRESSION_INPUT_REGEX.test('')).toBe(true);
+  });
+
+  it('allows plain numbers and partial input', () => {
+    expect(EXPRESSION_INPUT_REGEX.test('1')).toBe(true);
+    expect(EXPRESSION_INPUT_REGEX.test('1,5')).toBe(true);
+    expect(EXPRESSION_INPUT_REGEX.test('1.5')).toBe(true);
+  });
+
+  it('allows arithmetic operators and parentheses', () => {
+    expect(EXPRESSION_INPUT_REGEX.test('100/2')).toBe(true);
+    expect(EXPRESSION_INPUT_REGEX.test('1 + 1/2')).toBe(true);
+    expect(EXPRESSION_INPUT_REGEX.test('(100+100)/2')).toBe(true);
+    expect(EXPRESSION_INPUT_REGEX.test('1*2-3/4')).toBe(true);
+  });
+
+  it('rejects letters and other garbage', () => {
+    expect(EXPRESSION_INPUT_REGEX.test('abc')).toBe(false);
+    expect(EXPRESSION_INPUT_REGEX.test('1a')).toBe(false);
+    expect(EXPRESSION_INPUT_REGEX.test('100/2x')).toBe(false);
   });
 });

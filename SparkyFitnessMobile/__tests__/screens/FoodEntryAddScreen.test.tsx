@@ -2034,6 +2034,62 @@ describe('FoodEntryAddScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('evaluates an expression quantity before handing it to the meal-plan editor', async () => {
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 2,
+        mealTypeId: 'lunch',
+        mealTypeName: 'Lunch',
+        assignmentIndex: 0,
+      },
+    });
+
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '100/2');
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignment: expect.objectContaining({
+            item_type: 'food',
+            quantity: 50,
+            quantityText: '50',
+          }),
+        })
+      );
+    });
+  });
+
+  it('evaluates an expression quantity before handing a meal to the meal-plan editor', () => {
+    const screen = renderScreen({
+      item: baseMealItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 4,
+        mealTypeId: 'dinner',
+        mealTypeName: 'Dinner',
+        assignmentIndex: 1,
+      },
+    });
+
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '2 + 1');
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignment: expect.objectContaining({
+          item_type: 'meal',
+          quantity: 3,
+          quantityText: '3',
+        }),
+      })
+    );
+  });
+
   it('returns a reusable meal assignment to the meal-plan editor', () => {
     const screen = renderScreen({
       item: baseMealItem,
@@ -3712,6 +3768,123 @@ describe('FoodEntryAddScreen', () => {
         pickerMode: 'meal-builder',
       });
       expect(screen.queryByLabelText('Weighed it cooked')).toBeNull();
+    });
+  });
+
+  describe('Quantity expressions (#3796)', () => {
+    it('evaluates an arithmetic expression typed into the quantity field', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1 + 1/2');
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            quantity: 1.5,
+            unit: 'cup',
+          }),
+        })
+      );
+    });
+
+    it('evaluates a fractional expression', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '2/3');
+      fireEvent.press(screen.getByText('Add Food'));
+      const payload = mockAddEntry.mock.calls[0][0].createEntryPayload;
+      expect(payload.quantity).toBeCloseTo(2 / 3, 10);
+    });
+
+    it('blocks submit and keeps an invalid expression on blur', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1 +');
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent(screen.getByTestId('quantity-input'), 'blur');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1 +');
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+    });
+
+    it('raises the operator chips on focus and appends the pressed operator', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      expect(screen.queryByTestId('quantity-operator-chips')).toBeNull();
+      fireEvent(screen.getByTestId('quantity-input'), 'focus');
+      expect(screen.getByTestId('quantity-operator-chips')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('Plus'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1+');
+      fireEvent.press(screen.getByLabelText('Divide'));
+      expect(screen.getByTestId('quantity-input').props.value).toBe('1+/');
+    });
+
+    it('still parses a plain number (regression)', () => {
+      mockUseRealStepperInput = true;
+      const screen = renderScreen({ item: baseLocalItem });
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1.5');
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            quantity: 1.5,
+            unit: 'cup',
+          }),
+        })
+      );
+    });
+
+    it('converts an expression through recipe-unit conversion (not clearing it)', () => {
+      mockUseRealStepperInput = true;
+      mockUseFoodVariants.mockReturnValue({
+        variants: undefined,
+        isLoading: true,
+        isError: false,
+      });
+      const params = {
+        item: { ...baseLocalItem, servingSize: 1, servingUnit: 'kg' },
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity: 1,
+          unit: 'kg',
+        },
+      };
+      const screen = renderScreen(params);
+      // Seed the expression while the default variant (kg) is active.
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1/2');
+      // A g variant arrives; the unit change must convert 0.5 kg → 500 g
+      // rather than clearing the field (parseDecimalInput would return NaN).
+      const nutrition = { calories: 100, protein: 15, carbs: 6, fat: 0 };
+      mockUseFoodVariants.mockReturnValue({
+        variants: [
+          {
+            id: 'grams',
+            food_id: 'food-1',
+            serving_size: 1000,
+            serving_unit: 'g',
+            ...nutrition,
+          },
+          {
+            id: 'variant-1',
+            food_id: 'food-1',
+            serving_size: 1,
+            serving_unit: 'kg',
+            ...nutrition,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      // The g variant is active; 1/2 = 0.5 kg converts to 500 g.
+      expect(screen.getByDisplayValue('500')).toBeTruthy();
     });
   });
 });

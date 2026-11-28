@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { evaluateArithmetic } from '@/utils/evaluateArithmetic';
+import { evaluateArithmetic } from '@workspace/shared';
 
 interface NumericInputProps extends Omit<
   ComponentProps<typeof Input>,

@@ -1,8 +1,27 @@
+import { parseDecimalInput } from './numericInput.ts';
+
+/**
+ * Normalize an operand token to a finite value.
+ *
+ * Exponent tokens (`1e3`, `-2E-5`) go through `Number()` — `parseDecimalInput`
+ * intentionally rejects them (they are not a supported decimal form). Every
+ * other token is parsed through the shared `parseDecimalInput`, which accepts
+ * thousands-grouped input (`1,001.5`, `1.001,5`, `1 001,5`) and a leading
+ * decimal separator (`.5`, `,5`) while rejecting malformed shapes.
+ */
+function normalizeNumberToken(token: string): number {
+  if (/[eE]/.test(token)) {
+    const value = Number(token);
+    return Number.isFinite(value) ? value : NaN;
+  }
+  return parseDecimalInput(token);
+}
+
 /** Evaluate numbers and basic arithmetic without executing JavaScript. */
 export function evaluateArithmetic(input: string): number | undefined {
   if (input.length > 200 || !input.trim()) return undefined;
 
-  const expression = input.replace(/,/g, '.');
+  const expression = input;
   let position = 0;
 
   function skipWhitespace() {
@@ -27,11 +46,10 @@ export function evaluateArithmetic(input: string): number | undefined {
     }
     const number = expression
       .slice(position)
-      .match(/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/);
+      .match(/^(?:\d[\d\s\u00a0\u202f.,]*|[.,]\d+)(?:[eE][+-]?\d+)?/);
     if (!number) return NaN;
     position += number[0].length;
-    const value = Number(number[0]);
-    return Number.isFinite(value) ? value : NaN;
+    return normalizeNumberToken(number[0]);
   }
 
   function product(): number {

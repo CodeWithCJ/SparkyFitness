@@ -1,4 +1,4 @@
-import { evaluateArithmetic } from '@/utils/evaluateArithmetic';
+import { evaluateArithmetic } from '@workspace/shared';
 
 describe('evaluateArithmetic', () => {
   it.each([
@@ -17,6 +17,17 @@ describe('evaluateArithmetic', () => {
     [' 1.25 + (3 / 4) ', 2],
     ['1e2/4', 25],
     ['0', 0],
+    // Grouped operands (space / EU / US thousands) match the mobile
+    // parseDecimalInput rules, so `1 000/2` and `1.001,5/2` evaluate like
+    // their plain-number counterparts.
+    ['1 000/2', 500],
+    ['1.001,5/2', 500.75],
+    ['1 000/2 + 1.001,5', 1501.5],
+    // A leading comma (or dot) starts a decimal, matching parseDecimalInput:
+    // `,5` is 0.5, so `,5*2` and `2*,5` evaluate.
+    [',5*2', 1],
+    [',5+1', 1.5],
+    ['2*,5', 1],
   ])('evaluates %s', (expression, expected) => {
     expect(evaluateArithmetic(expression)).toBeCloseTo(expected);
   });
@@ -46,6 +57,12 @@ describe('evaluateArithmetic', () => {
     '0x10',
     '1e',
     '1'.repeat(201),
+    // A space group that is not exactly three digits is malformed (the
+    // mobile parseDecimalInput rejects it too), so it must not be stripped.
+    '1 0000/2',
+    // A lone comma has no digits; only a leading comma followed by digits is
+    // a decimal.
+    ',',
   ])('rejects invalid or non-finite input %s', (expression) => {
     expect(evaluateArithmetic(expression)).toBeUndefined();
   });

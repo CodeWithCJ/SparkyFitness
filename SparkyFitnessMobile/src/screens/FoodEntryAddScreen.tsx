@@ -9,6 +9,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useCallback,
+  memo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization';
@@ -17,9 +18,17 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
+  Platform,
+  StyleSheet,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+  useKeyboardState,
+  useReanimatedKeyboardAnimation,
+} from 'react-native-keyboard-controller';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { StackActions, useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,6 +64,7 @@ import {
   userHourMinute,
   recipeImportInitialQuantity,
   isCookedWeightUnit,
+  evaluateArithmetic,
 } from '@workspace/shared';
 import CookedWeightSection, {
   type CookedWeightResult,
@@ -145,9 +155,185 @@ import {
 } from '../utils/foodDetails';
 import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
-import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import {
+  EXPRESSION_INPUT_REGEX,
+  hasOperator,
+  parseDecimalInput,
+} from '../utils/numericInput';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
+
+/**
+ * Estimated height of {@link QuantityOperatorChipBar}'s chip row until its
+ * first layout reports the real one. Added to the scroll view's
+ * `bottomOffset` so the quantity field clears the bar while it is up.
+ */
+const QUANTITY_CHIP_BAR_HEIGHT = 56;
+
+/**
+ * Keyboard progress below which the bar stays transparent, so the first
+ * frames of an open, before it has cleared the screen edge, never show.
+ */
+const QUANTITY_CHIP_OPACITY_GUARD_PROGRESS = 0.1;
+
+const QUANTITY_CHIP_STICKY_STYLE = {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+} as const;
+
+interface QuantityOperatorChipBarProps {
+  /** True while the quantity field is focused (and unlocked). */
+  visible: boolean;
+  /** Appends the operator to the quantity text. */
+  onAppend: (operator: string) => void;
+}
+
+/**
+ * Operator chip bar for the quantity field: a `KeyboardStickyView` sibling of
+ * the scroll view (modelled on `StickySetInputAccessoryBar`) that parks just
+ * below the screen edge while the keyboard is down and rises from behind the
+ * keyboard's top edge when it opens, so the operators sit at the bottom of the
+ * visible viewport, directly above the digits-only `decimal-pad`.
+ *
+ * The content is a fixed set of six chips, so there is no held-content state
+ * to manage: when `visible` is false the bar is unparked, untappable, and
+ * hidden from accessibility.
+ */
+const QuantityOperatorChipBar = memo(function QuantityOperatorChipBar({
+  visible,
+  onAppend,
+}: QuantityOperatorChipBarProps) {
+  const { t } = useTranslation();
+  const keyboardVisible = useKeyboardState((state) => state.isVisible);
+  const { progress } = useReanimatedKeyboardAnimation();
+  const [barHeight, setBarHeight] = useState(QUANTITY_CHIP_BAR_HEIGHT);
+
+  const offset = useMemo(() => ({ closed: barHeight, opened: 0 }), [barHeight]);
+  const guardStyle = useAnimatedStyle(() => ({
+    opacity: progress.value < QUANTITY_CHIP_OPACITY_GUARD_PROGRESS ? 0 : 1,
+  }));
+
+  // Parked below the screen edge, or not focused: nothing for a screen reader
+  // to land on.
+  const hiddenFromAccessibility = !keyboardVisible || !visible;
+
+  return (
+    <KeyboardStickyView
+      testID="quantity-operator-chips-sticky"
+      style={QUANTITY_CHIP_STICKY_STYLE}
+      offset={offset}
+      pointerEvents={visible ? 'auto' : 'none'}
+      accessibilityElementsHidden={hiddenFromAccessibility}
+      importantForAccessibility={
+        hiddenFromAccessibility ? 'no-hide-descendants' : 'auto'
+      }
+      onLayout={(e) => {
+        // An empty bar lays out at zero; keep the last real height so the
+        // next open is parked by the right amount from its first frame.
+        const height = Math.ceil(e.nativeEvent.layout.height);
+        if (height > 0) setBarHeight(height);
+      }}
+    >
+      <Animated.View style={guardStyle}>
+        {visible && (
+          <View
+            testID="quantity-operator-chips"
+            accessibilityRole="toolbar"
+            accessibilityLabel={t('foodEntryAdd.quantity.chips.toolbar', {
+              defaultValue: 'Quantity operators',
+            })}
+            className={
+              Platform.OS === 'android'
+                ? 'bg-surface border-border-subtle flex-row items-center px-3'
+                : 'flex-row items-center px-3'
+            }
+            style={
+              Platform.OS === 'android'
+                ? { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 4 }
+                : undefined
+            }
+          >
+            <Button
+              variant="secondary"
+              onPress={() => onAppend('+')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.plus', {
+                defaultValue: 'Plus',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {'+'}
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => onAppend('-')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.minus', {
+                defaultValue: 'Minus',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {'−'}
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => onAppend('*')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.multiply', {
+                defaultValue: 'Multiply',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {'×'}
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => onAppend('/')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.divide', {
+                defaultValue: 'Divide',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {'÷'}
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => onAppend('(')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.parenOpen', {
+                defaultValue: 'Open parenthesis',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {'('}
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => onAppend(')')}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodEntryAdd.quantity.chips.parenClose', {
+                defaultValue: 'Close parenthesis',
+              })}
+              className="flex-1 mx-1 py-2.5"
+              textClassName="text-base font-bold"
+            >
+              {')'}
+            </Button>
+          </View>
+        )}
+      </Animated.View>
+    </KeyboardStickyView>
+  );
+});
+
 const EXTERNAL_DRAFT_VARIANT_ID = '__draft-external-unit__';
 // Sentinel written by FoodForm for AI-converted draft units; never a real DB ID.
 const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
@@ -237,6 +423,18 @@ function mergeVariantDisplayValues(
   }
 
   return mergedValues;
+}
+
+/**
+ * Parse the quantity text for recipe-unit conversion. Operator-bearing text
+ * goes through the shared evaluator (so `100/2` converts as 50); plain text
+ * keeps the locale-aware decimal parse. Invalid input returns NaN, so
+ * `recipeImportInitialQuantity` returns undefined and the field clears.
+ */
+function parseQuantityInput(text: string): number {
+  return hasOperator(text)
+    ? (evaluateArithmetic(text) ?? NaN)
+    : parseDecimalInput(text);
 }
 
 const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
@@ -813,14 +1011,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     setRecipeUnit(activeVariant.servingUnit);
     if (previousUnit || !quantityEdited) {
       const amount = recipeImportInitialQuantity(
-        parseDecimalInput(quantityText),
+        parseQuantityInput(quantityText),
         previousUnit,
         activeVariant.servingUnit
       );
       setQuantityText(amount === undefined ? '' : String(amount));
     }
   }
-  const quantity = parseDecimalInput(quantityText) || 0;
+  // Expression-aware: operator text goes through the shared evaluator (whose
+  // undefined/non-finite result means "invalid" → 0); plain numbers keep the
+  // locale-aware parse path.
+  const quantity = hasOperator(quantityText)
+    ? (evaluateArithmetic(quantityText) ?? 0)
+    : parseDecimalInput(quantityText) || 0;
   const cookedSectionShown =
     !isSelectionMode &&
     !isMealItem &&
@@ -1023,7 +1226,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              parseDecimalInput(quantityText),
+              parseQuantityInput(quantityText),
               recipeUnit,
               localVariant.servingUnit
             )
@@ -1041,7 +1244,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              parseDecimalInput(quantityText),
+              parseQuantityInput(quantityText),
               recipeUnit,
               externalVariant.servingUnit
             )
@@ -1062,7 +1265,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const updateQuantityText = (text: string) => {
     // While "Weighed it cooked" is on, the raw quantity is calculated.
     if (quantityLocked) return;
-    if (DECIMAL_INPUT_REGEX.test(text)) {
+    // Permissive gate: operator characters are allowed at keystroke time;
+    // evaluateArithmetic applies strict validation when the value is read.
+    if (EXPRESSION_INPUT_REGEX.test(text)) {
       setQuantityEdited(true);
       setQuantityText(text);
     }
@@ -1070,10 +1275,30 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const clampQuantity = () => {
     if (recipeImportTarget) return;
+    // An unfinished expression (e.g. `1 +`) evaluates to undefined; leave it
+    // as-is — submit stays blocked through quantity <= 0, and wiping it would
+    // destroy the user's in-progress expression. Empty and valid-but-<=0
+    // values still clamp to the minimum.
+    if (
+      hasOperator(quantityText) &&
+      evaluateArithmetic(quantityText) === undefined
+    ) {
+      return;
+    }
     if (quantity <= 0) {
       const minQuantity = displayValues.servingSize * 0.5 || 1;
       setQuantityText(String(minQuantity));
     }
+  };
+
+  const [quantityFieldFocused, setQuantityFieldFocused] = useState(false);
+
+  const appendQuantityOperator = (operator: string) => {
+    if (quantityLocked) return;
+    setQuantityEdited(true);
+    // TextInput has no cursor-position API; the quantity field is short, so
+    // append-at-end is the insertion.
+    setQuantityText((text) => text + operator);
   };
 
   const adjustQuantity = (delta: number) => {
@@ -1451,7 +1676,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         assignment: buildMealPlanFoodAssignment(
           ingredient,
           mealPlanTarget,
-          quantityText
+          hasOperator(quantityText) ? String(ingredient.quantity) : quantityText
         ),
       });
     } else {
@@ -1660,7 +1885,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               },
               mealPlanTarget,
               quantity,
-              quantityText
+              hasOperator(quantityText) ? String(quantity) : quantityText
             ),
           });
           navigation.dispatch(StackActions.pop(returnDepth));
@@ -1983,9 +2208,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     <View className="flex-1 bg-background">
       {header}
 
-      <ScrollView
+      <KeyboardAwareScrollView
         className="flex-1"
         contentContainerClassName="px-4 pt-4 pb-4 gap-4"
+        keyboardShouldPersistTaps="handled"
+        // The operator chip bar sits above the keyboard while the quantity
+        // field is focused; clear it from the scroll bottom.
+        bottomOffset={
+          quantityFieldFocused && !quantityLocked
+            ? QUANTITY_CHIP_BAR_HEIGHT + 16
+            : 0
+        }
       >
         {recipeImportTarget && (
           <Text className="text-text-secondary">
@@ -2085,7 +2318,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               onBlur={clampQuantity}
               onDecrement={() => adjustQuantity(-1)}
               onIncrement={() => adjustQuantity(1)}
-              inputProps={{ editable: !quantityLocked }}
+              hideSteppers={hasOperator(quantityText)}
+              inputProps={{
+                editable: !quantityLocked,
+                onFocus: () => setQuantityFieldFocused(true),
+                onBlur: () => setQuantityFieldFocused(false),
+              }}
             />
             {variantPickerOptions.length > 1 ? (
               <BottomSheetPicker
@@ -2524,7 +2762,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               : undefined
           }
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
+
+      <QuantityOperatorChipBar
+        visible={quantityFieldFocused && !quantityLocked}
+        onAppend={appendQuantityOperator}
+      />
 
       {/* Sticky footer */}
       <FooterSaveBar
