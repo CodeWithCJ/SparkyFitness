@@ -425,6 +425,18 @@ function mergeVariantDisplayValues(
   return mergedValues;
 }
 
+/**
+ * Parse the quantity text for recipe-unit conversion. Operator-bearing text
+ * goes through the shared evaluator (so `100/2` converts as 50); plain text
+ * keeps the locale-aware decimal parse. Invalid input returns NaN, so
+ * `recipeImportInitialQuantity` returns undefined and the field clears.
+ */
+function parseQuantityInput(text: string): number {
+  return hasOperator(text)
+    ? (evaluateArithmetic(text) ?? NaN)
+    : parseDecimalInput(text);
+}
+
 const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   navigation,
   route,
@@ -999,7 +1011,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     setRecipeUnit(activeVariant.servingUnit);
     if (previousUnit || !quantityEdited) {
       const amount = recipeImportInitialQuantity(
-        parseDecimalInput(quantityText),
+        parseQuantityInput(quantityText),
         previousUnit,
         activeVariant.servingUnit
       );
@@ -1214,7 +1226,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              parseDecimalInput(quantityText),
+              parseQuantityInput(quantityText),
               recipeUnit,
               localVariant.servingUnit
             )
@@ -1232,7 +1244,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
-              parseDecimalInput(quantityText),
+              parseQuantityInput(quantityText),
               recipeUnit,
               externalVariant.servingUnit
             )

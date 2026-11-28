@@ -3776,5 +3776,59 @@ describe('FoodEntryAddScreen', () => {
         })
       );
     });
+
+    it('converts an expression through recipe-unit conversion (not clearing it)', () => {
+      mockUseRealStepperInput = true;
+      mockUseFoodVariants.mockReturnValue({
+        variants: undefined,
+        isLoading: true,
+        isError: false,
+      });
+      const params = {
+        item: { ...baseLocalItem, servingSize: 1, servingUnit: 'kg' },
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity: 1,
+          unit: 'kg',
+        },
+      };
+      const screen = renderScreen(params);
+      // Seed the expression while the default variant (kg) is active.
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '1/2');
+      // A g variant arrives; the unit change must convert 0.5 kg → 500 g
+      // rather than clearing the field (parseDecimalInput would return NaN).
+      const nutrition = { calories: 100, protein: 15, carbs: 6, fat: 0 };
+      mockUseFoodVariants.mockReturnValue({
+        variants: [
+          {
+            id: 'grams',
+            food_id: 'food-1',
+            serving_size: 1000,
+            serving_unit: 'g',
+            ...nutrition,
+          },
+          {
+            id: 'variant-1',
+            food_id: 'food-1',
+            serving_size: 1,
+            serving_unit: 'kg',
+            ...nutrition,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      // The g variant is active; 1/2 = 0.5 kg converts to 500 g.
+      expect(screen.getByDisplayValue('500')).toBeTruthy();
+    });
   });
 });
