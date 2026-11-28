@@ -69,6 +69,64 @@ function toJson(schema: z.ZodType): JsonSchemaObject {
   return zodSchema(schema).jsonSchema as JsonSchemaObject;
 }
 
+describe('update_existing_entries in the published food schema', () => {
+  it('stays a boolean with its description', () => {
+    const prop = toJson(manageFoodInput).properties?.update_existing_entries as
+      { type?: string; description?: string } | undefined;
+    expect(prop?.type).toBe('boolean');
+    expect(prop?.description).toContain('existing diary entries');
+  });
+});
+
+describe('update_existing_entries through the published food schema', () => {
+  const parseFlag = (value: unknown) =>
+    manageFoodInput.safeParse({
+      action: 'update_food_variant',
+      update_existing_entries: value,
+    });
+
+  it.each([
+    [true, true],
+    [false, false],
+    ['true', true],
+    ['TRUE', true],
+    ['false', false],
+    [' false ', false],
+    ['1', true],
+    ['0', false],
+    [1, true],
+    [0, false],
+    [null, undefined],
+    ['', undefined],
+    ['  ', undefined],
+  ])('reads %j as %j', (value, expected) => {
+    const result = parseFlag(value);
+    expect(result.success).toBe(true);
+    expect(result.data?.update_existing_entries).toBe(expected);
+  });
+
+  it.each(['yes please', 2, 'on'])('rejects %j', (value) => {
+    expect(parseFlag(value).success).toBe(false);
+  });
+
+  it.each([null, '', undefined])(
+    'leaves entries alone for %j after the strict parse',
+    (value) => {
+      const result = manageFoodSchema.safeParse({
+        action: 'update_food_variant',
+        food_id: '00000000-0000-4000-8000-000000000001',
+        update_existing_entries: value,
+      });
+      expect(result.success).toBe(true);
+      expect(
+        result.success && 'update_existing_entries' in result.data
+          ? result.data.update_existing_entries
+          : 'missing'
+      ).toBe(false);
+    }
+  );
+});
+
 describe('published (flat) chatbot tool schemas', () => {
   const flatCases: Array<{
     name: string;

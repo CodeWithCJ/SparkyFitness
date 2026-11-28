@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { NOTES_MAX_LENGTH } from '@workspace/shared';
 import {
   dateSchema,
+  flagSchema,
   optionalDateSchema,
   optionalEntryTimeSchema,
   uuidSchema,
@@ -669,8 +670,7 @@ const updateFoodVariantSchema = z
     gi: giIndexEnum
       .optional()
       .describe('Updated Glycemic Index classification'),
-    update_existing_entries: z.coerce
-      .boolean()
+    update_existing_entries: flagSchema
       .optional()
       .default(false)
       .describe(
@@ -891,8 +891,7 @@ export const manageFoodInput = z.object({
     .describe(
       "For log_external_food: the lookup result's External ID pinning the exact provider item"
     ),
-  update_existing_entries: z.coerce
-    .boolean()
+  update_existing_entries: flagSchema
     .optional()
     .describe(
       'For update_food_variant: if true, also updates existing diary entries referencing this variant'

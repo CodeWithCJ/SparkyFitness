@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { buildSymptomTools } from '../ai/tools/symptomTools.js';
 import symptomService from '../services/symptomService.js';
@@ -495,5 +495,68 @@ describe('sparky_manage_symptoms over MCP: published schema, then execute', () =
     expect(result).toContain(
       '• 2026-11-25: Headache [ONGOING] (left temple) [ID: entry-10]'
     );
+  });
+
+  describe('from/to day keywords', () => {
+    // 03:00 UTC on the 26th is still the 25th in New York.
+    const nyTool = buildSymptomTools(
+      'user-123',
+      'America/New_York'
+    ).sparky_manage_symptoms;
+    const callInNewYork = async (args: Record<string, unknown>) => {
+      const { manageSymptomsInput } =
+        await import('../ai/tools/schemas/symptoms.js');
+      return nyTool.execute!(manageSymptomsInput.parse(args), toolOpts);
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('resolves today and yesterday in the user timezone for list_entries', async () => {
+      vi.useFakeTimers({
+        now: new Date('2026-11-26T03:00:00Z'),
+        toFake: ['Date'],
+      });
+      vi.mocked(symptomService.listEntries).mockResolvedValueOnce([]);
+
+      await callInNewYork({
+        action: 'list_entries',
+        from: 'yesterday',
+        to: 'Today',
+      });
+
+      expect(symptomService.listEntries).toHaveBeenCalledWith('user-123', {
+        fromDate: '2026-11-24',
+        toDate: '2026-11-25',
+        symptomId: undefined,
+        episodesOnly: undefined,
+      });
+    });
+
+    it('returns a validation error, not a crash, for arguments that are not an object', async () => {
+      const result = await nyTool.execute!(null as never, toolOpts);
+      expect(String(result)).toContain('Error');
+    });
+
+    it('resolves keywords and timestamps for get_metrics', async () => {
+      vi.useFakeTimers({
+        now: new Date('2026-11-26T03:00:00Z'),
+        toFake: ['Date'],
+      });
+      vi.mocked(symptomService.listEntries).mockResolvedValueOnce([]);
+
+      const result = await callInNewYork({
+        action: 'get_metrics',
+        from: '2026-11-01T00:00:00Z',
+        to: 'today',
+      });
+
+      expect(symptomService.listEntries).toHaveBeenCalledWith('user-123', {
+        fromDate: '2026-11-01',
+        toDate: '2026-11-25',
+      });
+      expect(result).toContain('from 2026-11-01 to 2026-11-25');
+    });
   });
 });

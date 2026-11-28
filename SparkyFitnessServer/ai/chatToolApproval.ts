@@ -133,7 +133,8 @@ function rewritesEntries(name: string, args: Record<string, unknown>): boolean {
 }
 
 // Rewrites every diary entry of the variant and can delete photo files, with
-// no undo. Truthy like the schema's z.coerce.boolean(), so "false" counts.
+// no undo. The schema hands over a boolean; truthy, so an unparsed value
+// still gets a card.
 export function isEntryRewrite(
   name: string,
   args: Record<string, unknown>
