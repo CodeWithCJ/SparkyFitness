@@ -1172,7 +1172,8 @@
       "moodCheckin": "心情打卡",
       "oralCare": "刷牙提示",
       "mindfulness": "冥想計時器",
-      "challenges": "挑戰"
+      "challenges": "挑戰",
+      "coaches": "教練"
     },
     "actions": {
       "completeSet": "攪掂一組",
@@ -9609,6 +9610,10 @@
     "medications": {
       "title": "藥物",
       "description": "藥物、補充品同 GLP-1 追蹤。關閉期間提醒會停止，再開啟時會返嚟；補充品嘅營養素仍然會計入您嘅總量."
+    },
+    "aiCoaches": {
+      "title": "教練",
+      "description": "AI 教練會睇您嘅食物、訓練同睡眠，有值得講嘅事就發一條短訊息."
     }
   },
   "addMenuSettings": {
@@ -9702,7 +9707,24 @@
       "serverTooOld": "您嘅伺服器未支援 NFC 標籤",
       "failed": "記錄唔到",
       "serverTooOldSubtitle": "更新您嘅 SparkyFitness 伺服器再試.",
-      "failedSubtitle": "乜都冇記錄。檢查連線再試."
+      "failedSubtitle": "乜都冇記錄。檢查連線再試.",
+      "amountAndUnit": "數量同單位",
+      "configureTag": "標籤設定",
+      "confirmWithCalories": "記錄（+{{calories}} kcal）",
+      "customTime": "時間（HH:MM）",
+      "invalidTime": "請輸入有效時間（例如 08:30 或 8:30 PM）.",
+      "lastUsedAmount": "上次：{{value}} {{unit}}",
+      "mealContext": "餐",
+      "ofGoal": "佔每日目標",
+      "quickAmounts": "快速數量",
+      "tapToLogActive": "撳一下即刻記錄",
+      "kcalUnit": "kcal",
+      "proteinShort": "蛋：",
+      "carbsShort": "碳：",
+      "fatShort": "脂：",
+      "timePlaceholder": "HH:MM",
+      "unitOz": "oz",
+      "unitLiter": "公升"
     },
     "form": {
       "errors": {
@@ -9746,7 +9768,16 @@
       "mealType": "記錄去",
       "mealTypeHint": "按一日時間就用每種餐類嘅慣常時間，同快速記錄一樣.",
       "foodOrMeal": "食物或者餐",
-      "foodOrMealPlaceholder": "揀一樣食物或者一餐"
+      "foodOrMealPlaceholder": "揀一樣食物或者一餐",
+      "allowAmountAdjustment": "確認時可以調整數量／倍數",
+      "allowAmountAdjustmentHint": "喺確認提示度可以揀快速預設或者自訂數量，同時保留預設已選.",
+      "advancedMode": "進階預設同 ml 模式",
+      "allowCustomTimestamp": "掃描時可以自訂時間",
+      "allowCustomTimestampHint": "關閉時會即時以目前時間記錄。開啟時，掃描期間會顯示時間欄位.",
+      "presetAmountsLabel": "預設數量（飲品用 ml，或者件數）",
+      "tapToLog": "撳數量即刻記錄",
+      "tooManyPresets": "最多輸入 8 個預設數量",
+      "invalidPresetAmount": "每個預設數量要係大過 0 而且最多 10000 嘅有效數字"
     },
     "unsupportedTitle": "呢部手機用唔到 NFC 標籤",
     "unsupportedSubtitle": "NFC 標籤要有支援 NFC 嘅手機.",
@@ -11128,6 +11159,374 @@
     "starters": {
       "macros": "三大營養素"
     },
-    "valueNumber": "數值 {{number}}"
+    "valueNumber": "數值 {{number}}",
+    "reloadHintWearOs": "將您嘅複雜功能送到 Wear OS 手錶並重新整理."
+  },
+  "coaches": {
+    "saved": "已儲存.",
+    "saveFailed": "儲存唔到您嘅教練設定.",
+    "previewFailed": "檢查唔到呢個教練.",
+    "because": "原因：{{reason}}",
+    "rulesToggle": "幾時會出聲",
+    "settings": {
+      "title": "教練",
+      "description": "AI 教練會睇您嘅數據，重要時會出聲",
+      "turnOn": "開啟教練",
+      "loadError": "載入唔到您嘅教練.",
+      "weekday": "執行日",
+      "focusHabit": "要專注嘅習慣",
+      "noHabit": "仲未有",
+      "off": "教練已關閉。開啟之後，就會收到睇您食物、訓練同睡眠嘅教練發嚟嘅短訊.",
+      "openFeatures": "開啟功能"
+    },
+    "aboutMe": {
+      "title": "關於我",
+      "description": "您嘅教練同 Sparky 對話會用呢啲資料。您隨時可以改或者清除.",
+      "diet": "飲食",
+      "tone": "語氣",
+      "notSet": "未設定",
+      "foodsAvoid": "要避免嘅食物",
+      "foodsPrefer": "我鍾意嘅食物",
+      "notes": "教練仲應該知啲咩",
+      "allergies": "過敏",
+      "noAllergies": "冇儲存過.",
+      "allergiesHint": "喺「設定 → 營養及飲食 → 致敏原偏好」管理.",
+      "clear": "全部清除"
+    },
+    "diets": {
+      "omnivore": "冇限制",
+      "vegetarian": "素食",
+      "vegan": "純素",
+      "pescatarian": "魚素",
+      "keto": "生酮",
+      "halal": "清真",
+      "kosher": "猶太潔食",
+      "other": "其他"
+    },
+    "tones": {
+      "friendly": "友善而簡短",
+      "direct": "直接",
+      "encouraging": "鼓勵",
+      "neutral": "中性"
+    },
+    "schedule": {
+      "title": "教練幾時檢視",
+      "description": "教練只會喺呢啲時間（您自己時區）睇您嘅數據，而且只有值得講嘅事先會出聲.",
+      "checkInTime": "檢視時間",
+      "removeTime": "刪除呢個時間",
+      "addTime": "加一個時間",
+      "maxMessages": "每日最多幾多條訊息",
+      "maxMessagesLabel": "每日上限",
+      "checkIn": "檢視 {{number}}",
+      "checkInAccessibility": "檢視 {{number}}，{{time}}",
+      "removeCheckIn": "刪除檢視 {{number}}"
+    },
+    "pause": {
+      "title": "暫停教練",
+      "description": "病咗、去旅行或者受傷？教練會靜到您揀嘅日期為止.",
+      "until": "暫停至 {{date}}.",
+      "untilLabel": "至",
+      "reason": "原因",
+      "pause": "暫停",
+      "resume": "即刻恢復",
+      "reasons": {
+        "sick": "病咗",
+        "travel": "去旅行",
+        "injury": "受傷",
+        "other": "其他"
+      },
+      "days_other": "{{count}} 日"
+    },
+    "list": {
+      "title": "您嘅教練",
+      "cost": "教練只會喺有規則符合時先用您嘅 AI 供應商。冇供應商嘅話，就會收到一條固定短訊.",
+      "create": "自己整一個教練",
+      "limit": "您自己嘅教練已達到 {{count}} 個上限.",
+      "aiDecides": "由 AI 決定幾時出聲.",
+      "customRules_other": "{{count}} 條規則"
+    },
+    "preview": {
+      "button": "而家會唔會出聲？",
+      "yes": "會，佢會講：",
+      "no": "唔會。而家冇嘢符合，所以佢會靜.",
+      "today": "預覽今日",
+      "aiDecides": "每次檢視都由 AI 決定，所以呢度冇嘢可以預先檢查."
+    },
+    "thread": {
+      "sparky": "Sparky",
+      "label": "對話對象",
+      "readOnly": "喺設定加一個 AI 供應商，先可以回覆您嘅教練.",
+      "unread_other": "{{count}} 條未讀"
+    },
+    "names": {
+      "recovery": "恢復",
+      "consistency": "持續",
+      "nutrition": "營養",
+      "sleep_recovery": "睡眠同恢復",
+      "custom": "教練",
+      "daily_outlook": "每日展望",
+      "weekly_review": "每週回顧",
+      "training": "訓練",
+      "habits": "習慣"
+    },
+    "descriptions": {
+      "recovery": "同時睇訓練同食物，令您喺辛苦訓練之後食夠蛋白質同碳水.",
+      "consistency": "留意記錄空白同連續紀錄，幫您溫和咁重新開始.",
+      "nutrition": "睇今日嘅蛋白質、纖維、熱量同水分同目標嘅差距.",
+      "sleep_recovery": "比較昨晚睡眠同您平時，以及近期訓練.",
+      "daily_outlook": "每朝：根據睡眠同近期訓練，講今日可以衝、正常或者放鬆.",
+      "weekly_review": "每星期一次：呢個星期表現點，如果體重趨勢許可，就建議新嘅熱量目標.",
+      "training": "睇您嘅舉重，重量可以上調或者放輕時提出計劃調整.",
+      "habits": "一次幫一個小習慣，夜晚有溫和提醒."
+    },
+    "when": {
+      "morning": "早上",
+      "evening": "晚上",
+      "any": "任何檢視",
+      "first_morning": "第一次早上檢視",
+      "weekday": "每星期一次",
+      "after_workout": "運動之後"
+    },
+    "units": {
+      "percent": "%",
+      "hours": "小時",
+      "minutes": "分",
+      "days": "日"
+    },
+    "directions": {
+      "toward": "趨向目標",
+      "away": "遠離目標",
+      "flat": "平穩",
+      "fertile": "受孕期",
+      "ovulation": "排卵期",
+      "menstrual": "月經期",
+      "follicular": "卵泡期",
+      "luteal": "黃體期"
+    },
+    "ops": {
+      "lt": "低於",
+      "lte": "最多為",
+      "gt": "高於",
+      "gte": "至少為",
+      "eq": "等於"
+    },
+    "signals": {
+      "protein_pct_of_goal": "蛋白質（佔目標 %）",
+      "carbs_pct_of_goal": "碳水（佔目標 %）",
+      "fiber_pct_of_goal": "纖維（佔目標 %）",
+      "calories_pct_of_goal": "熱量（佔目標 %）",
+      "water_pct_of_goal": "水分（佔目標 %）",
+      "hours_since_strength": "距離上次力量訓練幾多小時",
+      "hours_since_hard_cardio": "距離上次高強度有氧幾多小時",
+      "sleep_minutes_vs_avg": "睡眠相對您平時",
+      "training_load_ratio": "訓練負荷對比 4 星期平均",
+      "weight_trend_direction": "體重趨勢",
+      "days_since_last_log": "距離上次記錄幾多日",
+      "logging_streak_days": "連續記錄天數",
+      "new_prs_since_last_checkin": "新個人紀錄",
+      "protein_goal_hit_streak_days": "連續達到蛋白質目標嘅日數",
+      "calorie_goal_hit_streak_days": "連續達到熱量目標嘅日數",
+      "stalled_lifts": "停滯唔前嘅舉重項目",
+      "mood_checkin_today": "今日心情檢視（1 = 有）",
+      "focus_habit_done_today": "今日完成專注習慣（1 = 有）",
+      "focus_habit_streak_days": "專注習慣連續天數",
+      "cycle_phase": "月經週期階段",
+      "workout_is_strength": "運動屬力量訓練（1 = 是）",
+      "workout_is_cardio": "運動屬有氧（1 = 是）",
+      "workout_duration_min": "運動時長",
+      "workout_hard": "運動屬高強度（1 = 是）",
+      "workout_new_pr": "運動創下紀錄（1 = 是）"
+    },
+    "rules": {
+      "recovery": {
+        "protein_after_strength": "力量訓練之後蛋白質偏低",
+        "carbs_after_hard_cardio": "高強度有氧之後碳水偏低",
+        "after_strength_session": "完成一節辛苦力量訓練",
+        "new_pr": "您創下紀錄"
+      },
+      "consistency": {
+        "logging_gap": "您有一段時間冇記錄",
+        "nothing_logged_today": "今日仲未有任何記錄",
+        "streak_7": "連續記錄一個星期",
+        "streak_30": "連續記錄一個月",
+        "energy_question": "問我今日精神點"
+      },
+      "nutrition": {
+        "fiber_low": "纖維偏低",
+        "protein_low": "蛋白質偏低",
+        "water_low": "水分偏低",
+        "protein_streak": "連續幾日達到蛋白質目標"
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "高負荷星期前睡眠不足",
+        "short_sleep": "睡眠比平時短好多"
+      },
+      "daily_outlook": {
+        "outlook": "早上展望"
+      },
+      "weekly_review": {
+        "weekly": "每週回顧"
+      },
+      "training": {
+        "weekly_plan_review": "每週訓練計劃回顧",
+        "stall": "有舉重項目停滯",
+        "after_workout_review": "運動之後"
+      },
+      "habits": {
+        "not_done_evening": "今日仲未做習慣",
+        "streak_win": "習慣連續紀錄"
+      }
+    },
+    "templates": {
+      "recovery": {
+        "protein_after_strength": "您做完力量訓練 {{hours_since_strength}} 小時，蛋白質去到目標嘅 {{protein_pct_of_goal}}%。食一餐高蛋白嘅嘢會有助恢復.",
+        "carbs_after_hard_cardio": "做完高強度有氧，碳水去到目標嘅 {{carbs_pct_of_goal}}%。補充啲碳水會有助回氣.",
+        "after_strength_session": "呢節做得好（{{workout_minutes}} 分鐘）。之後幾個鐘內食一餐高蛋白嘅嘢會有助恢復.",
+        "new_pr": "您創下新個人紀錄。做得好."
+      },
+      "consistency": {
+        "logging_gap": "您已經 {{days_since_last_log}} 日冇記錄。唔使補齊，記錄下一餐就返到軌道.",
+        "nothing_logged_today": "今日仲未有任何記錄。記錄下一餐就已經夠開始.",
+        "streak_7": "您已經連續記錄 {{logging_streak_days}} 日。持續得好好.",
+        "streak_30": "連續 {{logging_streak_days}} 日都有記錄。呢個係真正嘅習慣."
+      },
+      "nutrition": {
+        "fiber_low": "纖維去到目標嘅 {{fiber_pct_of_goal}}%。蔬菜、水果、豆類或者燕麥都會有幫助.",
+        "protein_low": "今日蛋白質去到目標嘅 {{protein_pct_of_goal}}%。可以考慮食一餐高蛋白嘅嘢.",
+        "water_low": "水分去到目標嘅 {{water_pct_of_goal}}%。飲一兩杯會有幫助.",
+        "protein_streak": "您已經連續 {{protein_goal_hit_streak_days}} 日達到蛋白質目標."
+      },
+      "sleep_recovery": {
+        "short_sleep_high_load": "您瞓得比平時少，而訓練負荷偏高。今日可以考慮做輕鬆啲.",
+        "short_sleep": "您瞓得比平時少好多。今日放鬆啲，保住今晚嘅睡眠."
+      },
+      "daily_outlook": {
+        "outlook": {
+          "push": "今日可以衝：近期訓練負荷輕，您亦休息夠.",
+          "normal": "正常訓練日：睡眠同訓練負荷都幾穩.",
+          "easy": "今日放鬆啲：睡眠短或者訓練週負荷重，都表示要恢復."
+        }
+      },
+      "weekly_review": {
+        "weekly": "您呢個星期：喺 {{days_logged}} 個有記錄嘅日子，大約 {{followed_target_percent}}% 跟到目標."
+      },
+      "training": {
+        "weekly_plan_review": "每週檢視您嘅訓練計劃.",
+        "stall": "您有 {{stalled_lifts}} 個舉重項目已經停滯.",
+        "after_workout_review": "呢節做得好（{{workout_minutes}} 分鐘）."
+      },
+      "habits": {
+        "streak_win": "專注習慣連續 {{focus_habit_streak_days}} 日。繼續保持."
+      }
+    },
+    "answerFailed": "儲存唔到您嘅答案.",
+    "kind": {
+      "win": "成果",
+      "outlook": "展望"
+    },
+    "weekdays": {
+      "0": "星期日",
+      "1": "星期一",
+      "2": "星期二",
+      "3": "星期三",
+      "4": "星期四",
+      "5": "星期五",
+      "6": "星期六"
+    },
+    "editor": {
+      "created": "教練已建立.",
+      "deleted": "教練已刪除.",
+      "newTitle": "自己整一個教練",
+      "editTitle": "編輯教練",
+      "description": "揀佢講咩、可以睇咩，同幾時會出聲.",
+      "name": "名稱",
+      "instructions": "佢應該點同我講嘢",
+      "access": "佢可以睇咩",
+      "when": "佢應該幾時出聲",
+      "modeRules": "只喺呢啲規則符合時",
+      "modeRulesHint": "未有規則符合之前，唔會用 AI.",
+      "modeAi": "交畀 AI 決定",
+      "modeAiHint": "每次檢視用一次 AI 呼叫（一日最多 {{count}} 次）去決定會唔會出聲.",
+      "modeAiNeedsProvider": "需要 AI 供應商。請先喺設定加一個.",
+      "aiRule": "佢應該留意啲咩？",
+      "aiRulePlaceholder": "如果 3 月 14 日半馬之前有咩唔妥，話我知.",
+      "addRule": "加一條規則",
+      "removeRule": "刪除呢條規則",
+      "addCondition": "再加一個條件",
+      "removeCondition": "刪除呢個條件",
+      "whenLabel": "幾時",
+      "signalLabel": "要留意嘅數字",
+      "valueLabel": "數值",
+      "opLabel": "比較",
+      "deleteTitle": "刪除呢個教練？",
+      "deleteBody": "佢嘅設定會被移除。佢已經發咗嘅訊息會留喺對話."
+    },
+    "suggestion": {
+      "goalDayProtein": "今日蛋白質目標提高到 {{to}} g（原本 {{from}} g）？聽日會返去您平時嘅設定.",
+      "calorieTarget": "由今日起新嘅每日熱量目標：{{to}} {{unit}}（而家 {{from}}）.",
+      "planChanges": "訓練計劃調整：{{up}} 次加重量、{{down}} 日放輕.",
+      "apply": "套用",
+      "dismiss": "唔使",
+      "applyFailed": "套用唔到。可能已經處理咗，或者而家唔再適用.",
+      "status": {
+        "applied": "已套用.",
+        "dismissed": "未有套用.",
+        "expired": "呢個係另一日嘅建議."
+      }
+    },
+    "feedback": {
+      "helpful": "有幫到",
+      "notHelpful": "冇幫到"
+    },
+    "knowledge": {
+      "title": "我嘅教練知道啲咩",
+      "nothing": "「關於我」仲未有儲存任何嘢.",
+      "avoids": "避免：{{foods}}",
+      "likes": "鍾意：{{foods}}",
+      "allergies": "過敏：{{list}}",
+      "noCoaches": "未冇教練開啟.",
+      "muted": "已停止提及：{{rule}}",
+      "unmute": "重新開啟"
+    },
+    "questions": {
+      "answer": "您嘅答案",
+      "low": "低",
+      "high": "高",
+      "yes": "係",
+      "notYetButton": "仲未",
+      "markedDone": "已標記完成.",
+      "notYet": "記下了。今日仲未做.",
+      "saved": "已儲存到您嘅檢視記錄.",
+      "energy": {
+        "ask": "您今日精神點？"
+      },
+      "mood": {
+        "ask": "您今日心情點？"
+      },
+      "focus": {
+        "ask": "您今日專注力點？"
+      },
+      "habit_done": {
+        "ask": "您今日有做專注習慣嗎？"
+      }
+    },
+    "checkInNow": {
+      "title": "即刻檢視",
+      "button": "即刻檢視",
+      "openChat": "開啟對話",
+      "last": "上次檢視：{{when}}.",
+      "never": "仲未執行過檢視。教練會喺您設定嘅檢視時間執行.",
+      "sent_other": "{{count}} 條新訊息。開啟對話睇下.",
+      "reasonPaused": "教練已暫停.",
+      "reasonNoCoaches": "未冇教練開啟。喺下面清單開啟一個.",
+      "reasonLimit": "今日訊息上限已經到咗.",
+      "reasonNothing": "而家冇嘢講：冇規則符合今日數據，或者教練今日已經講咗."
+    },
+    "notifications": {
+      "title": "手機通知",
+      "description": "教練寫訊息時會發通知。喺 iPhone 上，通知可能會比檢視時間遲少少.",
+      "all": "通知我教練嘅訊息",
+      "coach": "通知我 {{name}} 嘅訊息"
+    }
   }
 }

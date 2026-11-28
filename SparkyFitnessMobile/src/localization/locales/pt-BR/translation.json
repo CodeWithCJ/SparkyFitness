@@ -12004,7 +12004,17 @@
       "never": "Nenhum check-in foi feito ainda. Eles acontecem nos seus horários de check-in.",
       "sent_one": "{{count}} mensagem nova. Abra o chat para lê-la.",
       "sent_many": "{{count}} mensagens novas. Abra o chat para lê-las.",
-      "sent_other": "{{count}} mensagens novas. Abra o chat para lê-las."
+      "sent_other": "{{count}} mensagens novas. Abra o chat para lê-las.",
+      "reasonPaused": "Os coaches estão pausados.",
+      "reasonNoCoaches": "Nenhum coach está ativado. Ative um na lista abaixo.",
+      "reasonLimit": "O limite de mensagens de hoje já foi atingido.",
+      "reasonNothing": "Nada a dizer agora: nenhuma regra se aplica aos dados de hoje, ou os coaches já disseram isso hoje."
+    },
+    "notifications": {
+      "title": "Notificações no celular",
+      "description": "Uma notificação aparece quando um coach escreve. No iPhone, ela pode chegar um pouco depois do horário do check-in.",
+      "all": "Avisar sobre mensagens dos coaches",
+      "coach": "Avisar sobre {{name}}"
     }
   }
 }
