@@ -64,9 +64,7 @@
           "enforceContrast": false
         }
       ],
-      [
-        "@bacons/apple-targets"
-      ]
+      ["@bacons/apple-targets"]
     ],
     "experiments": {
       "reactCompiler": true,
