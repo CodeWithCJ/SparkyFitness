@@ -5,9 +5,16 @@ import {
   parseClinicalRecordBuffer,
   extractCcdaXml,
   parseHl7Timestamp,
+  normalizeVitalValue,
 } from '../services/clinicalRecordParserService.js';
 
 describe('Clinical Record Parser Service', () => {
+  it('rejects prototype properties and invalid units in vital normalization', () => {
+    expect(normalizeVitalValue('weight', 70, 'constructor')).toBeNull();
+    expect(normalizeVitalValue('weight', 70, 'toString')).toBeNull();
+    expect(normalizeVitalValue('height', 175, '__proto__')).toBeNull();
+    expect(normalizeVitalValue('weight', 70, 'kg')).toBe(70);
+  });
   it('parses HL7 timestamps correctly with and without timezone offsets', () => {
     const t1 = parseHl7Timestamp('20230514103000-0500');
     expect(t1).not.toBeNull();

@@ -195,7 +195,7 @@ const HEIGHT_FACTORS: Record<string, number> = {
   feet: 30.48,
 };
 
-function normalizeVitalValue(
+export function normalizeVitalValue(
   kind: ParsedVital['kind'],
   value: number,
   unit?: string
@@ -209,7 +209,7 @@ function normalizeVitalValue(
 
   switch (kind) {
     case 'weight': {
-      if (!normUnit || !(normUnit in WEIGHT_FACTORS)) {
+      if (!normUnit || !Object.hasOwn(WEIGHT_FACTORS, normUnit)) {
         return null;
       }
       const factor = WEIGHT_FACTORS[normUnit];
@@ -217,7 +217,7 @@ function normalizeVitalValue(
       break;
     }
     case 'height': {
-      if (!normUnit || !(normUnit in HEIGHT_FACTORS)) {
+      if (!normUnit || !Object.hasOwn(HEIGHT_FACTORS, normUnit)) {
         return null;
       }
       const factor = HEIGHT_FACTORS[normUnit];
@@ -243,7 +243,7 @@ function normalizeVitalValue(
   }
 
   const spec = VITAL_SPECS[kind];
-  if (canon < spec.min || canon > spec.max) {
+  if (!Number.isFinite(canon) || canon < spec.min || canon > spec.max) {
     return null;
   }
   return Number(canon.toFixed(spec.decimals));

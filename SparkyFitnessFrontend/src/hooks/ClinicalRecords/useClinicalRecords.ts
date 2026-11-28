@@ -1,4 +1,8 @@
-import { useMutation, type QueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { checkInKeys } from '@/api/keys/checkin';
 import { invalidateLabs } from '@/hooks/Labs/useLabResults';
 import {
@@ -29,8 +33,15 @@ export const usePreviewClinicalRecords = () =>
     mutationFn: (file: File) => previewClinicalRecords(file),
   });
 
-export const useExecuteClinicalImport = () =>
-  useMutation({
+export const useExecuteClinicalImport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (payload: ClinicalImportExecuteRequest) =>
       executeClinicalImport(payload),
+    onSuccess: (result) => {
+      if (result.vitalsImported > 0 || result.labsImported > 0) {
+        invalidateClinicalRecords(queryClient);
+      }
+    },
   });
+};

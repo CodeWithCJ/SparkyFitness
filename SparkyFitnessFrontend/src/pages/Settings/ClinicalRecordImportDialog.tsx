@@ -292,6 +292,7 @@ export const ClinicalRecordImportDialog = ({
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={importing || loading}
                   onClick={() => {
                     setPreview(null);
                     if (fileInputRef.current) fileInputRef.current.value = '';
